@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="CompilerConfiguration">
+    <annotationProcessing>
+      <profile name="Maven default annotation processors profile" enabled="true">
+        <sourceOutputDir name="target/generated-sources/annotations" />
+        <sourceTestOutputDir name="target/generated-test-sources/test-annotations" />
+        <outputRelativeToContentRoot value="true" />
+        <module name="mercury-srv-cmd" />
+        <module name="ROOT" />
+        <module name="mercury-core" />
+        <module name="mercury-ws-server-api20-generator" />
+        <module name="mercury-srv-slave" />
+        <module name="mercury-bpm" />
+        <module name="mercury-gui-registry" />
+        <module name="mercury-ws-server" />
+        <module name="mercury-entities-ids" />
+        <module name="mercury-srv" />
+        <module name="mercury-core-server" />
+        <module name="mercury-bpm-fix" />
+        <module name="mercury-ws-server-api20" />
+        <module name="hgdb-rmi-server-api" />
+        <module name="hgdb-tools" />
+        <module name="mercury-server" />
+        <module name="hgdb-server-monitor" />
+        <module name="mercury-dao-api" />
+        <module name="mercury-gui-core" />
+        <module name="mercury-entities-dto-generator" />
+        <module name="mercury-srv-api" />
+        <module name="mercury-lucene-indexes" />
+        <module name="mercury-mock" />
+        <module name="license-registry" />
+        <module name="mercury-spring-remoting" />
+        <module name="mercury-ws-app-rest-generator" />
+        <module name="mercury-ws-server-api" />
+        <module name="mercury-entities" />
+        <module name="mercury-ws-dto-api" />
+        <module name="mercury-client-mock" />
+        <module name="mercury-benchmark" />
+        <module name="mercury-dao" />
+        <module name="mercury-ws-app" />
+        <module name="mercury-lucene-indexes-api" />
+        <module name="mercury-cmis-client" />
+        <module name="mercury-integrations" />
+      </profile>
+    </annotationProcessing>
+  </component>
+  <component name="JavacSettings">
+    <option name="ADDITIONAL_OPTIONS_OVERRIDE">
+      <module name="ROOT" options="-parameters" />
+      <module name="hgdb-rmi-server-api" options="-parameters" />
+      <module name="hgdb-server-monitor" options="-parameters" />
+      <module name="hgdb-tools" options="-parameters" />
+      <module name="license-registry" options="-parameters" />
+      <module name="mercury" options="-parameters" />
+      <module name="mercury-cmis-client" options="-parameters" />
+      <module name="mercury-core-server" options="-parameters" />
+      <module name="mercury-dao" options="-parameters" />
+      <module name="mercury-dao-api" options="-parameters" />
+      <module name="mercury-entities-ids" options="-parameters" />
+      <module name="mercury-gui-core" options="-parameters" />
+      <module name="mercury-gui-registry" options="-parameters" />
+      <module name="mercury-lucene-indexes" options="-parameters" />
+      <module name="mercury-lucene-indexes-api" options="-parameters" />
+      <module name="mercury-mock" options="-parameters" />
+      <module name="mercury-server" options="-parameters" />
+      <module name="mercury-srv" options="-parameters" />
+      <module name="mercury-srv-slave" options="-parameters" />
+      <module name="mercury-ws-app" options="-parameters" />
+      <module name="mercury-ws-app-rest-generator" options="-parameters" />
+      <module name="mercury-ws-server" options="-parameters" />
+      <module name="mercury-ws-server-api20" options="-parameters" />
+      <module name="mercury-ws-server-api20-generator" options="-parameters" />
+    </option>
+  </component>
+</project>
