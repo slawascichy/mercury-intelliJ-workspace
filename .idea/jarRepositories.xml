@@ -66,5 +66,15 @@
       <option name="name" value="JBoss Community repository" />
       <option name="url" value="https://repository.jboss.org/nexus/content/repositories/public/" />
     </remote-repository>
+    <remote-repository>
+      <option name="id" value="github" />
+      <option name="name" value="GitHub slawascichy Apache Maven Packages" />
+      <option name="url" value="https://nexusrepo.scisoftware.pl/repository/maven-public/" />
+    </remote-repository>
+    <remote-repository>
+      <option name="id" value="project.local" />
+      <option name="name" value="project" />
+      <option name="url" value="file://$PROJECT_DIR$/../hgdb-client-open/repo" />
+    </remote-repository>
   </component>
 </project>

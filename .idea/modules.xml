@@ -2,6 +2,7 @@
 <project version="4">
   <component name="ProjectModuleManager">
     <modules>
+      <module fileurl="file://$PROJECT_DIR$/../scisoftware-webpage/docusaurus-hgdb/docusaurus-hgdb.iml" filepath="$PROJECT_DIR$/../scisoftware-webpage/docusaurus-hgdb/docusaurus-hgdb.iml" />
       <module fileurl="file://$PROJECT_DIR$/../mercury-docker/mercury-docker.iml" filepath="$PROJECT_DIR$/../mercury-docker/mercury-docker.iml" />
       <module fileurl="file://$PROJECT_DIR$/mercury-intelliJ-workspace.iml" filepath="$PROJECT_DIR$/mercury-intelliJ-workspace.iml" />
     </modules>

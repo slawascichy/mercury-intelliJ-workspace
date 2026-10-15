@@ -1,11 +1,27 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
   <component name="Encoding">
+    <file url="file://$PROJECT_DIR$/../hgdb-client-open/hgdb-client-mock/src/main/java" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/../hgdb-client-open/hgdb-client-mock/src/main/resources" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/../hgdb-client-open/hgdb-multi-client/src/main/java" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/../hgdb-client-open/hgdb-multi-client/src/main/resources" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/../hgdb-client-open/hgdb-multi-client/src/main/resources-filtered" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/../hgdb-client-open/hgdb-ws-client-cxf/src/main/java" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/../hgdb-client-open/hgdb-ws-client-cxf/src/main/resources" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/../hgdb-client-open/hgdb-ws-client-cxf/src/main/resources-filtered" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/../hgdb-client-open/src/main/java" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/../hgdb-client-open/src/main/resources" charset="UTF-8" />
     <file url="file://$PROJECT_DIR$/../mercury-client/mercury-bpm-fix/src/main/java" charset="UTF-8" />
     <file url="file://$PROJECT_DIR$/../mercury-client/mercury-bpm-fix/src/main/resources" charset="UTF-8" />
     <file url="file://$PROJECT_DIR$/../mercury-client/mercury-bpm/src/main/java" charset="UTF-8" />
     <file url="file://$PROJECT_DIR$/../mercury-client/mercury-bpm/src/main/resources" charset="UTF-8" />
     <file url="file://$PROJECT_DIR$/../mercury-client/mercury-bpm/src/main/resources-filtered" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/../mercury-client/mercury-client-cmd/src/main/bin" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/../mercury-client/mercury-client-cmd/src/main/build" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/../mercury-client/mercury-client-cmd/src/main/conf" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/../mercury-client/mercury-client-cmd/src/main/java" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/../mercury-client/mercury-client-cmd/src/main/resources" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/../mercury-client/mercury-client-cmd/src/main/scripts" charset="UTF-8" />
     <file url="file://$PROJECT_DIR$/../mercury-client/mercury-client-mock/src/main/java" charset="UTF-8" />
     <file url="file://$PROJECT_DIR$/../mercury-client/mercury-client-mock/src/main/resources" charset="UTF-8" />
     <file url="file://$PROJECT_DIR$/../mercury-client/mercury-integrations/src/main/java" charset="UTF-8" />
@@ -23,6 +39,9 @@
     <file url="file://$PROJECT_DIR$/../mercury-cmd/mercury-install-package/src/main/scripts" charset="UTF-8" />
     <file url="file://$PROJECT_DIR$/../mercury-cmd/mercury-srv-cmd/src/main/java" charset="UTF-8" />
     <file url="file://$PROJECT_DIR$/../mercury-cmd/mercury-srv-cmd/src/main/resources" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/../mercury-cmd/mercury-transfer/src/main/java" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/../mercury-cmd/mercury-transfer/src/main/resources" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/../mercury-cmd/mercury-transfer/src/main/resources-filtered" charset="UTF-8" />
     <file url="file://$PROJECT_DIR$/../mercury-cmd/src/main/java" charset="UTF-8" />
     <file url="file://$PROJECT_DIR$/../mercury-cmd/src/main/resources" charset="UTF-8" />
     <file url="file://$PROJECT_DIR$/../mercury-lib/mercury-core/src/main/java" charset="UTF-8" />
