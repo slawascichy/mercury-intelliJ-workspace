@@ -105,7 +105,46 @@ public class CaseRest extends CaseAction implements IRestServicesHelper {
 | Javadoc interfejsów SOAP (`@param`, `@return`) | Tylko źródła | Około 814 bloków |
 | Javadoc pól encji (`mercury-entities`) | Tylko źródła | Np. `Case.java:194-213` |
 | Własne adnotacje `mercury-core` (`ColumnPosition`, `MappedProperty`, `NameRepresentation`…) | Refleksja | Nie zawierają opisu ani etykiety |
-| DTO z `mercury-entities-dto-generator` | – | `DtoClassGenerator.java:244-330` nie kopiuje Javadoc |
+| DTO z `mercury-entities-dto-generator` | – | `DtoClassGenerator.java:244-330` nie kopiuje Javadoc. Opis pola `XxxDto.pole` = Javadoc `Xxx.pole` (patrz niżej) |
+
+### Generator DTO `mercury-entities-dto-generator` (mercury-lib)
+
+Typy wejścia i wyjścia wygenerowanego REST w dużej części pochodzą z drugiego generatora,
+w `mercury-lib/mercury-entities-dto-generator` (pakiet `pro.ibpm.mercury.entities.dto.generator`).
+
+| Aplikacja | Uruchamiana w | Wejście | Wynik |
+|---|---|---|---|
+| `ClassGeneratorApp` | `mercury-entities` (`pom.xml:93-125`, `exec-maven-plugin` 3.0.0, faza `process-test-resources`) | Encje z `@Table` i `@Embeddable` (refleksja, `org.reflections`) | `XxxDto` w pakiecie `pro.ibpm.mercury.dto` (`DtoClassGenerator`) oraz fabryka encji (`EntitesFactoryClassGenerator`) |
+| `WsResultDtoClassGeneratorApp` | `mercury-ws-dto-api` (`pom.xml:24-50`, ta sama faza) | Klasy DTO | Koperty odpowiedzi w `pro.ibpm.mercury.ws.server.api.returns`: `WsStatusWithXxxDto`, `WsStatusWithXxxDtos`, `XxxPagedResult`, `WsStatusWithXxxPagedResult` |
+
+- Działa jak generator REST: refleksja na skompilowanych klasach i składanie kodu przez `StringBuilder`.
+  Potem sam kompiluje wynik przez `com.sun.tools.javac.Main` z `-source/-target 1.8`
+  (`ClassGeneratorApp.java:84-113`, `Constants.java`).
+- `DtoClassGenerator` (`:244-330`) przenosi pola z `@Column`, `@JoinColumn(s)`, `@Id`, `@EmbeddedId`
+  i kopiuje tylko `@Id`, `@EmbeddedId`, `@MappedProperty`, `@MappedPropertyEager`. Klasa dostaje
+  `@XmlType(namespace = "http://pro.ibpm.mercury.dto")`. **Javadoc encji nie jest przenoszony.**
+  W miejscu opisu jest tylko komentarz z typem (`/* class java.lang.String */`).
+- Nazewnictwo jest stałe: `Xxx` → `XxxDto` (`EntityHelper.DTO_NAME_SUFFIX`), te same nazwy pól.
+  Pozwala to przypisać opis pola DTO do Javadoc pola encji bez zmian w generatorze DTO.
+- **Wygenerowane źródła nie są w repozytorium** (`mercury-entities/.gitignore:6`: `/src/main/generated/pro`,
+  w gicie jest tylko `README.txt`). Na dysku leży 325 plików. Inaczej niż w generatorze REST,
+  którego wynik jest commitowany.
+- Typy w operacjach REST:
+  - wejście: wrappery `XxxRequest` z **encjami** (np. `Case` w `FindByKeyRequest`);
+  - wyjście: koperty `WsStatusWithXxxDto(s)` z polem `dto` typu `XxxDto`.
+
+  Schematy OpenAPI trzeba więc zbudować dla encji (wejście) i DTO (wyjście). Opisy pól obu pochodzą
+  z tego samego źródła: Javadoc pól encji w `mercury-entities`.
+
+### Generator API 2.0 `mercury-ws-server-api20-generator` (mercury)
+
+- `Ws20SourceGeneratorApp` skanuje interfejsy z `@WebService` w `pro.ibpm.mercury.ws.server.api.actions`
+  (`mercury-ws-server-api`) i tworzy interfejsy SOAP zgodne z Mercury 2.0 w
+  `mercury-ws-server-api20/src/main/generated` (59 plików, w gicie tylko `README.txt`).
+  Uruchomienie: `exec-maven-plugin`, faza `compile`.
+- Kopiuje same sygnatury. Parametry dostają nazwy `arg0`, `arg1`…, bez `@WebParam`
+  i `@WSDLDocumentation`. Dotyczy tylko SOAP (WSDL 2.0), nie REST. Generator REST czyta
+  implementacje interfejsów 3.0.
 
 Żaden POM nie ma `maven-source-plugin`. Generator ma dziś dostęp tylko do skompilowanych klas.
 Źródła `mercury-lib` leżą obok na dysku (`${local-project-workspace-path}/mercury-lib`), więc
@@ -169,6 +208,7 @@ Opis pojęć: `docusaurus-hgdb/docs/003_Architecture/001_Cases_MetaData/index.md
 | D2 | Kształt dokumentacji typu sprawy (etap 2) | (a) „logiczny” JSON typu; (b) opis generycznego `DtoMrcObject` | ✅ **(a)**. Logiczny JSON już istnieje w usługach `*ExtRest` (`RestVariableReader` / `RestVariableBuilder`), więc nie trzeba nowego kontraktu. Szczegóły w [etapie 2](etap-2-openapi-typy-spraw.md) |
 | D3 | Docelowa Java serwera | 17 lub 21 | ✅ **17**. Przeniesione do zadania [191](../191-Rewizja-wersji-migracja-Java17/TASK.md) (D1) |
 | D4 | Czy `hgdb-client-open` i `mercury-cmd` przechodzą na nowszą Javę | Zostają na 1.8 / przechodzą razem z serwerem | ✅ `hgdb-client-open` zostaje na 1.8, `mercury-cmd` przechodzi na 17. Przeniesione do zadania [191](../191-Rewizja-wersji-migracja-Java17/TASK.md) (D2) |
+| D6 | Źródło opisów operacji i pól (etap 1) | A: generator REST czyta źródła (bez zmian w `mercury-lib`); B: generator DTO tworzy katalog opisów pól w jarze `mercury-entities`; C: uzupełnić `@WSDLDocumentation` w interfejsach; D: generator API 2.0 kopiuje `@WSDLDocumentation` | ✅ **A + B + C stopniowo, D opcjonalnie.** Cel: dokumentacja spójna i generowana jednoznacznie z określonych danych. Zasady i kolejność źródeł w [etapie 1](etap-1-openapi-statyczne.md#zasada-spójności-i-jednoznaczności) |
 | D5 | Wersja swagger-core (etapy 1–2) | (a) 2.2.0 z obecnym Jacksonem 2.13.2, OpenAPI 3.0; (b) nowsza 2.2.x (od 2.2.8 OpenAPI 3.1) z podbiciem Jacksona na serwerze | ✅ **(b)**. Podbicie Jacksona w `mercury/pom.xml` należy do [etapu 1](etap-1-openapi-statyczne.md). Java bez zmian |
 
 ## Definicja Gotowości (DoD)
@@ -190,6 +230,8 @@ Opis pojęć: `docusaurus-hgdb/docs/003_Architecture/001_Cases_MetaData/index.md
 | `mercury/mercury-ws-app/src/main/webapp/WEB-INF/web.xml`, `moduleDb-3.0-servlet.xml` | Konfiguracja Spring MVC i CXF |
 | `mercury/mercury-ws-app/src/main/java/pro/ibpm/mercury/rest/server/actions/RestServicesController.java` | Lista usług i WADL |
 | `mercury-lib/mercury-ws-server-api/src/main/java/` | Interfejsy SOAP z `@WSDLDocumentation` i Javadoc |
+| `mercury-lib/mercury-entities-dto-generator/src/main/java/pro/ibpm/mercury/entities/dto/generator/` | Generator DTO i kopert `WsStatusWith*` |
+| `mercury-lib/mercury-entities/src/main/java/pro/ibpm/mercury/entities/` | Encje: Javadoc pól jako źródło opisów schematów |
 | `mercury-lib/mercury-entities/src/main/java/pro/ibpm/mercury/entities/attr/` | `TypeCode`, `TypeCase`, `TypeParam`, `ParamDefinition`, `SubType` |
 | `mercury-lib/mercury-core/src/main/java/pro/ibpm/mercury/attrs/AttributeType.java` | Typy atrybutów |
 | `mercury-lib/mercury-ws-dto-api/.../ws/server/api/returns/DtoMrcObject.java` | Generyczny obiekt sprawy |
@@ -217,6 +259,9 @@ Zasady:
 
 - Kod ma wyższy priorytet niż dokumentacja. Błędy w dokumentacji poprawia się w osobnym zadaniu.
 - Zadanie działa na obecnej Javie 8 serwera. Nowe zależności muszą mieć bajtkod 1.8 i używać `javax`.
-- `mercury-lib` zostaje bez zmian.
+- `mercury-lib`: dozwolone tylko zmiany z decyzji D6 (wariant B – katalog opisów pól z generatora DTO,
+  wariant C – adnotacje `@WSDLDocumentation`). Bez zmian sygnatur, bajtkodu (1.8) i zależności runtime.
+- Dokumentacja jest spójna i jednoznaczna: każdy element ma określone źródło opisu, a to samo wejście
+  daje ten sam wynik.
 - Zmiany w generatorze wymagają ponownego wygenerowania i commitu `mercury-ws-app/src/main/generated`.
 - Wymagania JDK bibliotek dla etapów 1–2 są sprawdzone w POM-ach na Maven Central.

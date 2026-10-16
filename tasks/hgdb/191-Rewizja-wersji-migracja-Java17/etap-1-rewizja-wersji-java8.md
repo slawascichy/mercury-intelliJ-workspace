@@ -82,6 +82,17 @@ Inne problemy:
    [zadania 133, etapu 1](../133-Swagger-implementacja/etap-1-openapi-statyczne.md) (decyzja D5 w zadaniu 133). Podbić ActiveMQ do 5.16.x we wszystkich miejscach.
 7. Zastąpić zakresy `[x,)` stałymi wersjami.
 8. Przepisać generatory DTO na `javax.tools.ToolProvider` i usunąć zależność `com.sun:tools`.
+   Generator (`ClassGeneratorApp`, `WsResultDtoClassGeneratorApp`) sam kompiluje wygenerowane źródła
+   przez `com.sun.tools.javac.Main` z `-source/-target 1.8` (`ClassGeneratorApp.java:84-113`,
+   `Constants.java`), a błąd zgłasza wyjątkiem `sun.tools.java.CompilerError`.
+   Wywołania: `mercury-entities/pom.xml:93-125`, `mercury-ws-dto-api/pom.xml:24-50`
+   (`exec-maven-plugin` 3.0.0, faza `process-test-resources`).
+   Własna kompilacja jest potrzebna, bo generator czyta refleksją encje skompilowane w tym samym
+   module. Działa więc po fazie `compile`, a DTO muszą trafić do `target/classes` w tym samym buildzie.
+   Najprostsza zmiana: `javax.tools.ToolProvider.getSystemJavaCompiler()` z opcją `--release 8`
+   (na JDK 9+) zamiast `com.sun.tools.javac.Main`, oraz własny wyjątek zamiast `CompilerError`.
+   Alternatywa (większa zmiana): wydzielić encje i DTO do osobnych modułów, żeby DTO kompilował
+   zwykły `maven-compiler-plugin`.
 9. Spring Security 5.4.10 → 5.8.x (Java 8).
 10. Zweryfikować i uaktualnić tabelę stosu w `docs/architektura.md` (brakuje Tomcata 8.5.82
     i Spring Security 5.4.10).

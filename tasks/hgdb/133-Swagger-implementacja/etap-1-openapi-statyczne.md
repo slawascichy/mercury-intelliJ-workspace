@@ -12,7 +12,8 @@ i Swagger UI.
 - REST to Spring MVC, a nie CXF JAX-RS. Szczegóły w [TASK.md](TASK.md#stos-rest-w-mercury-ws-app).
 - Generator zna metody, parametry (`@WebParam`) i typy wejścia/wyjścia z refleksji.
   Brakuje mu tylko opisów.
-- `mercury-lib` zostaje bez zmian (Java 8, bez nowych zależności).
+- `mercury-lib` zmienia się tylko w zakresie decyzji D6 (warianty B i C): bez nowych zależności
+  runtime, bez zmian sygnatur, bajtkod 1.8.
 
 ### Wybrany wariant (decyzja D1 = a)
 
@@ -31,7 +32,8 @@ Decyzja D5: nowsza wersja swagger-core 2.2.x (OpenAPI 3.1) z podbiciem Jacksona 
   tę samą wersję.
 - Zakres: tylko repozytorium `mercury`. `mercury-lib` kompiluje się przeciw Jacksonowi 2.12.6.1
   w scope `provided`, więc w runtime serwera i tak działa wersja serwera. Wyrównanie Jacksona
-  w `mercury-lib`, `hgdb-client-open`, `mercury-client` i `mercury-cmd` zostaje w etapie 3.
+  w `mercury-lib`, `hgdb-client-open`, `mercury-client` i `mercury-cmd` zostaje w zadaniu
+  [191, etap 1](../191-Rewizja-wersji-migracja-Java17/etap-1-rewizja-wersji-java8.md).
 - Ryzyko: zmiany zachowania Jacksona między 2.13 a 2.18+/2.22 (np. ograniczenia
   `StreamReadConstraints` od 2.15: maks. długość napisu 20 MB, liczby 1000 znaków, zagnieżdżenie 1000).
   Dotyczy dużych LOB-ów JSON w sprawach. Sprawdzić `JsonObjectMapper` i serializację `Context`/DTO w REST
@@ -44,10 +46,110 @@ Decyzja D5: nowsza wersja swagger-core 2.2.x (OpenAPI 3.1) z podbiciem Jacksona 
 | `operation.summary` / `description` | `@WSDLDocumentation` metody (refleksja). Gdy jej brak: Javadoc metody interfejsu |
 | `requestBody` | Wrapper `XxxRequest` (pola = parametry metody) |
 | Opis pól `XxxRequest` | `@param` z Javadoc metody interfejsu |
-| `components.schemas` | `ModelConverters` swagger-core dla encji i `WsStatusWith*Dto` (rozumie adnotacje Jacksona) |
+| `components.schemas` | `ModelConverters` swagger-core dla encji (wejście) i kopert `WsStatusWith*` z `XxxDto` (wyjście). Rozumie adnotacje Jacksona |
 | Opis pól schematów | Javadoc pól encji z `mercury-entities`. Dla DTO mapowanie `XxxDto.pole` → `Xxx.pole` |
+| Opis kopert | `WsStatusWithXxxDto` → opis `XxxDto`, `WsStatusWithXxxDtos` → lista, `*PagedResult` → strona wyników. Pola `WsStatus` (`errorCode`, `errorMessage`) opisane raz, we wspólnym schemacie |
 
 Javadoc czyta JavaParser 3.x ze źródeł `mercury-lib` (`${local-project-workspace-path}/mercury-lib`).
+
+### Opisy pól DTO bez zmian w generatorze DTO
+
+DTO i koperty odpowiedzi powstają w `mercury-lib` przez `mercury-entities-dto-generator`
+(szczegóły w [TASK.md](TASK.md#generator-dto-mercury-entities-dto-generator-mercury-lib)).
+Generator DTO nie przenosi Javadoc i w tym zadaniu **zostaje bez zmian**. Opisy dokleja generator REST:
+
+1. Dla klasy `pro.ibpm.mercury.dto.XxxDto` wyznacza encję `Xxx`: usuwa sufiks `Dto`
+   (`EntityHelper.DTO_NAME_SUFFIX`) i szuka klasy w pakietach encji (`EntityHelper.ENTITIES_MAIN_PACKAGE`
+   + `EntityHelper.entityPrefixes`, tak jak `ClassGeneratorApp`).
+2. Z pliku źródłowego encji (JavaParser) bierze Javadoc pól i klasy.
+3. Ustawia `description` w schemacie `XxxDto` dla pól o tych samych nazwach. Ten sam opis trafia do
+   schematu encji `Xxx` (wejście).
+4. Pola bez Javadoc zostają bez opisu. Lista takich pól trafia do raportu generatora (log), żeby
+   uzupełnić Javadoc w encjach.
+
+Wygenerowane DTO nie są w repozytorium (`.gitignore`), ale nie jest to potrzebne. Generator REST
+korzysta z klas DTO na classpath (zbudowany `mercury-entities`), a z Javadoc encji ze źródeł.
+
+Rozszerzenie: patrz „Jedno źródło opisów” niżej (wariant B).
+
+### Jedno źródło opisów – rola generatorów (decyzja D6)
+
+W projekcie są trzy generatory i wszystkie działają na refleksji ze skompilowanych klas:
+
+| Generator | Repozytorium | Co przenosi z kontraktu |
+|---|---|---|
+| `mercury-ws-app-rest-generator` | `mercury` | Nazwy parametrów z `@WebParam(name)`. Opisów nie przenosi |
+| `mercury-entities-dto-generator` | `mercury-lib` | `@Id`, `@EmbeddedId`, `@MappedProperty*`. Javadoc nie przenosi |
+| `mercury-ws-server-api20-generator` | `mercury` | Same sygnatury. Parametry dostają nazwy `arg0`, `arg1`…, bez `@WebParam` i bez `@WSDLDocumentation` (np. `IArchCaseAction` w `mercury-ws-server-api20/src/main/generated`) |
+
+Javadoc znika przy kompilacji. Do refleksji docierają tylko adnotacje z retencją RUNTIME
+(`@WSDLDocumentation`, `@WebParam`). `@WSDLDocumentation` jest dziś w 127 miejscach, a metod
+w interfejsach `I*Action` jest około 770 (szacunek z `grep`). Część z tych 127 to opisy metody `echo`.
+
+Opis jest „jednoznaczny”, gdy dla każdego elementu istnieje jedno źródło, czytane tak samo przez
+WSDL, OpenAPI i ewentualnie GUI. Warianty:
+
+| Wariant | Opisy operacji | Opisy pól encji i DTO | Zmiany | Ocena |
+|---|---|---|---|---|
+| **A. Generator REST czyta źródła** (obecny plan) | `@WSDLDocumentation`, a gdy jej brak – Javadoc interfejsu (JavaParser) | Javadoc encji (JavaParser) i mapowanie `XxxDto` → `Xxx` | Tylko `mercury` | Działa tylko z pełnym workspace na dysku (ścieżka do źródeł `mercury-lib`). Dwa źródła opisów operacji |
+| **B. Generator DTO tworzy katalog opisów pól** | jak A | `ClassGeneratorApp` działa w module `mercury-entities`, więc ma źródła encji lokalnie (`src/main/java`). Czyta Javadoc pól (JavaParser) i zapisuje zasób, np. `META-INF/mercury/field-docs.json` (`klasa.pole → opis`), pakowany do jara `mercury-entities`. Opcjonalnie dopisuje też własną adnotację opisu do pól DTO | `mercury-lib` (generator DTO + JavaParser jako zależność czasu budowania). Bez nowych zależności runtime | Opisy pól jadą razem z artefaktem. Czytają je generator REST i serwer (etap 2 – nagłówek sprawy, koperty). Nie trzeba ścieżki do workspace |
+| **C. Uzupełnić `@WSDLDocumentation`** w `mercury-ws-server-api` | Jedno źródło dla WSDL i OpenAPI | – | `mercury-lib` (tylko adnotacje, bez zmiany sygnatur) | Najbardziej jednoznaczne dla operacji. Praca ręczna przy ~640 metodach. Można to robić stopniowo: generator raportuje metody bez opisu |
+| **D. Generator API 2.0 kopiuje `@WSDLDocumentation`** | Opisy także w WSDL dla API 2.0 | – | `mercury` | Tylko dla SOAP 2.0, nie wpływa na Swaggera. **Nie** kopiować `@WebParam(name)`: zmieniłoby nazwy parametrów w WSDL 2.0 (`arg0` → nazwa) i zepsuło zgodność starych klientów |
+
+**Decyzja D6: A + B + C stopniowo, D opcjonalnie.**
+
+- B rozwiązuje opisy pól bez zależności od układu katalogów. Generator DTO już działa we właściwym
+  module i w tym samym kroku buildu. JavaParser ma bajtkod 1.8.
+- C ustala jedno źródło opisu operacji. Do czasu uzupełnienia A daje Javadoc jako zapas.
+- Retencja i dopuszczalne miejsca `@WSDLDocumentation` (metoda, typ, parametr) – przypuszczenie
+  z wiedzy o CXF. Sprawdzić w `cxf-core` 3.0.x przed użyciem na parametrach.
+- Warianty B i C zmieniają `mercury-lib` (dozwolone decyzją D6). Zmiany nie dotykają kontraktu:
+  bez nowych zależności runtime, sygnatur i bajtkodu (dalej 1.8).
+
+### Zasada spójności i jednoznaczności
+
+Cel: dokumentacja jest spójna i generowana jednoznacznie na podstawie określonych danych.
+
+**1. Każdy element ma ustaloną kolejność źródeł.** Generator bierze pierwsze niepuste:
+
+| Element OpenAPI | Źródło 1 (docelowe) | Źródło 2 (zapas, wariant A) | Brak opisu |
+|---|---|---|---|
+| `operation.summary` / `description` | `@WSDLDocumentation` metody interfejsu (C) | Pierwsze zdanie / całość Javadoc metody interfejsu | Pozycja w raporcie braków |
+| Opis parametru (pole `XxxRequest`) | `@WSDLDocumentation` parametru, jeśli CXF na to pozwala (C, do sprawdzenia) | `@param` z Javadoc metody | Pozycja w raporcie braków |
+| `tags` (opis klasy usługi) | `@WSDLDocumentation` interfejsu (C) | Javadoc interfejsu | Pozycja w raporcie braków |
+| Opis pola encji / DTO | Katalog opisów pól z jara `mercury-entities` (B) | Javadoc pola encji czytany ze źródeł (A) | Pozycja w raporcie braków |
+| Opis schematu encji / DTO | Katalog opisów (B, Javadoc klasy) | Javadoc klasy encji (A) | Pozycja w raporcie braków |
+| Pola typu sprawy (etap 2) | Metadane typu (`TypeParam`, `ParamDefinition`, zasoby `${…}`) | – | `definitionName` |
+
+Gdy oba źródła istnieją i się różnią, wygrywa źródło 1, a różnica trafia do raportu.
+Z czasem (C, B) źródło 2 przestaje być potrzebne.
+
+**2. To samo wejście daje ten sam wynik.**
+
+- Specyfikacja bez znaczników czasu i wartości losowych. Wersja specyfikacji (`info.version`)
+  = wersja artefaktu `mercury` (`project.version`).
+- Stała kolejność: ścieżki, operacje, schematy i pola sortowane alfabetycznie (pola typu sprawy –
+  po `position`). Serializacja z posortowanymi kluczami.
+- Ten sam generator i ten sam model (swagger-models) dla etapu 1 i 2. Wspólne schematy (`WsStatus`,
+  `Context`, `MrcCaseHeader`) zdefiniowane w jednym miejscu i używane przez `$ref`.
+- Uwaga: generator REST zapisuje datę w `@javax.annotation.Generated` każdej klasy
+  (`CaseRest.java:36`). Każde uruchomienie zmienia więc wszystkie 92 pliki w repozytorium.
+  Do rozważenia: datę pomijać albo brać z `project.build.outputTimestamp` (powtarzalny build).
+  Generatory DTO i API 2.0 robią to samo, ale ich wyników nie ma w gicie.
+
+**3. Raport braków.** Każde uruchomienie generatora zapisuje raport (np.
+`target/openapi-doc-report.txt` lub log), w którym są: metody bez `@WSDLDocumentation`, parametry
+bez opisu, pola encji bez Javadoc i rozbieżności między źródłami. Raport wskazuje, co uzupełnić
+w ramach wariantu C i Javadoc encji.
+
+**4. Kolejność realizacji w etapie 1.**
+
+| Krok | Zakres | Repozytorium |
+|---|---|---|
+| 1 | Generator REST: specyfikacja, raport braków, źródła z wariantu A, deterministyczny zapis. Podbicie Jacksona, serwowanie, Swagger UI | `mercury` |
+| 2 | Wariant B: generator DTO zapisuje katalog opisów pól do jara `mercury-entities`. Generator REST czyta katalog jako źródło 1 | `mercury-lib`, `mercury` |
+| 3 | Wariant C: uzupełnianie `@WSDLDocumentation` według raportu braków. Praca ciągła, poza DoD etapu 1 | `mercury-lib` |
+| 4 | Wariant D (opcjonalnie): generator API 2.0 kopiuje `@WSDLDocumentation`, bez `@WebParam` | `mercury` |
 
 Serwowanie:
 
@@ -62,15 +164,16 @@ Serwowanie:
 | Adnotacje `@Tag`/`@Operation`/`@Schema` w klasach `XxxRest` + springdoc 1.8.x | springdoc zakłada Spring Boot. Bez niego konfiguracja jest krucha (przypuszczenie). Adnotacje można dodać później, równolegle do pliku |
 | springfox 2.9.2 | Swagger 2, projekt nierozwijany |
 | therapi-runtime-javadoc | Wymaga zmian w buildzie `mercury-lib` |
-| `@Schema` w DTO przez `DtoClassGenerator` | Wymaga `swagger-annotations` w `mercury-lib`. Możliwe jako rozszerzenie (wersja zgodna z Javą 8) |
+| `@Schema` w DTO przez `DtoClassGenerator` | Wymaga `swagger-annotations` w `mercury-lib` i czytania źródeł encji w generatorze DTO. Możliwe jako rozszerzenie (patrz wyżej) |
 | Ręczny YAML | Za dużo pracy przy 92 klasach. Sens tylko jako uzupełnienie |
 
 ### Otwarte kwestie
 
 - Kolejność w reaktorze: `mercury-ws-app` buduje się przed generatorem. Specyfikacja, tak jak
   klasy REST, będzie commitowana w `src/main/generated` (lub `src/main/resources`).
-- Czytanie Javadoc po ścieżce działa tylko na stacji z pełnym workspace. Do rozważenia:
-  `maven-source-plugin` w `mercury-lib` i czytanie z jara `-sources`.
+- Czytanie Javadoc po ścieżce działa tylko na stacji z pełnym workspace. Rozwiązania: wariant B
+  (katalog opisów pól w jarze `mercury-entities`) albo `maven-source-plugin` w `mercury-lib`
+  i czytanie z jara `-sources`.
 - Generator `RestSourceGenerator2` (`.rest2.`, przestarzały): pominąć w specyfikacji.
 - Ręcznie pisane kontrolery `*ExtRest` (`CaseBusinessExtRest`, `CaseSearchExtRest`,
   `Case2CaseBusinessExtRest`, `CaseHistoryTraceBusinessExtRest`) nie powstają w generatorze.
@@ -84,10 +187,12 @@ Serwowanie:
 - Generator tworzy poprawną specyfikację OpenAPI 3 (walidacja np. `swagger-parser`) dla wszystkich
   usług z pakietu `.rest.`.
 - Każda operacja ma `summary`, gdy źródło (`@WSDLDocumentation` lub Javadoc) zawiera opis.
-- Schematy encji i DTO mają opisy pól z Javadoc encji.
+- Schematy encji i DTO mają opisy pól z katalogu opisów (B) albo z Javadoc encji (A).
+- Generator stosuje kolejność źródeł z „Zasady spójności” i zapisuje raport braków.
+- Dwa kolejne uruchomienia generatora na tym samym kodzie dają identyczną specyfikację (porównanie bajt po bajcie).
 - Serwer udostępnia specyfikację i Swagger UI. Wywołanie „Try it out” działa dla co najmniej
   `TypeCaseRest/findLastVersionByTypeCode` i `CaseRest/findByKey`.
-- `mercury-lib` bez zmian. Build `mercury` przechodzi na Javie 8.
+- `mercury-lib` zmieniony tylko w zakresie wariantu B (krok 2). Build `mercury-lib` i `mercury` przechodzi na Javie 8.
 - Jackson na serwerze podbity do wersji zgodnej z swagger-core (jedna wersja dla wszystkich modułów
   Jacksona). Testy REST (`JSONSerializationTest`, zapis i odczyt spraw przez `*ExtRest`, w tym duże LOB-y JSON) przechodzą.
 - Wygenerowane pliki zacommitowane. Opis w `docs/moduly/mercury.md`.
@@ -103,6 +208,10 @@ Serwowanie:
 | `mercury/mercury-ws-app/pom.xml` | Webjar Swagger UI, swagger-core |
 | `mercury/mercury-ws-app/src/main/java/pro/ibpm/mercury/rest/server/actions/` | Kontroler specyfikacji |
 | `mercury/mercury-ws-app/src/main/webapp/WEB-INF/moduleDb-3.0-servlet.xml` | Mapowanie zasobów Swagger UI |
+| `mercury-lib/mercury-entities-dto-generator/src/main/java/pro/ibpm/mercury/entities/dto/generator/ClassGeneratorApp.java`, `DtoClassGenerator.java` | Wariant B: katalog opisów pól |
+| `mercury-lib/mercury-entities-dto-generator/pom.xml` | JavaParser (zależność generatora, nie runtime) |
+| `mercury-lib/mercury-ws-server-api/src/main/java/` | Wariant C: `@WSDLDocumentation` |
+| `mercury/mercury-ws-server-api20-generator/src/main/java/org/mercury/ws/server20/generator/Ws20SourceGenerator.java` | Wariant D (opcjonalnie) |
 
 ## Słownik / Zasady
 
