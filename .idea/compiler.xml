@@ -10,8 +10,12 @@
         <module name="ROOT" />
         <module name="mercury-core" />
         <module name="mercury-ws-server-api20-generator" />
+        <module name="mercury-client-cmd" />
         <module name="mercury-srv-slave" />
+        <module name="hgdb-multi-client" />
         <module name="mercury-bpm" />
+        <module name="hgdb-client-mock" />
+        <module name="hgdb-ws-client-cxf" />
         <module name="mercury-gui-registry" />
         <module name="mercury-ws-server" />
         <module name="mercury-entities-ids" />
@@ -23,6 +27,7 @@
         <module name="hgdb-tools" />
         <module name="mercury-server" />
         <module name="hgdb-server-monitor" />
+        <module name="mercury-transfer" />
         <module name="mercury-dao-api" />
         <module name="mercury-gui-core" />
         <module name="mercury-entities-dto-generator" />
