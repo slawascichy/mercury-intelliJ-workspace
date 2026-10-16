@@ -1,6 +1,6 @@
-# [YYY] Rewizja wersji oprogramowania i migracja serwera na Javę 17
+# [191] Rewizja wersji oprogramowania i migracja serwera na Javę 17
 
-> Numer zadania do nadania. Zadanie wydzielone z [133 – Swagger](../133-Swagger-implementacja/TASK.md)
+> Zadanie wydzielone z [133 – Swagger](../133-Swagger-implementacja/TASK.md)
 > (dawne etapy 3 i 4). Swagger nie zależy od tego zadania.
 
 ## Cel zadania

@@ -21,7 +21,7 @@ Generator, poza klasami `XxxRest`, zapisuje plik `openapi.json` (lub YAML) zbudo
 [TASK.md](TASK.md#biblioteki-dla-etapów-12-na-javie-8-sprawdzone-w-pom-ach-na-maven-central-2026-10-16)).
 Decyzja D5: nowsza wersja swagger-core 2.2.x (OpenAPI 3.1) z podbiciem Jacksona na serwerze.
 
-### Podbicie Jacksona (przeniesione z zadania YYY, etap 1)
+### Podbicie Jacksona (przeniesione z zadania 191, etap 1)
 
 - Obecnie: `jackson` 2.13.2, `jackson-databind` 2.13.2.2 (`mercury/pom.xml:118-119`).
 - Cel: wersja Jacksona zgodna z wybranym swagger-core (właściwość `jackson-version` w

@@ -146,7 +146,7 @@ Teoretycznie można by schemat budować tak: klasa dynamiczna → `ModelConverte
 - Klasy odwzorowują model JAXB/XML, a nie logiczny JSON (inne nazwy pól, `@XmlElementWrapper`).
 - Kompilacja w runtime wymaga pełnego JDK, zapisu na dysk i własnego classloadera. Klasy starych
   wersji typu nie znikają z pamięci.
-- Kod używa `sun.tools.java.CompilerError` (usunięte w JDK 9+) i `-source 1.7` (bloker migracji na Javę 17, zadanie [YYY](../YYY-Rewizja-wersji-migracja-Java17/etap-2-migracja-serwera-java17.md)).
+- Kod używa `sun.tools.java.CompilerError` (usunięte w JDK 9+) i `-source 1.7` (bloker migracji na Javę 17, zadanie [191](../191-Rewizja-wersji-migracja-Java17/etap-2-migracja-serwera-java17.md)).
 
 Zamiast tego **schemat buduje się bezpośrednio z `TypeParam`** (model `io.swagger.v3.oas.models`).
 Z `TypeCaseSourceGenerator` warto przejąć logikę:
@@ -164,7 +164,7 @@ oba generatory.
 Źródła: opis encji w `docusaurus-hgdb/docs/003_Architecture/001_Cases_MetaData/index.mdx`
 oraz kod, który czyta pola `TypeParam`. **Kod ma wyższy priorytet niż dokumentacja.** Rozbieżności
 (`docs/obserwacje.md`, pozycje 23–24) poprawia osobne zadanie
-[XXX – Dokumentacja metadanych typów](../XXX-Dokumentacja-metadane-typow/TASK.md).
+[190 – Dokumentacja metadanych typów](../190-Dokumentacja-metadane-typow/TASK.md).
 
 #### Zasada: pola `arg1..arg5` to argumenty kontrolek GUI
 

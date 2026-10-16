@@ -1,6 +1,6 @@
-# [XXX] Dokumentacja – aktualizacja opisu metadanych typów spraw
+# [190] Dokumentacja – aktualizacja opisu metadanych typów spraw
 
-> Numer zadania do nadania. Zadanie wydzielone z [133 – Swagger, etap 2](../133-Swagger-implementacja/etap-2-openapi-typy-spraw.md).
+> Zadanie wydzielone z [133 – Swagger, etap 2](../133-Swagger-implementacja/etap-2-openapi-typy-spraw.md).
 
 ## Cel zadania
 Zaktualizować stronę „Case metadata” serwisu hgdb.org tak, aby była zgodna z kodem.

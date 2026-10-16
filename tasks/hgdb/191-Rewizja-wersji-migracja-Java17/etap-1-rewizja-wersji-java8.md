@@ -1,4 +1,4 @@
-# [YYY] Etap 1 – Rewizja wersji zależności (bez zmiany Javy)
+# [191] Etap 1 – Rewizja wersji zależności (bez zmiany Javy)
 
 Zadanie nadrzędne: [TASK.md](TASK.md). Kolejny etap: [etap 2](etap-2-migracja-serwera-java17.md).
 

@@ -9,7 +9,7 @@ Zadanie obejmuje dwa obszary:
 2. „Dynamiczna” dokumentacja OpenAPI dla podanego kodu typu sprawy (ostatnia albo wskazana wersja typu).
 
 Rewizję wersji oprogramowania i migrację serwera na Javę 17 wydzielono do zadania
-[YYY – Rewizja wersji i migracja na Javę 17](../YYY-Rewizja-wersji-migracja-Java17/TASK.md).
+[191 – Rewizja wersji i migracja na Javę 17](../191-Rewizja-wersji-migracja-Java17/TASK.md).
 
 ## Podział na etapy
 
@@ -18,7 +18,7 @@ Rewizję wersji oprogramowania i migrację serwera na Javę 17 wydzielono do zad
 | 1 | [etap-1-openapi-statyczne.md](etap-1-openapi-statyczne.md) | Generator emituje specyfikację OpenAPI usług REST, serwowanie specyfikacji i Swagger UI, podbicie Jacksona na serwerze | – |
 | 2 | [etap-2-openapi-typy-spraw.md](etap-2-openapi-typy-spraw.md) | Dynamiczny schemat OpenAPI dla kodu typu sprawy | Etap 1 (infrastruktura serwowania) |
 
-Swagger nie wymaga zmiany Javy ani zadania YYY. Jedyny punkt wspólny to wersja Jacksona na serwerze
+Swagger nie wymaga zmiany Javy ani zadania 191. Jedyny punkt wspólny to wersja Jacksona na serwerze
 (patrz niżej): jego podbicie należy do etapu 1 tego zadania.
 
 ### Biblioteki dla etapów 1–2 na Javie 8 (sprawdzone w POM-ach na Maven Central, 2026-10-16)
@@ -36,16 +36,16 @@ Wnioski:
   tej samej wersji Jacksona** i opisuje OpenAPI 3.0, więc da się go dodać bez żadnych innych zmian.
 - Nowsze swagger-core (od 2.2.7, OpenAPI 3.1 od 2.2.8) wymagają podbicia Jacksona na serwerze do 2.14+.
   Jackson 2.x nadal ma bajtkod 1.8, więc to zmiana tylko w `mercury/pom.xml`, bez zmiany Javy.
-  **Decyzja D5: ten wariant.** Podbicie Jacksona na serwerze należy do etapu 1 (przeniesione z zadania YYY).
+  **Decyzja D5: ten wariant.** Podbicie Jacksona na serwerze należy do etapu 1 (przeniesione z zadania 191).
 - W POM-ach `mercury` nie ma `snakeyaml` ani `jackson-dataformat-yaml`, więc nie ma konfliktu z YAML-em swagger-core.
 - Do sprawdzenia przy wdrożeniu: `mvn dependency:tree` modułów `mercury-ws-app` i generatora pod kątem
   konfliktów (`jakarta.xml.bind-api`, `jakarta.validation-api` w wersjach 2.x z przestrzenią `javax`).
 
 Zadania wydzielone:
 
-- [XXX – Dokumentacja metadanych typów](../XXX-Dokumentacja-metadane-typow/TASK.md): poprawa strony
+- [190 – Dokumentacja metadanych typów](../190-Dokumentacja-metadane-typow/TASK.md): poprawa strony
   „Case metadata” na hgdb.org według kodu (rozbieżności wykryte w etapie 2).
-- [YYY – Rewizja wersji i migracja na Javę 17](../YYY-Rewizja-wersji-migracja-Java17/TASK.md):
+- [191 – Rewizja wersji i migracja na Javę 17](../191-Rewizja-wersji-migracja-Java17/TASK.md):
   porządki w zależnościach (Java 8) i migracja `mercury` oraz `mercury-cmd` na Javę 17 (dawne etapy 3 i 4).
 
 ## Kontekst i Wymagania
@@ -159,7 +159,7 @@ Opis pojęć: `docusaurus-hgdb/docs/003_Architecture/001_Cases_MetaData/index.md
   w tym środowisku (sprawdzone, patrz „Biblioteki dla etapów 1–2”).
 - Nie używać wariantów `-jakarta` (swagger-core) ani bibliotek wymagających Spring 6 / Spring Boot 3
   (np. springdoc 2.x). Stan wersji i plan migracji: zadanie
-  [YYY](../YYY-Rewizja-wersji-migracja-Java17/TASK.md).
+  [191](../191-Rewizja-wersji-migracja-Java17/TASK.md).
 
 ## Decyzje
 
@@ -167,8 +167,8 @@ Opis pojęć: `docusaurus-hgdb/docs/003_Architecture/001_Cases_MetaData/index.md
 |---|---|---|---|
 | D1 | Sposób serwowania specyfikacji (etap 1) | (a) statyczny `openapi.json` z generatora + Swagger UI z webjara; (b) springdoc-openapi 1.8.x bez Spring Boot; (c) springfox 2.9.2 | ✅ **(a)** |
 | D2 | Kształt dokumentacji typu sprawy (etap 2) | (a) „logiczny” JSON typu; (b) opis generycznego `DtoMrcObject` | ✅ **(a)**. Logiczny JSON już istnieje w usługach `*ExtRest` (`RestVariableReader` / `RestVariableBuilder`), więc nie trzeba nowego kontraktu. Szczegóły w [etapie 2](etap-2-openapi-typy-spraw.md) |
-| D3 | Docelowa Java serwera | 17 lub 21 | ✅ **17**. Przeniesione do zadania [YYY](../YYY-Rewizja-wersji-migracja-Java17/TASK.md) (D1) |
-| D4 | Czy `hgdb-client-open` i `mercury-cmd` przechodzą na nowszą Javę | Zostają na 1.8 / przechodzą razem z serwerem | ✅ `hgdb-client-open` zostaje na 1.8, `mercury-cmd` przechodzi na 17. Przeniesione do zadania [YYY](../YYY-Rewizja-wersji-migracja-Java17/TASK.md) (D2) |
+| D3 | Docelowa Java serwera | 17 lub 21 | ✅ **17**. Przeniesione do zadania [191](../191-Rewizja-wersji-migracja-Java17/TASK.md) (D1) |
+| D4 | Czy `hgdb-client-open` i `mercury-cmd` przechodzą na nowszą Javę | Zostają na 1.8 / przechodzą razem z serwerem | ✅ `hgdb-client-open` zostaje na 1.8, `mercury-cmd` przechodzi na 17. Przeniesione do zadania [191](../191-Rewizja-wersji-migracja-Java17/TASK.md) (D2) |
 | D5 | Wersja swagger-core (etapy 1–2) | (a) 2.2.0 z obecnym Jacksonem 2.13.2, OpenAPI 3.0; (b) nowsza 2.2.x (od 2.2.8 OpenAPI 3.1) z podbiciem Jacksona na serwerze | ✅ **(b)**. Podbicie Jacksona w `mercury/pom.xml` należy do [etapu 1](etap-1-openapi-statyczne.md). Java bez zmian |
 
 ## Definicja Gotowości (DoD)
