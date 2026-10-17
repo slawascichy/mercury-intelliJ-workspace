@@ -12,8 +12,8 @@ i Swagger UI.
 - REST to Spring MVC, a nie CXF JAX-RS. Szczegóły w [TASK.md](TASK.md#stos-rest-w-mercury-ws-app).
 - Generator zna metody, parametry (`@WebParam`) i typy wejścia/wyjścia z refleksji.
   Brakuje mu tylko opisów.
-- `mercury-lib` zmienia się tylko w zakresie decyzji D6 (warianty B i C): bez nowych zależności
-  runtime, bez zmian sygnatur, bajtkod 1.8.
+- `mercury-lib` zmienia się tylko w zakresie decyzji D6 (warianty B i C) i D7 (kontrakt XML, zrobione,
+  opis w [etapie 3](etap-3-zgodnosc-komunikacji-wezlow.md)): bez nowych zależności runtime, bajtkod 1.8.
 
 ### Wybrany wariant (decyzja D1 = a)
 
@@ -192,7 +192,7 @@ Serwowanie:
 - Dwa kolejne uruchomienia generatora na tym samym kodzie dają identyczną specyfikację (porównanie bajt po bajcie).
 - Serwer udostępnia specyfikację i Swagger UI. Wywołanie „Try it out” działa dla co najmniej
   `TypeCaseRest/findLastVersionByTypeCode` i `CaseRest/findByKey`.
-- `mercury-lib` zmieniony tylko w zakresie wariantu B (krok 2). Build `mercury-lib` i `mercury` przechodzi na Javie 8.
+- `mercury-lib` zmieniony tylko w zakresie wariantu B (krok 2) i kontraktu XML z D7. Build `mercury-lib` i `mercury` przechodzi na Javie 8.
 - Jackson na serwerze podbity do wersji zgodnej z swagger-core (jedna wersja dla wszystkich modułów
   Jacksona). Testy REST (`JSONSerializationTest`, zapis i odczyt spraw przez `*ExtRest`, w tym duże LOB-y JSON) przechodzą.
 - Wygenerowane pliki zacommitowane. Opis w `docs/moduly/mercury.md`.

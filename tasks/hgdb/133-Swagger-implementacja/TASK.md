@@ -3,10 +3,12 @@
 ## Cel zadania
 Wdrożenie dokumentacji OpenAPI/Swagger dla modułu `mercury-ws-app`.
 
-Zadanie obejmuje dwa obszary:
+Zadanie obejmuje trzy obszary:
 
 1. Adnotacje i opisy OpenAPI dla usług REST, które generuje moduł `mercury-ws-app-rest-generator`.
 2. „Dynamiczna” dokumentacja OpenAPI dla podanego kodu typu sprawy (ostatnia albo wskazana wersja typu).
+3. Zgodność komunikacji między węzłami serwera i klientami po dopasowaniu klas JAXB modelu obiektu MRC
+   do XSD (kwalifikowane elementy XML). Cel: zniwelować ryzyko cichej utraty danych przy wersjach mieszanych.
 
 Rewizję wersji oprogramowania i migrację serwera na Javę 17 wydzielono do zadania
 [191 – Rewizja wersji i migracja na Javę 17](../191-Rewizja-wersji-migracja-Java17/TASK.md).
@@ -17,6 +19,7 @@ Rewizję wersji oprogramowania i migrację serwera na Javę 17 wydzielono do zad
 |---|---|---|---|
 | 1 | [etap-1-openapi-statyczne.md](etap-1-openapi-statyczne.md) | Generator emituje specyfikację OpenAPI usług REST, serwowanie specyfikacji i Swagger UI, podbicie Jacksona na serwerze | – |
 | 2 | [etap-2-openapi-typy-spraw.md](etap-2-openapi-typy-spraw.md) | Dynamiczny schemat OpenAPI dla kodu typu sprawy | Etap 1 (infrastruktura serwowania) |
+| 3 | [etap-3-zgodnosc-komunikacji-wezlow.md](etap-3-zgodnosc-komunikacji-wezlow.md) | Zgodność węzłów i klientów po zmianie kontraktu XML w `mercury-lib` (wersje mieszane, serializacja, wydanie) | Zmiany kontraktu XML w `mercury-lib` (zrobione, opis w etapie). Warunek **wydania** zadania |
 
 Swagger nie wymaga zmiany Javy ani zadania 191. Jedyny punkt wspólny to wersja Jacksona na serwerze
 (patrz niżej): jego podbicie należy do etapu 1 tego zadania.
@@ -209,11 +212,12 @@ Opis pojęć: `docusaurus-hgdb/docs/003_Architecture/001_Cases_MetaData/index.md
 | D3 | Docelowa Java serwera | 17 lub 21 | ✅ **17**. Przeniesione do zadania [191](../191-Rewizja-wersji-migracja-Java17/TASK.md) (D1) |
 | D4 | Czy `hgdb-client-open` i `mercury-cmd` przechodzą na nowszą Javę | Zostają na 1.8 / przechodzą razem z serwerem | ✅ `hgdb-client-open` zostaje na 1.8, `mercury-cmd` przechodzi na 17. Przeniesione do zadania [191](../191-Rewizja-wersji-migracja-Java17/TASK.md) (D2) |
 | D6 | Źródło opisów operacji i pól (etap 1) | A: generator REST czyta źródła (bez zmian w `mercury-lib`); B: generator DTO tworzy katalog opisów pól w jarze `mercury-entities`; C: uzupełnić `@WSDLDocumentation` w interfejsach; D: generator API 2.0 kopiuje `@WSDLDocumentation` | ✅ **A + B + C stopniowo, D opcjonalnie.** Cel: dokumentacja spójna i generowana jednoznacznie z określonych danych. Zasady i kolejność źródeł w [etapie 1](etap-1-openapi-statyczne.md#zasada-spójności-i-jednoznaczności) |
+| D7 | Zgodność kontraktu XML i sposób zabezpieczenia wersji mieszanych (etap 3) | Kontrakt: (a) klasy dopasowane do XSD (kwalifikowane elementy), (b) XSD i próbki dopasowane do klas. Zabezpieczenie: A wspólne wdrożenie z kontrolą wersji, B czytnik tolerancyjny, C zapis wg wersji partnera | Kontrakt ✅ **(a)** (zrobione w `mercury-lib`: 7 klas `Dto*`, `CaseHeader`, `MrcObjectMetadata`). Zabezpieczenie ✅ **A** (wspólne wdrożenie z kontrolą wersji): klienci aktualizują się razem z serwerem, więc czytnik tolerancyjny (B) nie jest potrzebny. Klienci zostają na Javie 1.8. Szczegóły w [etapie 3](etap-3-zgodnosc-komunikacji-wezlow.md) |
 | D5 | Wersja swagger-core (etapy 1–2) | (a) 2.2.0 z obecnym Jacksonem 2.13.2, OpenAPI 3.0; (b) nowsza 2.2.x (od 2.2.8 OpenAPI 3.1) z podbiciem Jacksona na serwerze | ✅ **(b)**. Podbicie Jacksona w `mercury/pom.xml` należy do [etapu 1](etap-1-openapi-statyczne.md). Java bez zmian |
 
 ## Definicja Gotowości (DoD)
 
-- Zrealizowane etapy 1 i 2 według ich DoD.
+- Zrealizowane etapy 1, 2 i 3 według ich DoD. Wydanie zadania wymaga etapu 3.
 - Dokumentacja workspace zaktualizowana: `docs/moduly/mercury.md` (Swagger, nowe endpointy,
   wersja Jacksona), nowe pozycje w `docs/obserwacje.md`.
 
@@ -259,8 +263,10 @@ Zasady:
 
 - Kod ma wyższy priorytet niż dokumentacja. Błędy w dokumentacji poprawia się w osobnym zadaniu.
 - Zadanie działa na obecnej Javie 8 serwera. Nowe zależności muszą mieć bajtkod 1.8 i używać `javax`.
-- `mercury-lib`: dozwolone tylko zmiany z decyzji D6 (wariant B – katalog opisów pól z generatora DTO,
-  wariant C – adnotacje `@WSDLDocumentation`). Bez zmian sygnatur, bajtkodu (1.8) i zależności runtime.
+- `mercury-lib`: dozwolone zmiany z decyzji D6 (wariant B – katalog opisów pól z generatora DTO,
+  wariant C – adnotacje `@WSDLDocumentation`) oraz zmiany kontraktu XML z decyzji D7 (namespace elementów
+  modelu obiektu MRC, `DtoPropertyMap`, testy kontraktowe). Bez zmian bajtkodu (1.8) i zależności runtime.
+  Zmiana formatu XML wymaga etapu 3 przed wydaniem.
 - Dokumentacja jest spójna i jednoznaczna: każdy element ma określone źródło opisu, a to samo wejście
   daje ten sam wynik.
 - Zmiany w generatorze wymagają ponownego wygenerowania i commitu `mercury-ws-app/src/main/generated`.
