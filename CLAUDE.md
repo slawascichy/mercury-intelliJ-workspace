@@ -84,6 +84,14 @@ Pułapki:
   bieżących snapshotów.
 - Testy klientów i narzędzi wymagają działającego serwera Mercury DB
   (`src/test/resources-filtered/properties/<user>/test.properties`).
+- Testy mają profile użytkowników w `src/test/resources*/properties/<nazwa_użytkownika>`.
+  Nazwa pochodzi z właściwości Maven `user` (profil `sci-maven` w `~/.m2/settings.xml`).
+  Tu to **`scichy`**. Plik `<user>/test.properties` jest w `.gitignore`, więc istnieje tylko
+  lokalnie. Bez katalogu użytkownika testy korzystające z `TstProperties` nie ruszą.
+- `mercury-lib`: testy nie wymagają bazy ani serwera. Bazowy `mvn test` (Oracle JDK
+  1.8.0_202, `-Ddatabse.provider=POSTGRESQL`) przechodzi do `mercury-ws-dto-api`, gdzie
+  3 z 4 testów kończy się błędem (stan z 2026-10-17, gałąź `hgdb-133`).
+- `mvn` działa w bashu Cygwin (`D:\cygwin\bin\bash.exe`). Jest też `mvnibm` (Java IBM).
 
 ## Kontekst
 
