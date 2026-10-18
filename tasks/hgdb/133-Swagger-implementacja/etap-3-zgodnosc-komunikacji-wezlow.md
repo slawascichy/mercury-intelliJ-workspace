@@ -105,10 +105,14 @@ bibliotek). Wersje mieszane są dopuszczalne tylko w oknie wdrożenia. Zapis w [
    - **Kolejność wdrożenia:** węzły muszą mieć tę samą wersję. W oknie wdrożenia węzeł o innej wersji nie dostaje przekierowanych
      żądań (obciążenie rozkłada się na węzły z tą samą wersją), a log ostrzega o niezgodności. Klienci zewnętrzni SOAP
      aktualizują się razem z serwerem (D7).
-   - **Znalezisko (nie poprawiane):** w `NodeStatusMonitor.registerHeartbeat` `isMyStatus = !nodeName.equals(...)` jest odwrócone.
-     Przez to `highAvailabilityGroupStatuses` zawiera tylko węzeł o nazwie tej instancji, a nie pozostałe węzły grupy HA,
-     a warunek „zdetronizowany” nigdy nie zachodzi dla cudzych heartbeatów. Wpływa to na przekierowywanie żądań w grupie HA
-     (kontrola wersji działa na tej samej mapie). Do osobnej decyzji.
+   - ✅ **Znalezisko, poprawione:** w `NodeStatusMonitor.registerHeartbeat` zmienna `isMyStatus = !nodeName.equals(...)` była odwrócona
+     względem warunków `!isMyStatus` i komentarza. Przez to `highAvailabilityGroupStatuses` zawierała tylko węzeł o nazwie tej instancji,
+     a nie pozostałe węzły grupy HA (potwierdzone testem: obcy węzeł `ONLINE`, `RW`, ta sama grupa HA, a `getOnlineReadableNode()` zwracało `null`).
+     Poprawka: `isMyStatus = nodeName.equals(...)`, warunki bez zmian. Skutki zmiany zachowania:
+     (1) wybór partnera do przekierowania żądań (odczyt, zapis, Lucene) działa teraz na węzłach grupy HA, więc kontrola wersji ma efekt;
+     (2) gałąź „zostałem zdetronizowany” zaczyna działać dla cudzych heartbeatów: master Lucene, który odbierze heartbeat
+     innego mastera, przechodzi na `SLAVE` i rozsyła heartbeat. Gałąź (2) nie ma testu (wysyłka przez `LogicRegistry`).
+     Test grupy HA: `NodeVersionCheckTest.testIncompatibleNodeIsNotSelectedAsPartner`.
 5. ~~Czytnik tolerancyjny (opcja B)~~ — poza zakresem (decyzja D7 = A).
 6. **Wydanie.** Podbić wersję `mercury-lib`, zaktualizować `mercury.project.version` w `hgdb-client-open`
    i w `mercury`, opisać zmianę formatu w dokumentacji wydania.
