@@ -106,6 +106,29 @@ WSDL, OpenAPI i ewentualnie GUI. Warianty:
 - Warianty B i C zmieniają `mercury-lib` (dozwolone decyzją D6). Zmiany nie dotykają kontraktu:
   bez nowych zależności runtime, sygnatur i bajtkodu (dalej 1.8).
 
+### Decyzje z 2026-10-18 (po szkielecie end-to-end)
+
+- **D8. Naprawa `DtoMrcObject`/`DtoMrcList` w `mercury-lib`.** Konflikt settera JAXB z `List`
+  (`Conflicting setter definitions for property "propertyNames"`) blokuje deserializację JSON także
+  zwykłemu Jacksonowi. Konfiguracja `ObjectMapper` serwera naprawiłaby tylko serwer, a poprawka w
+  `mercury-lib` naprawia też klientów Java (`hgdb-client-open`). Poprawka nie może zmienić kontraktu
+  XML/JAXB: rozszerzyć `DtoLegacyXmlCompatibilityTest` o te klasy. Wymaga wydania `mercury-lib` i podbicia
+  zależności w `mercury` i `hgdb-client-open`. Do czasu wydania zostaje w generatorze obejście (mixin
+  `DtoMrcObjectMixin` i fallback `object`).
+- **D9. `@WSDLDocumentation` jedynym trwałym źródłem opisów.** Cel: przy generacji dokumentacji korzystać z
+  jednego, najwyżej dwóch nośników (`@WSDLDocumentation` plus ewentualnie katalog opisów pól z wariantu B).
+  Javadoc i istniejące opisy służą do jednorazowego przeniesienia treści do `@WSDLDocumentation`, a nie jako
+  stałe źródło. Wariant C przestaje być pracą ciągłą poza DoD i wchodzi do zadania. Źródło 2 (Javadoc, wariant A)
+  zostaje tylko na czas migracji. Skalę (~770 metod w `I*Action`, 127 istniejących adnotacji) i podział na kroki
+  ustalić po sprawdzeniu aktualnego stanu adnotacji.
+- **D10. Jackson na serwerze podbijamy w tym zadaniu.** Ostatni krok etapu 1, osobny commit, z pełnym
+  przebiegiem testów REST (`JSONSerializationTest`, zapis i odczyt spraw przez `*ExtRest`, duże LOB-y JSON).
+- **D11. Zakres bezpieczeństwa.** Usługi `/rest/service/**` chronione OAuth (filtr `OAuthFilter`), dokumentacja
+  (`/rest/openapi.json`, `/swagger-ui/`) publiczna. Szczegóły w „Otwartych kwestiach”.
+
+Kolejność dalszych prac: OAuth w specyfikacji → walidacja swagger-parserem → D8 → D9 (migracja opisów,
+raport braków) → `*ExtRest` → D10 → etap 2 → dokumentacja → wydanie.
+
 ### Zasada spójności i jednoznaczności
 
 Cel: dokumentacja jest spójna i generowana jednoznacznie na podstawie określonych danych.
@@ -148,7 +171,7 @@ w ramach wariantu C i Javadoc encji.
 |---|---|---|
 | 1 | Generator REST: specyfikacja, raport braków, źródła z wariantu A, deterministyczny zapis. Podbicie Jacksona, serwowanie, Swagger UI | `mercury` |
 | 2 | Wariant B: generator DTO zapisuje katalog opisów pól do jara `mercury-entities`. Generator REST czyta katalog jako źródło 1 | `mercury-lib`, `mercury` |
-| 3 | Wariant C: uzupełnianie `@WSDLDocumentation` według raportu braków. Praca ciągła, poza DoD etapu 1 | `mercury-lib` |
+| 3 | Wariant C (decyzja D9): migracja opisów do `@WSDLDocumentation` według raportu braków. W zakresie etapu 1 | `mercury-lib` |
 | 4 | Wariant D (opcjonalnie): generator API 2.0 kopiuje `@WSDLDocumentation`, bez `@WebParam` | `mercury` |
 
 Serwowanie:
@@ -180,7 +203,31 @@ Serwowanie:
   Zwracają `String` z JSON-em, a `save`/`initModel` przyjmują surowy `String`. Ich opis w specyfikacji
   wymaga osobnego źródła: ręcznego fragmentu specyfikacji albo skanowania tych klas refleksją
   w generatorze. Część związaną z typem sprawy opisuje [etap 2](etap-2-openapi-typy-spraw.md).
-- Uprawnienia i uwierzytelnianie endpointów (schemat `securitySchemes`) – do ustalenia.
+- Uwierzytelnianie OAuth usług REST (schemat `securitySchemes`). **Wymaganie:** usługi nie mogą być
+  niezabezpieczone. Specyfikacja musi deklarować schemat OAuth i wymóg `security` dla każdej operacji,
+  a Swagger UI musi umożliwiać autoryzację („Authorize”) przed „Try it out”.
+  Zabezpieczenie realizują filtry z `mercury-ws-app/src/main/webapp/WEB-INF/web.xml`, oba przypięte do
+  serwletu `moduleDb-3.0` (mapowanie `/`): `org.mercury.gui.filters.XSSFilter` i
+  `pro.ibpm.mercury.oauth.OAuthFilter` (`oauthConfigId=mercury-db:1`, `oauthFactoryName=mercuryDbOAuthFactory`).
+  Specyfikacja ma więc tylko opisać istniejące zabezpieczenie, a nie je dodawać.
+  Z kodu `OAuthFilter` (mercury-gui-core): filtr działa tylko przy `mercury.oauth.filter.enabled=true`;
+  chronione ścieżki wynikają z konfiguracji `MercurySecurityOAuthConfig` (kontekst + `servletPath`);
+  token pobiera się z `accessTokenURI` (`/rest/token`, w konfiguracji klienci `GIUPortalClient` i `GIUSoapUIClient`);
+  zakresy (`scopes`) są sprawdzane względem tokenu. Do ustalenia: typ przepływu w `securitySchemes`
+  (z `/rest/token` wygląda na `password` lub `clientCredentials`, przypuszczenie do potwierdzenia w kodzie
+  `OAuthService`).
+  **Decyzja:** `/rest/openapi.json` i `/swagger-ui/` są publiczne (bez uwierzytelnienia). Konfiguracja
+  `mercury-db:1` nie może ich oznaczać jako chronionych, a usługi `/rest/service/**` pozostają chronione.
+  Wzorzec `/rest/**` obejmował też `/rest/openapi.json`, więc w konfiguracji `mercury-db:1` zawężono go do
+  `/rest/service/**` (decyzja A, bez zmiany kodu `OAuthFilter`). Wzorzec trzeba zmienić w każdej instalacji:
+  `mercury-server/src/main/config/scichy`, `mercury-docker/mercury-3.0/docker-init-config` i
+  `mercury-cmd/mercury-install-package/system-config-sample/linux` (wszystkie trzy zrobione, dwa ostatnie
+  w osobnych repozytoriach, niezatwierdzone). Konfiguracja `jenkins` używa innego `configId` (`portal:32424`),
+  a `mercury-security-config-rgx-1.0.0.xml` dotyczy `mercury-gui-registry`, więc ich nie zmieniano.
+  Test `OpenApiResourcesTest.testOAuthSecurityConfigKeepsDocumentationPublic` pilnuje tylko pliku z `mercury`.
+  Do sprawdzenia: wartość `mercury.oauth.filter.enabled` (w konfiguracji `scichy` nie znalazłem tego klucza,
+  więc lokalnie filtr jest prawdopodobnie wyłączony) i które ścieżki konfiguracja `mercury-db:1` oznacza jako
+  chronione, w tym `/rest/service/**`.
 
 ## Definicja Gotowości (DoD)
 
@@ -190,6 +237,8 @@ Serwowanie:
 - Schematy encji i DTO mają opisy pól z katalogu opisów (B) albo z Javadoc encji (A).
 - Generator stosuje kolejność źródeł z „Zasady spójności” i zapisuje raport braków.
 - Dwa kolejne uruchomienia generatora na tym samym kodzie dają identyczną specyfikację (porównanie bajt po bajcie).
+- Specyfikacja deklaruje OAuth (`securitySchemes`) i `security` dla wszystkich operacji. Żadna usługa REST
+  nie jest dostępna bez uwierzytelnienia, a Swagger UI pozwala się autoryzować.
 - Serwer udostępnia specyfikację i Swagger UI. Wywołanie „Try it out” działa dla co najmniej
   `TypeCaseRest/findLastVersionByTypeCode` i `CaseRest/findByKey`.
 - `mercury-lib` zmieniony tylko w zakresie wariantu B (krok 2) i kontraktu XML z D7. Build `mercury-lib` i `mercury` przechodzi na Javie 8.
