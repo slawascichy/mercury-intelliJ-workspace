@@ -30,12 +30,28 @@ kompiluje się na `3.0.4-SNAPSHOT` bez zmian kodu (testy klienta wymagają serwe
 
 ### Kanały między węzłami (z kodu `mercury`)
 
-| Kanał | Gdzie w kodzie | Dotyczy zmienionych klas |
-|---|---|---|
-| SOAP (CXF), węzeł slave → master | `mercury-srv-slave/.../org/mercury/slave/server/client/cxf/WsClient`, `ClientCaseBusiness` (używa `CaseHeader`, `ICaseBusiness`) | **Tak** (XML JAXB) |
-| JMS (kolejki per węzeł) | `mercury-srv/.../org/mercury/logic/jms/*Sender` (np. `CaseRegistryChangesSender` wysyła `CaseLastUpdatedBuffer`) | Przypuszczenie: nie. Przenoszą encje i bufory, nie `Dto*`. Sprawdzić rodzaj komunikatu (obiekt serializowany czy tekst) |
-| RMI | `hgdb-rmi-server-api` (`org.spring4hgdb.remoting.rmi`) | Do sprawdzenia (serializacja Javy) |
-| HTTP invoker (Spring) | punkty `/remoting/*` (widoczne w testach `hgdb-client-open`), `mercury-spring-remoting` | Do sprawdzenia (serializacja Javy) |
+Inwentaryzacja z kodu (`mercury`, 2026-10-18). Stan: ✅ sprawdzone w kodzie.
+
+| Kanał | Gdzie w kodzie | Format i przenoszone klasy | Wpływ zmiany XML |
+|---|---|---|---|
+| SOAP (CXF) → klienci zewnętrzni | `mercury-ws-server` (`CaseBusinessAction` 70 użyć `Dto*`, `CaseSearchAction`, `Case2CaseBusinessAction`, `CaseHistoryTraceBusinessAction`), 96 `jaxws:endpoint` | XML JAXB. `DtoMrcObject`, `DtoMrcList` w `ICaseBusinessAction` (parametry `mrcObject`, `mrcList`, wyniki `WsStatusWith*`) | ✅ **Tak.** Jedyny kanał z XML-em modelu MRC. Ryzyko R1 i R3 |
+| HTTP invoker, slave → master | `mercury-srv-slave`: `WsClient` (mimo nazwy pakietu `cxf` używa `HttpInvokerProxyFactoryDynamicRegistry` → `MHttpInvokerProxyFactoryBean`), `ClientCaseBusiness extends WsClient<ICaseBusinessAction>`. Serwer: `mercury-ws-app/.../remoting-servlet.xml` (około 70 eksporterów `HttpInvokerServiceExporter`, wśród nich `ICaseBusinessAction`) | Serializacja Javy (`RemoteInvocation`). Przenosi `DtoMrcObject`/`DtoMrcList` (`ICaseBusinessAction`) i `Case`/`MrcObject` | **Nie dotyczy XML.** Dotyczy serializacji Javy (R2, zamknięte w `mercury-lib`). Dokumentacja etapu 3 błędnie nazywała ten kanał SOAP |
+| RMI | `hgdb-rmi-server-api`, eksportery `FileTransferRMI`, `CaseSearcherRMI` w `remoting-servlet.xml`; klient: `RmiClient`, `RmiProxyFactoryDynamicRegistry` w `mercury-srv-slave` | Serializacja Javy. `ICaseSearcherRMI` przenosi `Case`, `IPagedResult<MrcObject,…>`, `IExcelData`. Brak `Dto*` | **Nie dotyczy XML.** `MrcObject` niezmieniony, a adnotacje JAXB w `CaseHeader`/`MrcObjectMetadata` nie zmieniają formatu serializacji |
+| JMS (ActiveMQ, kolejki per węzeł) | `mercury-srv/.../org/mercury/logic/jms/*Sender`, `jms-configuration.xml` | **JSON tekstowy** (`MappingJackson2MessageConverter`, `targetType=TEXT`, typ w nagłówku `_type`). Komunikaty: `HeartbeatMessage`, `LuceneWakeUpMessage`, `LuceneCaseSaveBuffersForIndexMessage` (z `CaseSaveBuffer`), `CaseViewCreatorMessage`, `CaseLastUpdatedCleanerMessage`, `BpmTaskNarrativeBufferMessage`, `*RegistryChangesSender` (komunikaty o zmianach rejestrów). Brak `Dto*`, `CaseHeader`, `MrcObject` | **Nie dotyczy.** Ani JAXB, ani serializacja Javy |
+
+Wnioski z inwentaryzacji:
+
+- Zmiana przestrzeni nazw XML dotyka **tylko SOAP** (klienci zewnętrzni: `hgdb-client-open`, IBM BPM, integracje).
+  Węzły `mercury` nie wymieniają między sobą XML-a modelu MRC, więc **wersje mieszane węzłów** nie są
+  zagrożone cichą utratą danych (R1 dla ruchu węzeł ↔ węzeł nie zachodzi).
+- Między węzłami ryzyko dotyczy wyłącznie serializacji Javy (HTTP invoker, RMI) — pokryte testem w `mercury-lib`.
+  HTTP invoker i RMI przy niezgodnych klasach rzucają wyjątek (`InvalidClassException`), a nie pomijają pól po cichu.
+- `HeartbeatMessage` (JMS) **nie niesie wersji oprogramowania** (pola: `nodeName`, `hostName`, `remoteServiceUrl`,
+  `luceneServerRole`, `sentTime`, `cpu*`, `nodeCaseRole`, `highAvailabilityGroup`). `NodeStatus` też nie.
+  `HeartbeatReceiver` nie sprawdza zgodności. Mechanizm wersji (opcja A) trzeba więc dopiero dodać (zakres, punkt 4).
+- Jackson w JMS: nieznane pole w komunikacie od innej wersji węzła może rzucić `UnrecognizedPropertyException`
+  albo zostać pominięte — zależy od konfiguracji `ObjectMapper` konwertera (do sprawdzenia przy projekcie mechanizmu wersji;
+  dodanie pola `version` do `HeartbeatMessage` przy starszym odbiorcy jest od tego uzależnione).
 
 `DtoMrcObject`, `DtoMrcList` i `DtoPropertyMap` są używane w modułach `mercury-srv`, `mercury-srv-slave`
 i `mercury-ws-server`. `mercury` nie ma `hgdb-client-open` w żadnym POM-ie. Klient `hgdb-client-open` służy
@@ -48,7 +64,7 @@ zewnętrznym integracjom (`JaxWsProxyFactoryBean` na interfejsach z `mercury-ws-
 | R1 | **Wersje mieszane, XML.** Odbiorca ze starą biblioteką czyta elementy kwalifikowane jako nieznane i pomija je. Dane (`DtoMrcObject`, `DtoMrcList`, `CaseHeader`) są puste, bez błędu. Działa w obie strony (nowy odbiorca, stary nadawca) | Pewne dla nowego odbiorcy i starego nadawcy (eksperyment: wariant A odczytywał kwalifikowane próbki jako puste). Kierunek odwrotny: przypuszczenie |
 | R2 | **Serializacja Javy.** Dotyczyła `DtoPropertyMap` (`implements Map` dodano po wydaniu `3.0.4.1`, ten sam `serialVersionUID`) | ✅ **Zamknięte w `mercury-lib`.** Wydana `3.0.4.1` ma `DtoPropertyMap implements Serializable`, a poprawka wraca do tego kształtu. Strumień `DtoMrcObject`, `DtoMrcList` i `CaseHeader` odczytuje się w obie strony (`3.0.4.1` ↔ `3.0.4-SNAPSHOT`) |
 | R3 | **Klienci zewnętrzni** (`hgdb-client-open`, IBM BPM) ze starymi stubami | Przypuszczenie |
-| R4 | **Rozbieżność z XSD poza zakresem.** Inne klasy `Mrc*` w `mercury-srv-api` (`MrcObject`, `MrcList`, `MrcSimpleProperty`…) mają ten sam wzorzec bez namespace | Do sprawdzenia, czy leżą na ścieżce SOAP |
+| R4 | **Rozbieżność z XSD poza zakresem.** Inne klasy `Mrc*` w `mercury-srv-api` mają ten sam wzorzec bez namespace | ✅ **Rozstrzygnięte (2026-10-18).** Ścieżka SOAP używa `Dto*` (`DtoMrcDataUtils` konwertuje `Mrc*` ↔ `Dto*`). Z XSD opisana jest tylko `MrcCaseHeader` (rozszerza `CaseHeader`): dopasowana (31 elementów kwalifikowanych, `metadata` → `headerMetadata`). Pozostałe `Mrc*` zostają: `MrcObject`/`MrcSimpleProperty`/`MrcSimpleItem` mają model atrybutowy (`@XmlAttribute`, `@XmlValue`), inny niż element-owy XSD, a `Case2CaseRelationship`, `CaseNarrative`, `MrcComment`, `MrcSimplePropertyMap*`, `MrcSimplePropertyMapGroupedByCaseId` nie mają odpowiednika w XSD (WSDL generuje CXF z klas). Decyzja użytkownika: zakres tylko `MrcCaseHeader` |
 
 ### Opcje zniwelowania (do decyzji)
 
@@ -65,18 +81,21 @@ bibliotek). Wersje mieszane są dopuszczalne tylko w oknie wdrożenia. Zapis w [
 
 ## Zakres prac
 
-1. **Inwentaryzacja kanałów.** Uzupełnić tabelę „Kanały między węzłami” o rodzaj komunikatu i klasy
-   przenoszone w każdym kanale (JMS, RMI, HTTP invoker, SOAP).
-2. ✅ **Test serializacji Javy** (zrobione w `mercury-lib`, patrz „Stan realizacji” i R2). Pozostaje sprawdzić
-   kanały RMI i HTTP invoker w `mercury` (czy przenoszą te klasy).
-3. **Test zgodności XML między wersjami.** Dodać próbki w starym formacie (niekwalifikowane) i zbadać,
-   co dostaje nowy odbiorca. Test ma wykrywać pustą zawartość, a nie tylko brak wyjątku.
+1. ✅ **Inwentaryzacja kanałów** (tabela „Kanały między węzłami” uzupełniona z kodu, 2026-10-18).
+2. ✅ **Test serializacji Javy** (zrobione w `mercury-lib`, patrz „Stan realizacji” i R2). Kanały RMI i HTTP invoker
+   w `mercury` sprawdzone: HTTP invoker przenosi `DtoMrcObject`/`DtoMrcList`, RMI tylko `MrcObject`/`Case`.
+3. ✅ **Test zgodności XML między wersjami** (`mercury-lib`, `mercury-ws-dto-api`, `DtoLegacyXmlCompatibilityTest`,
+   2026-10-18). Format stary powstaje z próbek `dto-samples/` przez usunięcie `xmlns`. Wynik na MOXy i RI: nowy odbiorca
+   czyta stary format **bez wyjątku, ale jako pusty** (`DtoMrcObject`: brak klasy, nagłówka i właściwości; `DtoMrcList`:
+   brak nazwy, klasy i elementów). Ta sama próbka w formacie nowym jest czytana w całości (kontrola). Test jest
+   charakterystyką ryzyka R1, nie zabezpieczeniem: przy opcji A zabezpieczeniem jest kontrola wersji (punkt 4).
+   Kierunek odwrotny (stary odbiorca, nowy nadawca) nie jest testowany: wymaga starej biblioteki w classpath.
 4. **Mechanizm wersji (opcja A).** Ustalić, gdzie węzeł przekazuje wersję biblioteki (heartbeat,
    `NodeStatus`), i jak reaguje na niezgodność. Udokumentować kolejność wdrożenia węzłów.
 5. ~~Czytnik tolerancyjny (opcja B)~~ — poza zakresem (decyzja D7 = A).
 6. **Wydanie.** Podbić wersję `mercury-lib`, zaktualizować `mercury.project.version` w `hgdb-client-open`
    i w `mercury`, opisać zmianę formatu w dokumentacji wydania.
-7. **R4:** zdecydować, czy dopasować pozostałe klasy `Mrc*` do XSD (osobne zadanie, jeśli tak).
+7. ✅ **R4:** dopasowano `MrcCaseHeader` (`mercury-lib`, `mercury-srv-api`, test `MrcCaseHeaderXmlContractTest` w `mercury-ws-dto-api`: kwalifikowane elementy, round-trip, walidacja XSD na MOXy i RI). Pozostałe klasy `Mrc*` zostają bez zmian (uzasadnienie w tabeli ryzyk).
 
 ## Definicja Gotowości (DoD)
 
