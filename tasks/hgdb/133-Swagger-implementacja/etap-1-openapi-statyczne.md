@@ -121,6 +121,18 @@ WSDL, OpenAPI i ewentualnie GUI. Warianty:
   stałe źródło. Wariant C przestaje być pracą ciągłą poza DoD i wchodzi do zadania. Źródło 2 (Javadoc, wariant A)
   zostaje tylko na czas migracji. Skalę (~770 metod w `I*Action`, 127 istniejących adnotacji) i podział na kroki
   ustalić po sprawdzeniu aktualnego stanu adnotacji.
+  **Stan z 2026-10-18 (pomiar `mercury-ws-server-api`, przybliżony):** 74 interfejsy, ok. 895 deklaracji metod,
+  ok. 700 z Javadoc (opis), 117 z `@WSDLDocumentation` (63 to `echo`), ok. 170 bez żadnego opisu. `@WSDLDocumentation`
+  z CXF 3.0.10 ma `@Target({TYPE, METHOD})` i retencję RUNTIME, więc **nie może stać na parametrze**.
+- **D12. Opisy parametrów w tekście `@WSDLDocumentation` metody.** Jedno medium dla operacji i parametrów. Format
+  tekstu (stały, rozdzielany przez generator): opis metody (akapity rozdzielone pustą linią), po pustej linii
+  `Parametry:` i linie `- nazwa: opis`, po pustej linii `Zwraca: opis`. Bloki są opcjonalne. Opisy pól encji i DTO
+  zostają drugim medium (katalog opisów z generatora DTO, wariant B). Razem dwa media. Skutek uboczny: opisy
+  parametrów trafią też do `wsdl:documentation` (zmiana tylko dokumentacyjna, kontrakt WSDL bez zmian).
+- **D13. Migracja jednorazowa z Javadoc.** Narzędzie czyta Javadoc interfejsów `I*Action` (JavaParser 3.23.1) i dopisuje
+  `@WSDLDocumentation` na metodach i interfejsach (adnotacja już istniejąca zachowuje swój opis, dostaje tylko bloki
+  `Parametry:` i `Zwraca:`). Po migracji źródłem jest adnotacja, a Javadoc dokumentuje kod. Metody bez żadnego opisu
+  trafiają do raportu braków do ręcznego uzupełnienia.
 - **D10. Jackson na serwerze podbijamy w tym zadaniu.** Ostatni krok etapu 1, osobny commit, z pełnym
   przebiegiem testów REST (`JSONSerializationTest`, zapis i odczyt spraw przez `*ExtRest`, duże LOB-y JSON).
 - **D11. Zakres bezpieczeństwa.** Usługi `/rest/service/**` chronione OAuth (filtr `OAuthFilter`), dokumentacja
