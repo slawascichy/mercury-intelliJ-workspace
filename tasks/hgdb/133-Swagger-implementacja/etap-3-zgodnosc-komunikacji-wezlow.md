@@ -90,8 +90,25 @@ bibliotek). Wersje mieszane są dopuszczalne tylko w oknie wdrożenia. Zapis w [
    brak nazwy, klasy i elementów). Ta sama próbka w formacie nowym jest czytana w całości (kontrola). Test jest
    charakterystyką ryzyka R1, nie zabezpieczeniem: przy opcji A zabezpieczeniem jest kontrola wersji (punkt 4).
    Kierunek odwrotny (stary odbiorca, nowy nadawca) nie jest testowany: wymaga starej biblioteki w classpath.
-4. **Mechanizm wersji (opcja A).** Ustalić, gdzie węzeł przekazuje wersję biblioteki (heartbeat,
-   `NodeStatus`), i jak reaguje na niezgodność. Udokumentować kolejność wdrożenia węzłów.
+4. ✅ **Mechanizm wersji (opcja A)** (`mercury`, 2026-10-18, niezatwierdzone):
+   - `HeartbeatMessage.version` i `NodeStatus.version` niosą `mercury.version` (wersja `mercury-lib`, `MercuryConfigConst.PROP_LIB_VERSION`).
+   - `NodeConfigProperties.isVersionCompatible(wersja)`: wersje muszą być **identyczne**. Węzeł bez wersji (starsze wydanie) jest niezgodny.
+     Wyłącznik: `mercury.node.version.check=false` (domyślnie włączona). Gdy ta instancja nie zna własnej wersji, nie porównuje.
+   - `HeartbeatReceiver` ustawia `NodeStatus.versionCompatible`. `NodeStatusMonitor` zgłasza **WARN** przy pierwszym heartbeat
+     niezgodnego węzła i przy zmianie jego wersji (INFO, gdy węzeł zrówna wersję), a nie co 10 s.
+   - Reakcja: niezgodny węzeł **nie jest wybierany** do przekierowania żądań (`getOnlineReadableNode`, `getOnlineWritableNode`,
+     `getOnlineLuceneNotSharedNode`). Zostaje na liście węzłów (`loadNodeList`) z wersją i flagą, więc widać go w monitoringu.
+   - **Bez zmian:** wybór mastera Lucene i status `ONLINE`/`OFFLINE`. Wykluczenie niezgodnego mastera mogłoby w oknie wdrożenia
+     dać dwa mastery indeksu. Heartbeat z polem `version` czytają też starsze węzły: konwerter JMS ignoruje nieznane pola.
+   - Test `NodeVersionCheckTest` (`mercury-srv`): ocena zgodności, wyłącznik, brak wersji, wykluczenie z wyboru partnera
+     i powrót po aktualizacji, odczyt JSON heartbeatu z brakującym i nieznanym polem.
+   - **Kolejność wdrożenia:** węzły muszą mieć tę samą wersję. W oknie wdrożenia węzeł o innej wersji nie dostaje przekierowanych
+     żądań (obciążenie rozkłada się na węzły z tą samą wersją), a log ostrzega o niezgodności. Klienci zewnętrzni SOAP
+     aktualizują się razem z serwerem (D7).
+   - **Znalezisko (nie poprawiane):** w `NodeStatusMonitor.registerHeartbeat` `isMyStatus = !nodeName.equals(...)` jest odwrócone.
+     Przez to `highAvailabilityGroupStatuses` zawiera tylko węzeł o nazwie tej instancji, a nie pozostałe węzły grupy HA,
+     a warunek „zdetronizowany” nigdy nie zachodzi dla cudzych heartbeatów. Wpływa to na przekierowywanie żądań w grupie HA
+     (kontrola wersji działa na tej samej mapie). Do osobnej decyzji.
 5. ~~Czytnik tolerancyjny (opcja B)~~ — poza zakresem (decyzja D7 = A).
 6. **Wydanie.** Podbić wersję `mercury-lib`, zaktualizować `mercury.project.version` w `hgdb-client-open`
    i w `mercury`, opisać zmianę formatu w dokumentacji wydania.
