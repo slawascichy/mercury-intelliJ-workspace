@@ -6,7 +6,7 @@
 | GAV | `io.hgdb.mercury:hgdb-client-open:3.1.4-SNAPSHOT` (pom) |
 | Java | 1.8 |
 | Opis z POM | Zbiór integracji z IBM BPM i nie tylko do komunikacji z serwerem bazy Mercury. |
-| Licencja | [HGDB Client License 1.0](http://hgdb.io/HGDB_Client_LICENSE.1.0.txt) |
+| Licencja | [HGDB Client License 1.0](https://scisoftware.pl/documents/Legal/HgDb_Client_License_1_0) |
 
 Publiczny klient Java usług serwera Mercury DB. Daje zdalny dostęp do metod warstwy logiki
 (logic) i biznesu (business) zdefiniowanych w `mercury-lib`. Z klienta korzystają
