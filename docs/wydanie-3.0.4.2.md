@@ -43,10 +43,18 @@ a komunikaty JMS to JSON bez klas `Dto*`.
 3. Zaktualizować klientów (`hgdb-client-open` z `mercury.project.version` = 3.0.4.2, klienci IBM BPM).
 4. Sprawdzić log: brak ostrzeżeń „Niezgodne wersje” po zakończeniu wdrożenia.
 
-## Stan przygotowania wydania (2026-10-18)
+## Stan wydania (2026-10-18)
 
-- Zrobione lokalnie: podbicie wersji, `install.sh` w `mercury-lib` (warianty POSTGRESQL, MYSQL, ORACLE, MSSQL; bez testów),
-  `mvn install -Dmaven.test.skip=true` w `mercury` (24 moduły) i `hgdb-client-open` (4 moduły). Wszystkie przeszły.
-- **Nie zrobione:** testy `mercury` na 3.0.4.2 (ostatni pełny przebieg był na 3.0.4-SNAPSHOT, przed punktem 4 i poprawką
-  `registerHeartbeat`), `deploy.sh` (Nexus), tagi git, commity, wypchnięcie zmian.
-- Warianty encji innych niż POSTGRESQL zainstalowano do lokalnego `.m2` z `mercury-lib/repo`, ale nie testowano.
+- Zrobione: podbicie wersji, `install.sh` w `mercury-lib` (warianty POSTGRESQL, MYSQL, ORACLE, MSSQL) i w `hgdb-client-open`,
+  `mvn install -Dmaven.test.skip=true` w `mercury`, commity, `deploy.sh` w trzech repozytoriach (wykonał autor; w skryptach
+  `deploy.sh` poprawiono końce linii przez `dos2unix`), tagi lokalne: `3.0.4.2` (`mercury-lib`, `mercury`), `3.1.4.2` (`hgdb-client-open`).
+- Testy `mercury` na 3.0.4.2 (`mvn -o test -pl mercury-ws-server,mercury-srv-slave,hgdb-rmi-server-api,mercury-srv -am`):
+  zielone. W pierwszym przebiegu `SrvTest.changeCaseVersionScenario` padł w kroku porządkowym (klucz obcy z
+  `igo_da_store2type_stats` przy usuwaniu sklepów, dane z poprzednich scenariuszy). Powtórzenie na tym samym stanie bazy:
+  32 scenariusze OK. Porażka jest niestabilna, przyczyna niezbadana.
+- Artefakty zweryfikowano w Nexusie (`sci-maven-releases`, HEAD z danymi ze `settings.xml`): `mercury-lib`, `mercury-core`,
+  `mercury-srv-api`, `mercury-ws-dto-api`, `mercury-ws-server-api`, `mercury-spring-remoting`, `mercury-entities`
+  (POSTGRESQL, MYSQL, ORACLE, MSSQL) i `hgdb-rmi-server-api` w wersji 3.0.4.2 oraz `hgdb-client-open` (pom),
+  `hgdb-client-mock`, `hgdb-multi-client`, `hgdb-ws-client-cxf` w wersji 3.1.4.2.
+- **Nie zrobione:** wypchnięcie tagów i commitów na zdalne repozytoria.
+- Warianty encji innych niż POSTGRESQL zainstalowano lokalnie z `mercury-lib/repo`, ale nie testowano.

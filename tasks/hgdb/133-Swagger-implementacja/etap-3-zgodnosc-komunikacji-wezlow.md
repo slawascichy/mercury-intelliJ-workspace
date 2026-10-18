@@ -114,11 +114,11 @@ bibliotek). Wersje mieszane są dopuszczalne tylko w oknie wdrożenia. Zapis w [
      innego mastera, przechodzi na `SLAVE` i rozsyła heartbeat. Gałąź (2) nie ma testu (wysyłka przez `LogicRegistry`).
      Test grupy HA: `NodeVersionCheckTest.testIncompatibleNodeIsNotSelectedAsPartner`.
 5. ~~Czytnik tolerancyjny (opcja B)~~ — poza zakresem (decyzja D7 = A).
-6. ✅/⏳ **Wydanie 3.0.4.2** (2026-10-18). Numer według `mercury-lib/README.md` (zmiana API SOAP = pozycja 4). Zrobione lokalnie:
+6. ✅ **Wydanie 3.0.4.2** (2026-10-18). Numer według `mercury-lib/README.md` (zmiana API SOAP = pozycja 4). Zrobione lokalnie:
    `minor_version.txt` w `mercury-lib` (`up_minor_version.sh 2`) i `install.sh` (4 warianty baz), `mvn versions:set 3.0.4.2` i
    `mercury.static.version` w `mercury`, `mercury.project.version` w `hgdb-client-open` oraz własny numer klienta `minor_version.txt` 3.1.4.1 → 3.1.4.2; budowy lokalne przeszły (budowę klienta na nowym numerze, `install.sh`, trzeba jeszcze wykonać).
    Notatki wydania: [docs/wydanie-3.0.4.2.md](../../../docs/wydanie-3.0.4.2.md), opis w `docs/moduly/mercury.md`.
-   **Pozostaje:** testy `mercury` na 3.0.4.2, commity, `install.sh` klienta, `deploy.sh`, tagi.
+   Testy `mercury` na 3.0.4.2 zielone (jedna niestabilna porażka w `SrvTest`, szczegóły w notatkach), `install.sh` klienta, commity, `deploy.sh` i tagi lokalne wykonane. **Pozostaje:** wypchnięcie tagów i commitów na zdalne repozytoria.
 7. ✅ **R4:** dopasowano `MrcCaseHeader` (`mercury-lib`, `mercury-srv-api`, test `MrcCaseHeaderXmlContractTest` w `mercury-ws-dto-api`: kwalifikowane elementy, round-trip, walidacja XSD na MOXy i RI). Pozostałe klasy `Mrc*` zostają bez zmian (uzasadnienie w tabeli ryzyk).
 
 ## Definicja Gotowości (DoD)
