@@ -30,7 +30,7 @@ to submoduł git repozytorium `scisoftware-webpage`, dostępny pod ścieżką
 | Repozytorium | Rola | GAV (projekt nadrzędny) | Dokumentacja |
 |---|---|---|---|
 | [`mercury-lib`](../mercury-lib) | Biblioteki współdzielone: rdzeń, encje, API usług, DTO | `io.hgdb.mercury:mercury-lib:3.0.4-SNAPSHOT` | [docs/moduly/mercury-lib.md](docs/moduly/mercury-lib.md) |
-| [`mercury`](../mercury) | Serwer: DAO, Lucene, logika biznesowa, WS, GUI, aplikacje WAR | `io.hgdb:mercury:3.0.4.1` | [docs/moduly/mercury.md](docs/moduly/mercury.md) |
+| [`mercury`](../mercury) | Serwer: DAO, Lucene, logika biznesowa, WS, GUI, aplikacje WAR | `io.hgdb:mercury:3.0.4.2` | [docs/moduly/mercury.md](docs/moduly/mercury.md) |
 | [`hgdb-client-open`](../hgdb-client-open) | Publiczny klient Java (CXF, multi-instancja) | `io.hgdb.mercury:hgdb-client-open:3.1.4-SNAPSHOT` | [docs/moduly/hgdb-client-open.md](docs/moduly/hgdb-client-open.md) |
 | [`mercury-client`](../mercury-client) | Biblioteki klienckie i integracje dla IBM BPM | `io.hgdb.ibmbpm:mercury-client:3.0.8.6-SNAPSHOT` | [docs/moduly/mercury-client.md](docs/moduly/mercury-client.md) |
 | [`mercury-cmd`](../mercury-cmd) | Narzędzia linii komend, benchmark, transfer, pakiet instalacyjny | `io.hgdb.mercury:mercury-cmd:3.0.8.6-SNAPSHOT` | [docs/moduly/mercury-cmd.md](docs/moduly/mercury-cmd.md) |
@@ -166,6 +166,7 @@ Maven (📦). Pełne opisy są w plikach `docs/moduly/`.
   [mercury-cmd](docs/moduly/mercury-cmd.md) ·
   [mercury-docker](docs/moduly/mercury-docker.md) ·
   [docusaurus-hgdb](docs/moduly/docusaurus-hgdb.md)
+- [Wydanie 3.0.4.2 – zmiana formatu XML i kontrola wersji węzłów](docs/wydanie-3.0.4.2.md)
 - [Obserwacje z analizy i kandydaci do udoskonaleń](docs/obserwacje.md)
 
 ## Licencja

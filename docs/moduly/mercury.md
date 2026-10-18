@@ -3,13 +3,16 @@
 | | |
 |---|---|
 | Lokalizacja | `D:\workspace\git\mercury` |
-| GAV | `io.hgdb:mercury:3.0.4.1` (pom) |
+| GAV | `io.hgdb:mercury:3.0.4.2` (pom) |
 | Java | 1.8 |
 | Opis z POM | System uniwersalnego źródła danych. |
 
 Implementacja serwera Mercury DB: dostęp do danych, indeksowanie Lucene, logika biznesowa,
 usługi SOAP/REST/RMI, GUI administracyjne i aplikacje WAR uruchamiane w Apache Tomcat.
-Moduły mają GAV `io.hgdb.mercury:<moduł>:3.0.4.1`, chyba że w tabeli podano inaczej.
+Moduły mają GAV `io.hgdb.mercury:<moduł>:3.0.4.2`, chyba że w tabeli podano inaczej.
+
+Wersja 3.0.4.2 zmienia format XML modelu obiektu MRC (przestrzenie nazw) i dodaje kontrolę wersji węzłów klastra.
+Opis zmian i kolejność wdrożenia: [wydanie 3.0.4.2](../wydanie-3.0.4.2.md).
 
 ## Moduły
 
