@@ -24,6 +24,12 @@ Rewizję wersji oprogramowania i migrację serwera na Javę 17 wydzielono do zad
 Swagger nie wymaga zmiany Javy ani zadania 191. Jedyny punkt wspólny to wersja Jacksona na serwerze
 (patrz niżej): jego podbicie należy do etapu 1 tego zadania.
 
+**Stan prac (2026-10-19).** Etap 1 jest wykonany w kodzie: specyfikacja OpenAPI 3.1 z opisami (0 braków w raporcie), Swagger UI,
+zabezpieczenie OAuth, opis kontrolerów `*ExtRest` i Jackson 2.18.2 na serwerze. Etap 3 i wcześniejsze prace są wydane
+(`mercury-lib` 3.0.4.x). Zmiany opisów w `mercury-lib` po wydaniu 3.0.4.6 (`Context`, `findFirst`) czekają na kolejne wydanie lib.
+Zostaje etap 2 (dokumentacja typu sprawy) i dokumentacja w workspace (zrobiona 2026-10-19: `docs/moduly/mercury.md`,
+obserwacje 40–45).
+
 ### Biblioteki dla etapów 1–2 na Javie 8 (sprawdzone w POM-ach na Maven Central, 2026-10-16)
 
 | Biblioteka | Wersja | Bajtkod | Zależności istotne dla serwera |
@@ -214,6 +220,15 @@ Opis pojęć: `docusaurus-hgdb/docs/003_Architecture/001_Cases_MetaData/index.md
 | D6 | Źródło opisów operacji i pól (etap 1) | A: generator REST czyta źródła (bez zmian w `mercury-lib`); B: generator DTO tworzy katalog opisów pól w jarze `mercury-entities`; C: uzupełnić `@WSDLDocumentation` w interfejsach; D: generator API 2.0 kopiuje `@WSDLDocumentation` | ✅ **A + B + C stopniowo, D opcjonalnie.** Cel: dokumentacja spójna i generowana jednoznacznie z określonych danych. Zasady i kolejność źródeł w [etapie 1](etap-1-openapi-statyczne.md#zasada-spójności-i-jednoznaczności) |
 | D7 | Zgodność kontraktu XML i sposób zabezpieczenia wersji mieszanych (etap 3) | Kontrakt: (a) klasy dopasowane do XSD (kwalifikowane elementy), (b) XSD i próbki dopasowane do klas. Zabezpieczenie: A wspólne wdrożenie z kontrolą wersji, B czytnik tolerancyjny, C zapis wg wersji partnera | Kontrakt ✅ **(a)** (zrobione w `mercury-lib`: 7 klas `Dto*`, `CaseHeader`, `MrcObjectMetadata`). Zabezpieczenie ✅ **A** (wspólne wdrożenie z kontrolą wersji): klienci aktualizują się razem z serwerem, więc czytnik tolerancyjny (B) nie jest potrzebny. Klienci zostają na Javie 1.8. Szczegóły w [etapie 3](etap-3-zgodnosc-komunikacji-wezlow.md) |
 | D5 | Wersja swagger-core (etapy 1–2) | (a) 2.2.0 z obecnym Jacksonem 2.13.2, OpenAPI 3.0; (b) nowsza 2.2.x (od 2.2.8 OpenAPI 3.1) z podbiciem Jacksona na serwerze | ✅ **(b)**. Podbicie Jacksona w `mercury/pom.xml` należy do [etapu 1](etap-1-openapi-statyczne.md). Java bez zmian |
+| D8 | Naprawa odczytu JSON `DtoMrcObject`/`DtoMrcList` (etap 1) | Obejście w generatorze / poprawka w `mercury-lib` | ✅ poprawka w `mercury-lib` bez zmiany kontraktu XML. Szczegóły: [etap 1](etap-1-openapi-statyczne.md) |
+| D9 | Trwałe źródło opisów (etap 1) | Javadoc / `@WSDLDocumentation` | ✅ `@WSDLDocumentation` jest jedynym trwałym źródłem opisów operacji i parametrów, Javadoc służył do jednorazowej migracji. Szczegóły: [etap 1](etap-1-openapi-statyczne.md) |
+| D10 | Jackson na serwerze | Podbicie w tym zadaniu / w zadaniu 191 | ✅ w tym zadaniu, osobny commit. Wykonane: Jackson 2.18.2 (`mercury/pom.xml`), `JacksonConstraintsListener` przywraca brak limitu długości napisu w odczycie JSON-a |
+| D11 | Zakres bezpieczeństwa (etap 1) | Usługi chronione OAuth, dokumentacja publiczna | ✅ `/rest/service/**` chronione OAuth, `/rest/openapi.json` i `/swagger-ui/` publiczne |
+| D12 | Opisy parametrów (etap 1) | Osobne medium / w tekście `@WSDLDocumentation` metody | ✅ w tekście metody: opis, blok `Parametry:`, blok `Zwraca:` |
+| D13 | Migracja opisów z Javadoc (etap 1) | Ręcznie / narzędzie | ✅ narzędzie jednorazowe (JavaParser), metody bez opisu trafiały do raportu braków |
+| D14 | Opis kontrolerów `*ExtRest` (etap 1) | Refleksja w `mercury-ws-app` / ręczny fragment / generator po kompilacji `mercury-ws-app` | ✅ refleksja w `mercury-ws-app` (`org.mercury.rest.server.actions.ExtRestOpenApi`), scalana w locie z `openapi.json` |
+| D15 | Źródło opisów `*ExtRest` (etap 1) | `@WSDLDocumentation` na `I*ExtRest` / Javadoc | ✅ `@WSDLDocumentation` na interfejsach `I*ExtRest` |
+| D16 | Pakiety nowych komponentów | `pro.ibpm.mercury` / `org.mercury` | ✅ nowe komponenty w `org.mercury`. Istniejące klasy migrują stopniowo i tylko na prośbę autora |
 
 ## Definicja Gotowości (DoD)
 
@@ -247,6 +262,14 @@ Opis pojęć: `docusaurus-hgdb/docs/003_Architecture/001_Cases_MetaData/index.md
 | `mercury/mercury-srv/src/main/java/pro/ibpm/mercury/logic/heplers/attr/TypeCaseLogicHelper.java` | Wersjonowanie typów |
 | `mercury/mercury-srv/.../logic/jms/TypeCaseRegistryChangesReceiver.java` | Propagacja zmian typów |
 | `mercury/pom.xml`, `mercury/mercury-ws-app/pom.xml` | Jackson, swagger-core, Swagger UI |
+| `mercury/mercury-ws-app-rest-generator/src/main/java/org/mercury/rest/server/generator/OpenApiSpecBuilder.java` | Budowa specyfikacji OpenAPI 3.1 (swagger-core), raport braków opisów |
+| `mercury/mercury-ws-app-rest-generator/src/main/java/org/mercury/rest/server/generator/SchemaDocsCatalog.java`, `WsdlDocumentationText.java` | Katalog opisów klas i parser formatu `@WSDLDocumentation` |
+| `mercury/mercury-ws-app/src/main/resources/openapi/openapi.json` | Wygenerowana specyfikacja (w repozytorium) |
+| `mercury/mercury-ws-app/src/main/java/pro/ibpm/mercury/rest/server/actions/OpenApiController.java` | Serwowanie `/rest/openapi.json` i przekierowanie Swagger UI |
+| `mercury/mercury-ws-app/src/main/java/org/mercury/rest/server/actions/ExtRestOpenApi.java` | Opis kontrolerów `*ExtRest` w specyfikacji (refleksja) |
+| `mercury/mercury-ws-app/src/main/webapp/swagger-ui-config/swagger-initializer.js` | Konfiguracja i style Swagger UI |
+| `mercury/mercury-gui-core/src/main/java/org/mercury/gui/listeners/JacksonConstraintsListener.java` | Ograniczenia odczytu JSON-a (Jackson 2.15+) |
+| `mercury-lib/mercury-core/src/main/java/pro/ibpm/mercury/docs/SchemaDocsGenerator.java` | Katalog opisów klas (`schema-docs.json`) z Javadoc podczas budowy modułów lib |
 
 ## Słownik / Zasady
 
@@ -262,6 +285,7 @@ Opis pojęć: `docusaurus-hgdb/docs/003_Architecture/001_Cases_MetaData/index.md
 Zasady:
 
 - Kod ma wyższy priorytet niż dokumentacja. Błędy w dokumentacji poprawia się w osobnym zadaniu.
+- Nowe komponenty trafiają do pakietów `org.mercury` (nie `pro.ibpm.mercury`). Istniejące klasy migrują stopniowo i tylko na prośbę autora (decyzja D16).
 - Zadanie działa na obecnej Javie 8 serwera. Nowe zależności muszą mieć bajtkod 1.8 i używać `javax`.
 - `mercury-lib`: dozwolone zmiany z decyzji D6 (wariant B – katalog opisów pól z generatora DTO,
   wariant C – adnotacje `@WSDLDocumentation`) oraz zmiany kontraktu XML z decyzji D7 (namespace elementów

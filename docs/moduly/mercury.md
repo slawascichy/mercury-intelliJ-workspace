@@ -3,13 +3,13 @@
 | | |
 |---|---|
 | Lokalizacja | `D:\workspace\git\mercury` |
-| GAV | `io.hgdb:mercury:3.0.4.2` (pom) |
+| GAV | `io.hgdb:mercury:3.0.4.6` (pom) |
 | Java | 1.8 |
 | Opis z POM | System uniwersalnego źródła danych. |
 
 Implementacja serwera Mercury DB: dostęp do danych, indeksowanie Lucene, logika biznesowa,
 usługi SOAP/REST/RMI, GUI administracyjne i aplikacje WAR uruchamiane w Apache Tomcat.
-Moduły mają GAV `io.hgdb.mercury:<moduł>:3.0.4.2`, chyba że w tabeli podano inaczej.
+Moduły mają GAV `io.hgdb.mercury:<moduł>:3.0.4.6`, chyba że w tabeli podano inaczej.
 
 Wersja 3.0.4.2 zmienia format XML modelu obiektu MRC (przestrzenie nazw) i dodaje kontrolę wersji węzłów klastra.
 Opis zmian i kolejność wdrożenia: [wydanie 3.0.4.2](../wydanie-3.0.4.2.md).
@@ -48,15 +48,15 @@ Opis zmian i kolejność wdrożenia: [wydanie 3.0.4.2](../wydanie-3.0.4.2.md).
 | `mercury-ws-server` | jar | 99 / 6 | Implementacje usług SOAP i RMI (CXF). |
 | `mercury-ws-server-api20` | jar | 75 / 0 | API usług zgodne z Mercury 2.0 (kompatybilność wsteczna). |
 | `mercury-ws-server-api20-generator` | jar | 7 / 2 | Generator interfejsów API 2.0 z interfejsów Mercury 3.0 (`mercury-ws-server-api`). |
-| `mercury-ws-app-rest-generator` | jar | 10 / 1 | Generator usług REST na podstawie implementacji SOAP. |
+| `mercury-ws-app-rest-generator` | jar | 14 / 6 | Generator usług REST na podstawie implementacji SOAP oraz specyfikacji OpenAPI 3.1 (`openapi.json`) z opisami usług, operacji i schematów. |
 | `hgdb-rmi-server-api` | jar | 18 / 11 | API usług RMI (`org.spring4hgdb.remoting.rmi`). Używa go również klient `hgdb-multi-client`. |
 
 ### Aplikacje i GUI
 
 | Moduł | Typ | Java (main / test) | Opis |
 |---|---|---|---|
-| `mercury-ws-app` | **war** | 222 / 4 | Główna aplikacja WWW serwera: usługi SOAP, REST i RMI, dokumentacja WADL, OpenAPI, bindingi serwera CMIS. |
-| `mercury-gui-core` | jar | 77 / 10 | Baza aplikacji prezentacyjnych: Tomcat Realm łączący użytkowników z RDBMS i LDAP, OAuth 2.0. |
+| `mercury-ws-app` | **war** | 225 / 6 | Główna aplikacja WWW serwera: usługi SOAP, REST i RMI, dokumentacja WADL, specyfikacja OpenAPI i Swagger UI (patrz „OpenAPI i Swagger UI”), bindingi serwera CMIS. |
+| `mercury-gui-core` | jar | 78 / 11 | Baza aplikacji prezentacyjnych: Tomcat Realm łączący użytkowników z RDBMS i LDAP, OAuth 2.0. |
 | `mercury-gui-registry` | **war** | 5 / 0 | GUI rejestru do zarządzania modułami Mercury DB (JSP/JSTL). |
 | `license-registry` | **war** | 1 / 1 | Rejestr licencji. GAV: `io.hgdb:license-registry`. |
 | `ROOT` | **war** | 0 / 0 | Aplikacja ROOT Tomcata. GAV: `io.hgdb:ROOT:3.0.1-SNAPSHOT`, bez rodzica. |
@@ -97,6 +97,30 @@ flowchart BT
     server --> reg
 ```
 
+## OpenAPI i Swagger UI
+
+Dokumentacja usług REST (zadanie 133, [etap 1](../../tasks/hgdb/133-Swagger-implementacja/etap-1-openapi-statyczne.md)):
+
+- **Specyfikacja.** OpenAPI 3.1 powstaje przy budowie w `mercury-ws-app-rest-generator` (`exec-maven-plugin`, faza `compile`)
+  razem z kontrolerami `XxxRest`. Wynik jest zapisywany w repozytorium: `mercury-ws-app/src/main/resources/openapi/openapi.json`
+  (kontrolery w `src/main/generated`). Zapis jest deterministyczny. Raport braków opisów: `mercury-ws-app-rest-generator/target/openapi-doc-report.txt`.
+- **Źródła opisów.** Opisy operacji i parametrów to `@WSDLDocumentation` na interfejsach `I*Action` w `mercury-lib`
+  (`mercury-ws-server-api`) w stałym formacie: opis, blok `Parametry:`, blok `Zwraca:`. Opisy klas i pól schematów to Javadoc,
+  zapisywany podczas budowy modułów `mercury-lib` i `mercury-lucene-indexes-api` do `META-INF/mercury/schema-docs.json` w jarach
+  (`SchemaDocsGenerator`). Klasa `XxxDto` dziedziczy opisy encji `Xxx`, a pole `id` bez opisu dostaje opis domyślny.
+- **Serwowanie.** `OpenApiController` (`mercury-ws-app`) udostępnia `GET /rest/openapi.json` z sekcją `servers` zależną od ścieżki
+  kontekstu. Swagger UI (webjar `org.webjars:swagger-ui` 5.32.0) działa pod `/swagger-ui/`, a jego konfiguracja i style są w
+  `mercury-ws-app/src/main/webapp/swagger-ui-config/swagger-initializer.js`.
+- **Kontrolery `*ExtRest`.** Ręcznie pisane kontrolery na logicznym JSON-ie sprawy opisuje klasa
+  `org.mercury.rest.server.actions.ExtRestOpenApi` (refleksja, bez bibliotek swagger-core). `OpenApiController` dokleja ich
+  operacje do statycznej specyfikacji (32 operacje w 4 usługach). Opisy pochodzą z `@WSDLDocumentation` na interfejsach `I*ExtRest`.
+- **Zabezpieczenie.** Specyfikacja deklaruje schemat OAuth 2.0 `mercuryOAuth` (przepływ `password`, `POST /rest/token`) i wymaga go
+  dla wszystkich operacji. Filtr `OAuthFilter` chroni ścieżki `/rest/service/**` (wzorzec z `mercury-security-config-db-1.0.0.xml`),
+  a `/rest/openapi.json` i `/swagger-ui/` są publiczne.
+- **Jackson.** Serwer używa Jacksona 2.18.2 (`jackson.version` i `jackson.databind.version` w `mercury/pom.xml`; wcześniej 2.13.2).
+  `org.mercury.gui.listeners.JacksonConstraintsListener` (`web.xml` obu aplikacji) znosi domyślny limit długości napisu w odczycie
+  JSON-a (20 000 000 znaków od Jacksona 2.15), żeby duże wartości LOB w sprawach nadal się odczytywały.
+
 ## Budowanie
 
 ```bash
@@ -112,6 +136,16 @@ Po instalacji biblioteki ładuje się do innych projektów skryptami:
 ./deploy-api.sh slawas mercury-client
 ./deploy-api.sh slawas hgdb-client-open
 ```
+
+Uwagi do budowania serwera testowego (`mercury-server`):
+
+- Instalacja kopiuje do `apache-tomcat` pliki WAR i jary `mercury*` oraz `hgdb*` w `apache-tomcat/mercury/lib`. Przed
+  `mvn install` zatrzymaj Tomcata: przy uruchomionym serwerze krok `mercury-server` zakończył się błędem na etapie
+  kasowania starych jarów (przypuszczenie: Windows blokuje jary używane przez Tomcata), choć pozostałe moduły zbudowały się poprawnie. Po instalacji usuń rozpakowane katalogi
+  `webapps/mercury-ws-app` i `webapps/mercury-gui-registry`, żeby Tomcat rozpakował nowe WAR-y.
+- Biblioteki zewnętrzne w `apache-tomcat/mercury/lib` (np. Jackson) nie są aktualizowane przez instalację. Przy zmianie ich wersji
+  podmień jary ręcznie, biorąc je z `mercury-server/target/dependency`.
+- Maven pracuje w trybie offline (`MAVEN_ARGS=-o`). Nowe artefakty ściąga się osobno poleceniem `mvn dependency:get`.
 
 ## Pozostałe katalogi
 

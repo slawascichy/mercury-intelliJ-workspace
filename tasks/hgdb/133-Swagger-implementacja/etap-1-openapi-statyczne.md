@@ -144,8 +144,8 @@ WSDL, OpenAPI i ewentualnie GUI. Warianty:
   `Parametry:` i `Zwraca:`). Po migracji źródłem jest adnotacja, a Javadoc dokumentuje kod. Metody bez żadnego opisu
   trafiają do raportu braków do ręcznego uzupełnienia.
 - **D14. Kontrolery `*ExtRest` opisuje refleksja w `mercury-ws-app`, scalana w locie.** Generator jest osobnym modułem
-  budowanym przed `mercury-ws-app`, więc nie widzi tych klas. Nowa klasa w `mercury-ws-app` czyta kontrolery `*ExtRest`
-  (adnotacje Spring, klasy `*Request`, bez pakietu `rest2`) i buduje operacje tym samym `OpenApiSpecBuilder`.
+  budowanym przed `mercury-ws-app`, więc nie widzi tych klas. Nowa klasa w `mercury-ws-app` (`org.mercury.rest.server.actions.ExtRestOpenApi`) czyta kontrolery `*ExtRest`
+  (adnotacje Spring, klasy `*Request`, bez pakietu `rest2`) i buduje operacje w formacie specyfikacji generatora.
   `OpenApiController` dokleja je (ścieżki, tagi, schematy) do statycznego `openapi.json`. Żądania `save` i `initModel`
   przyjmują surowy JSON sprawy (`String`), a odpowiedzią jest zawsze koperta JSON (`errorCode`, `errorMessage` i dane).
   Typowanie JSON-a konkretnego typu sprawy to etap 2. Klasa `ExtRestOpenApi` używa tylko Jacksona (drzewo JSON) i parsera
