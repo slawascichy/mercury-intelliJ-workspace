@@ -133,6 +133,20 @@ WSDL, OpenAPI i ewentualnie GUI. Warianty:
   `@WSDLDocumentation` na metodach i interfejsach (adnotacja już istniejąca zachowuje swój opis, dostaje tylko bloki
   `Parametry:` i `Zwraca:`). Po migracji źródłem jest adnotacja, a Javadoc dokumentuje kod. Metody bez żadnego opisu
   trafiają do raportu braków do ręcznego uzupełnienia.
+- **D14. Kontrolery `*ExtRest` opisuje refleksja w `mercury-ws-app`, scalana w locie.** Generator jest osobnym modułem
+  budowanym przed `mercury-ws-app`, więc nie widzi tych klas. Nowa klasa w `mercury-ws-app` czyta kontrolery `*ExtRest`
+  (adnotacje Spring, klasy `*Request`, bez pakietu `rest2`) i buduje operacje tym samym `OpenApiSpecBuilder`.
+  `OpenApiController` dokleja je (ścieżki, tagi, schematy) do statycznego `openapi.json`. Żądania `save` i `initModel`
+  przyjmują surowy JSON sprawy (`String`), a odpowiedzią jest zawsze koperta JSON (`errorCode`, `errorMessage` i dane).
+  Typowanie JSON-a konkretnego typu sprawy to etap 2. Klasa `ExtRestOpenApi` używa tylko Jacksona (drzewo JSON) i parsera
+  opisów z generatora, bo biblioteki swagger-core są w generatorze w zakresie `provided` i nie trafiają do WAR-a
+  (ich Jackson jest nowszy od serwerowego). Metody `save` i `initModel` przyjmują `String`, który kontroler sam parsuje do
+  obiektu `{context, jsonNode, forceAddStore2Type}`, więc klasę żądania wskazuje adnotacja `@ExtRestRequest`. Żądania
+  zagnieżdżone w wygenerowanych kontrolerach (`CaseBusinessRest.FindRequest`) odwołują się do istniejących schematów.
+  Wynik: 32 operacje w 4 usługach, bez braków opisów (test `ExtRestOpenApiTest`).
+- **D15. Opisy `*ExtRest` w `@WSDLDocumentation` na interfejsach `I*ExtRest`.** Ta sama adnotacja i ten sam format
+  (D12) co dla usług SOAP, więc jedno medium i jeden parser. Adnotacja nie trafia do WSDL, bo kontrolery REST nie są
+  usługami SOAP. Braki opisów są raportowane i pilnuje ich test.
 - **D10. Jackson na serwerze podbijamy w tym zadaniu.** Ostatni krok etapu 1, osobny commit, z pełnym
   przebiegiem testów REST (`JSONSerializationTest`, zapis i odczyt spraw przez `*ExtRest`, duże LOB-y JSON).
 - **D11. Zakres bezpieczeństwa.** Usługi `/rest/service/**` chronione OAuth (filtr `OAuthFilter`), dokumentacja
@@ -210,7 +224,7 @@ Serwowanie:
   (katalog opisów pól w jarze `mercury-entities`) albo `maven-source-plugin` w `mercury-lib`
   i czytanie z jara `-sources`.
 - Generator `RestSourceGenerator2` (`.rest2.`, przestarzały): pominąć w specyfikacji.
-- Ręcznie pisane kontrolery `*ExtRest` (`CaseBusinessExtRest`, `CaseSearchExtRest`,
+- ✅ **Rozwiązane (D14, D15).** Ręcznie pisane kontrolery `*ExtRest` (`CaseBusinessExtRest`, `CaseSearchExtRest`,
   `Case2CaseBusinessExtRest`, `CaseHistoryTraceBusinessExtRest`) nie powstają w generatorze.
   Zwracają `String` z JSON-em, a `save`/`initModel` przyjmują surowy `String`. Ich opis w specyfikacji
   wymaga osobnego źródła: ręcznego fragmentu specyfikacji albo skanowania tych klas refleksją
