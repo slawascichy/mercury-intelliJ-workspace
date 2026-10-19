@@ -38,6 +38,16 @@ Decyzja D5: nowsza wersja swagger-core 2.2.x (OpenAPI 3.1) z podbiciem Jacksona 
   `StreamReadConstraints` od 2.15: maks. długość napisu 20 MB, liczby 1000 znaków, zagnieżdżenie 1000).
   Dotyczy dużych LOB-ów JSON w sprawach. Sprawdzić `JsonObjectMapper` i serializację `Context`/DTO w REST
   (przypuszczenie – zweryfikować testami).
+- **Zrobione (2026-10-19): Jackson 2.18.2 w `mercury/pom.xml`** (`jackson.version` i `jackson.databind.version`), jedna wersja
+  dla wszystkich modułów i generatora. Kompilacja bez zmian w kodzie, testy REST i JSON przechodzą. W
+  `apache-tomcat/mercury/lib` podmieniono ręcznie jary `jackson-core`, `jackson-annotations` i `jackson-databind` (skrypt
+  instalacyjny kopiuje tylko jary `mercury*` i `hgdb*`). Pakiet instalacyjny (`mercury-server/target/dependency`) dostaje
+  teraz `jackson-dataformat-xml` 2.18.2 i `woodstox-core` 7.0.0 obok `woodstox-core-asl` 4.4.1 (tak jak wcześniej 2.13.2 i
+  woodstox 6.2.7); w działającym serwerze tych jarów nie ma.
+- **`StreamReadConstraints`:** domyślny limit długości napisu (20 000 000 znaków od Jacksona 2.15) odrzuca duże LOB-y JSON,
+  więc `JacksonConstraintsListener` (`mercury-gui-core`, zarejestrowany w `web.xml` obu aplikacji przed
+  `ContextLoaderListener`) przywraca brak limitu długości napisu. Pozostałe ograniczenia (liczba 1000 znaków,
+  zagnieżdżenie 1000, nazwa pola 50 000) zostają domyślne. Test: `JacksonConstraintsListenerTest`.
 
 | Element OpenAPI | Źródło |
 |---|---|
