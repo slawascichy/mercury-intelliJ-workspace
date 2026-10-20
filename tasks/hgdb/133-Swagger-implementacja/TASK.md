@@ -43,13 +43,13 @@ Znaczenie kolumn (jedno znaczenie, bez mieszania „zrobione w kodzie” z „do
 | Etap 2, krok 5: wersje typu (`?v=`, `?typeId=`, `versions.json`, reguła wersji typów zależnych D20) | ✅ | ✅ | **GO** | sprawdzone na serwerze na typie z kilkoma wersjami |
 | Etap 2: usługi per typ i `CASE_AS_TYPE` (kategorie A, B, C, migracja sprawy) | ✅ | ✅ | **GO** | poza zakresem decyzją D21: `fieldMetricQuery`, `history/find`, `loadSampleByTypeName`, kategoria D |
 | Etap 2, krok 8: strona wyboru typu i Swagger UI per typ (logowanie sesją) | ✅ | ✅ | **GO** | sprawdzone w przeglądarce przez autora |
-| Etap 2, krok 6: lokalizacja etykiet i nazw opcji (`${…}`, `?lang=`, `Accept-Language`) | ✅ | ⬜ | **NO-GO** | kod gotowy i sprawdzony na serwerze (`CalendarUserEvent` w `pl`, `en`, `de`); do GO brakuje tylko commitu |
+| Etap 2, krok 6: lokalizacja etykiet i nazw opcji (`${…}`, `?lang=`, `Accept-Language`) | ✅ | ✅ | **GO** | sprawdzone na serwerze (`CalendarUserEvent` w `pl`, `en`); pliki `*_de.properties` przetłumaczone z niderlandzkiego na niemiecki (obserwacja 50), wersja `de` do sprawdzenia po wdrożeniu |
 | Etap 2: test w obie strony (`loadSampleByTypeCode` → walidacja schematem → `save` bez nowej wersji typu) | ⬜ | – | **NO-GO** | warunek DoD etapu 2 |
 | Etap 3: zgodność komunikacji węzłów (kontrakt XML, kontrola wersji węzłów, testy) | ✅ | ✅ | **GO** | |
 | Wydanie `mercury-lib` 3.0.4.7 (artefakty wdrożone, tag lokalny) | ✅ | ✅ | **GO** | wypchnięcie tagu: wiersz „Publikacja” |
 | Dokumentacja workspace (`docs/moduly/mercury.md`, `docs/obserwacje.md`, `TASK.md`, etapy, podsumowania) | ✅ | ✅ | **GO** | uspójniona 2026-10-20 |
 | Publikacja: wypchnięcie commitów i tagów na zdalne repozytoria | – | – | **NO-GO** | niewypchnięte: `mercury` 22 commity, `mercury-lib` 9 commitów i tag `3.0.4.7`, workspace 16 commitów. Tagi `3.0.4.1`–`3.0.4.6` są na zdalnym, `hgdb-client-open` jest zsynchronizowany, `mercury-docker`, `mercury-cmd`, `mercury-client` bez zmian |
-| **Zadanie 133 jako całość (wydanie)** | – | – | **NO-GO** | do GO: commit kroku 6, „test w obie strony” z etapu 2 i publikacja |
+| **Zadanie 133 jako całość (wydanie)** | – | – | **NO-GO** | do GO: „test w obie strony” z etapu 2 i publikacja |
 
 **Poza DoD, decyzja autora (nie blokuje wydania):** krok 7 etapu 2 (cache i `ETag`; wymaganie „zmiana typu widoczna bez restartu, także
 na drugim węźle” jest spełnione, bo specyfikacja nie jest buforowana), automatyczny token dla „Try it out” (działa przycisk Authorize),
@@ -77,6 +77,15 @@ Wnioski:
   konfliktów (`jakarta.xml.bind-api`, `jakarta.validation-api` w wersjach 2.x z przestrzenią `javax`).
 
 Zadania wydzielone:
+
+- [192 – Lokalizacja opisów specyfikacji statycznej, tekstów stałych i stron dokumentacji Swagger](../192-Lokalizacja-opisow-specyfikacji-i-tekstow-stalych/TASK.md)
+  (decyzja D22, 2026-10-20). Zakres obejmuje też własne strony i interfejs Swagger UI. Założenia z D22:
+  Tekst domyślny w `@WSDLDocumentation` jest angielski. Tłumaczenia leżą w katalogu zasobów `openapi-docs_<lang>.properties` w
+  `mercury-lib` (klucz stabilny, np. `ICaseBusinessExtRest.save`, `ICaseBusinessExtRest.save.param.arg0`), z pierwszym katalogiem `pl`.
+  Generator etapu 1 wybiera tekst z katalogu danego języka, a gdy go brak, z adnotacji, i tworzy plik na język (`/rest/openapi.json?lang=`).
+  Raport braków wypisuje też brakujące tłumaczenia. Etap 2 zostaje przy kluczach `${…}`, a teksty stałe generowane przez kod
+  (opisy operacji, kopert i parametrów usług per typ) trzeba przenieść do tego samego mechanizmu. Dotychczasowe polskie opisy
+  w adnotacjach trzeba przetłumaczyć na angielski, a polskie wersje przenieść do katalogu `pl`. Zmieni to opisy w WSDL.
 
 - [190 – Dokumentacja metadanych typów](../190-Dokumentacja-metadane-typow/TASK.md): poprawa strony
   „Case metadata” na hgdb.org według kodu (rozbieżności wykryte w etapie 2).
@@ -260,6 +269,7 @@ Opis pojęć: `docusaurus-hgdb/docs/003_Architecture/001_Cases_MetaData/index.md
 | D19 | Dostęp do specyfikacji typu (etap 2) | Publiczny / token OAuth / token albo sesja | ✅ token OAuth albo sesja zalogowana formularzem. Usługi `POST /rest/service/…` nadal wymagają tokenu |
 | D20 | Wersja typu zależnego w specyfikacji starszej wersji typu głównego (etap 2) | Dokładnie ta sama wersja / wersja obowiązująca w czasie (`fromDate`/`toDate`) albo ostatnia | ✅ wersja obowiązująca w chwili początku wersji głównej, a gdy jej nie ma, ostatnia. Dla ostatniej wersji głównego: ostatnie wersje zależnych |
 | D21 | Zakres operacji `*ExtRest` per typ (etap 2) | Wszystkie 32 / tylko związane z typem | ✅ kategorie A, B, C. Poza zakresem: `fieldMetricQuery` (statystyka całego indeksu), `history/find` (`versionId` nie wskazuje typu), `loadSampleByTypeName` (zbędne), kategoria D |
+| D22 | Język domyślny opisów w dokumentacji OpenAPI (etapy 1 i 2) | Polski / angielski | ✅ angielski jako tekst domyślny (zapas dla języków bez tłumaczenia), polski w pierwszym katalogu tłumaczeń. Język specyfikacji: `?lang=`, potem `Accept-Language`, potem język systemu. Realizacja w osobnym zadaniu (sekcja „Zadania wydzielone”) |
 
 ## Definicja Gotowości (DoD)
 
