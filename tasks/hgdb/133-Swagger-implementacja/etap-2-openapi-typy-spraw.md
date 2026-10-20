@@ -190,6 +190,16 @@ innego typu. Nie sprawdzone w prawdziwej przeglądarce (działanie JavaScriptu s
 /rest/service/...` wymaga tokenu (przycisk Authorize, przepływ `password`). Zostaje: lokalizacja (krok 6), cache i `ETag` (krok 7),
 automatyczny token dla sesji.
 
+**Uwagi z testów w UI (2026-10-20):** (1) stara kopia `swagger-initializer.js` w przeglądarce ignorowała `?spec=` (pomógł
+Ctrl+F5), więc `swagger-initializer.js` i `types.html` mają `Cache-Control: no-store`; mapowania `mvc:resources` z
+`cache-period="0"` muszą stać przed `/swagger-ui/**` (wygrywa wcześniejsze) i mieć wzorce `swagger-initializer.j?` oraz
+`types.htm?`, bo przy dokładnej ścieżce część ścieżki po wzorcu jest pusta i zasób daje 404 (sprawdzone na serwerze). (2)
+`findFirst` w usłudze ogólnej zwracał pierwszą sprawę z bazy (np. `POLISA2`), więc `/types/{kod}/findFirst` kończył się błędem
+niezgodnego typu. `CaseBusiness.findFirst` z `requestContext.caseAsType` zwraca teraz pierwszą sprawę tego typu (zapytanie
+po `mrc_typeCodeValue`, jedna sprawa), a bez parametru działa jak dotąd. (3) Przykład kontekstu w specyfikacji typu ma
+`requestProperties` z `"requestContext.caseAsType": "<kod>"` (`CaseTypeOperations.presetCaseAsType`). Javadoc `CASE_AS_TYPE`
+w `mercury-lib` nie wspomina o `findFirst`, do uzupełnienia przy następnym wydaniu biblioteki.
+
 **Wyszukiwanie na polach z indeksu (2026-10-20):** nazwy pól do zapytań pochodzą z `CaseIndexerFieldsManagerRest`
 (`getFieldsByTypeCodes`, `getCategories`, `getSearchTypes`; dokument `003_Architecture/003_Index_Lucene`, model 3.0: pola
 stałe z prefiksem `mrc_`, np. `mrc_status`, `mrc_typeCodeValue`, `mrc_rootVersionId`, pola typu pod własną nazwą, np. `nazwa`,
