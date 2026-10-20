@@ -236,6 +236,72 @@ pominięcie przywracania starego typu, kontroler `/rest/service/types/{typeCode}
 `CaseTypeOperations` i opis migracji w operacji `save`. Zmiana dotyka `mercury-lib` (nazwa enuma, wydanie biblioteki) i
 `mercury-srv`.
 
+### Przegląd operacji `*ExtRest` pod kątem typów spraw (2026-10-20)
+
+Przegląd 32 operacji czterech kontrolerów (`CaseBusinessExtRest` 19, `CaseSearchExtRest` 6, `Case2CaseBusinessExtRest` 4,
+`CaseHistoryTraceBusinessExtRest` 3) według kodu żądań i opisów `@WSDLDocumentation`. Kategorie: **A** już w specyfikacji typu,
+**B** łatwe do dodania (ten sam kształt żądania, typ ze ścieżki), **C** wymagają wzbogacenia specyfikacji o dane typu,
+**D** nie są związane z jednym typem.
+
+| Kontroler | Operacja | Kat. | Jak przypisać do typu `{kod}` |
+|---|---|---|---|
+| CaseBusiness | `find` | A | typ sprawy wynika ze sprawy: niezgodny typ = błąd |
+| CaseBusiness | `findFirst` | A | `CASE_AS_TYPE`: pierwsza sprawa typu (zrobione w `CaseBusiness.findFirst`) |
+| CaseBusiness | `loadSampleByTypeCode` | A | `typeCode` ze ścieżki |
+| CaseBusiness | `save`, `initModel` | A | `CASE_AS_TYPE` (migracja) |
+| CaseBusiness | `searchByParams` | A | do `paramsMap` dodany `mrc_typeCodeValue`; klucze to nazwy pól indeksu |
+| CaseBusiness | `searchByQuery` | A | do zapytania dodana klauzula `mrc_typeCodeValue:"{kod}"` |
+| CaseBusiness | `loadLastUpdatedByTypeCodes` | B | `typeCodes = [{kod}]` |
+| CaseBusiness | `findByPKProperty` | B | `typeCode = {kod}`; `paramValue` to wartość pola z `TypeCode.uniqueConstraintParamName` (nazwę pola można podać w opisie) |
+| CaseBusiness | `loadSampleByTypeName` | B | to samo co `loadSampleByTypeCode` (nazwa typu zamiast kodu), w specyfikacji typu zbędne |
+| CaseBusiness | `searchByLuceneId` | B | jak `find`: sprawdzenie typu wyniku |
+| CaseBusiness | `findByIdList`, `findByGroupCaseIds` | B | lista może mieszać typy (zwłaszcza grupy): wynik odfiltrować do typu. Kształt wyniku: obiekt z polem o nazwie typu |
+| CaseBusiness | `loadSubCase`, `loadSubCaseList` | C | rodzic ma typ `{kod}`; `fieldName` ma wartości z parametrów typu z podtypem `SUBCASE` (enum), a schemat wyniku wynika z podtypu pola |
+| CaseBusiness | `searchInDB` | C | filtr typu przez `caseHeader` (`MrcObjectUtils.extractCaseFromHeader`, do sprawdzenia, które pola nagłówka są brane); `paramsMap` ma klucze z pól typu |
+| CaseBusiness | `findLastByBpmId` | D/B | najnowsza sprawa o `bpmProcessId` może być innego typu: samo sprawdzenie typu daje fałszywe „brak”, potrzebne zapytanie z klauzulą typu |
+| CaseBusiness | `searchByInventoryCode` | D/B | przyjmuje `searchText`, a nie zapytanie: bez zmiany w logice filtr po wyniku psuje stronicowanie |
+| CaseBusiness | `loadLastUpdated` | D | widok portalu dla wszystkich typów; w typie zastępuje go `loadLastUpdatedByTypeCodes` |
+| CaseSearch | `searchByQuery` (z `resultTypeName`), `explainPlanSearchByQuery` | B | klauzula typu w `query`; `resultTypeName` to typ, do którego konwertuje się wynik (projekcja), nie typ filtrowany |
+| CaseSearch | `dateMetricQuery` | C | `query` z klauzulą typu; `dateFieldsNames` ma wartości z pól dat typu i `mrc_createDate`, `mrc_lastModifyDate` (enum) |
+| CaseSearch | `fieldMetricQuery` | C | `fieldName` z pól indeksu typu (enum); brak parametru `query` (tylko `filterClause`), więc sposób ograniczenia do typu do sprawdzenia |
+| CaseSearch | `groupByQuery`, `explainPlanGroupByQuery` | D | wynik to wiersze agregacji w typie `resultTypeName` zdefiniowanym przez klienta, schemat nie wynika z typu; zostaje ograniczenie `query` do typu |
+| Case2Case | `getAllDependsNodes`, `getAllChildrenNodes`, `getAllParentsNodes` | D | dotyczą grafu zależności **typów** (`node` to kod typu), nie spraw; w typie to `node = {kod}` (osobna grupa „zależności typu”) |
+| Case2Case | `getAllChildrenNodesWithTheTypeCode` | D | `typeCode` to typ zwracanych potomków (przypuszczenie, do sprawdzenia w logice), `caseId` wskazuje sprawę |
+| CaseHistoryTrace | `find` (`versionId`), `findByCaseId`, `findByCaseIdAllVersions` | B/D | typ wynika ze sprawy: sprawdzenie typu sprawy `caseId`; wpisy historii odnoszą się do nazw pól typu (opis zmienionych pól można ograniczyć enumem) |
+
+**Uwagi przekrojowe:**
+
+1. **Dwa sposoby ograniczenia do typu.** Dla pojedynczej sprawy wystarczy sprawdzenie typu w odpowiedzi (`find`, `findFirst`
+   dawniej). Dla list i wyników stronicowanych sprawdzenie po fakcie psuje liczbę wyników i strony, więc typ musi wejść do zapytania.
+   Dziś kontroler robi to klauzulą Lucene (`searchByQuery`, `searchByParams`). Spójniej byłoby, żeby logika (`CaseBusiness`)
+   sama honorowała `requestContext.caseAsType` w operacjach odczytu (jak `findFirst`), a kontroler tylko ustawiał parametr.
+2. **Pamięć podręczna odpowiedzi HTTP nie widzi `caseAsType`.** `HttpResponseCacheManager.getResponseId` liczy klucz z
+   ustawień kontekstu (język, strefa, role, formaty), ale nie z `requestProperties`. Pamięć jest domyślnie wyłączona
+   (`context.httpResponseCacheUsage`), lecz po włączeniu `findFirst` (klucz bez argumentów) z `caseAsType` dałby odpowiedź
+   zapisaną dla innego typu albo bez typu. Poprawka: dodać wartość `requestContext.caseAsType` do klucza. Do zrobienia przed
+   użyciem pamięci podręcznej z usługami per typ.
+3. **Specyfikacja typu może opisywać więcej niż dziś** (kategoria C): `fieldName` jako enum pól typu typu `SUBCASE` i schemat
+   wyniku według podtypu; klucze `paramsMap` jako własności pól typu; `dateFieldsNames` i `fieldName` jako enumy pól indeksu.
+   Nazwy pól indeksu dla typu daje `CaseIndexerFieldsManagerRest.getFieldsByTypeCodes`.
+4. **Nie wszystko jest „typem”**: operacje grafu typów (`Case2Case.getAll*Nodes`) działają na typach, więc pasują do
+   osobnej grupy `/types/{kod}/dependencies`, a nie do usług na sprawach.
+**Zrobione (2026-10-20, wdrożone i sprawdzone na serwerze):** (1) `HttpResponseCacheManager.getResponseId` uwzględnia
+`requestContext.caseAsType` (test `HttpResponseCacheKeyTest`; klucz nadal nie zawiera `rootVersionContextID` i `sourceOfRequest`,
+które też zmieniają wynik `findFirst`, do osobnej poprawki). (2) Kategoria B w `/rest/service/types/{kod}/…`:
+`loadLastUpdatedByTypeCodes` (typ ze ścieżki), `findByPKProperty`, `searchByLuceneId` (sprawdzenie typu), `findByIdList` i
+`findByGroupCaseIds` (lista mieszanych typów, klucz `ANY`, zwracana jako `{kod:[…]}` tylko ze sprawami typu), `search/searchByQuery` i
+`search/explainPlanSearchByQuery` (klauzula typu w zapytaniu), `history/findByCaseId` i `history/findByCaseIdAllVersions`
+(sprawdzenie typu sprawy). Pominięte: `history/find` (przyjmuje `versionId`, które nie wskazuje typu) i `loadSampleByTypeName`.
+Specyfikacja typu opisuje te operacje (tagi `CaseSearchExtRest`, `CaseHistoryTraceBusinessExtRest`, przykłady `typeCode` i
+`typeCodes`). Wynik na serwerze (`TstMigA`, `TstMigB`): lista `[A,B,B,A]` przez `/types/TstMigB/findByIdList` daje 2 sprawy typu
+`B`, przez `/types/TstMigA/findByIdList` dla sprawy `B` pustą tablicę, `searchByLuceneId` i `history/findByCaseId` dla sprawy innego
+typu błąd, `search/searchByQuery` z `kod:K10` po 1 sprawie w obu typach, `search/explainPlanSearchByQuery` pokazuje zapytanie z klauzulą
+`mrc_typeCodeValue`.
+
+5. **Proponowana kolejność:** (1) klucz pamięci podręcznej z `caseAsType`; (2) kategoria B (większość to zmiana mapowania w
+   `CaseTypeOperations` i kontrolerze); (3) `loadSubCase*` i `searchInDB` z enumami z typu; (4) metryki; (5) D tylko jako opis
+   „operacja ogólna, nie przypisana do typu”.
+
 ### Generator klas `org.mercury.data.javax` – wnioski
 
 Pakiet `mercury-srv/src/main/java/org/mercury/data/javax` to próba generowania klas Javy z typu sprawy:
