@@ -105,7 +105,7 @@ mapowania, skrócona sprawa zależna, `SELECT`/`COMPLEX` w tabeli `AttributeType
 | 3 | Krok 6: lokalizacja etykiet (`${…}`, `?lang=`), zapas `recomendedLabel` → `definitionName` | **GO**: sprawdzone na serwerze w `pl`, `en`, `de`; strony przyjmują `?l=` (alias `?lang=`) |
 | 4 | Krok 7: cache, `ETag`, unieważnianie | poza DoD, decyzja autora |
 | 5 | Krok 8: Swagger UI z listą i wyborem typu, token | **GO**: lista, wybór i logowanie sesją wykonane. Token dla „Try it out”: poza DoD (działa Authorize) |
-| 6 | Wdrożenie i test na serwerze | **GO** dla kształtów odpowiedzi, kodu z kropką, migracji i wyszukiwania. **NO-GO**: test w obie strony (walidacja schematem); krok 6 (lokalizacja) ma GO, typy kalendarza sprawdzone w pl, en i de |
+| 6 | Wdrożenie i test na serwerze | **GO** dla kształtów odpowiedzi, kodu z kropką, migracji i wyszukiwania. test w obie strony: **GO** (2026-10-20, z `forceChangeType=false`); krok 6 (lokalizacja) ma GO, typy kalendarza sprawdzone w pl, en i de |
 | 7 | Uzupełnić `etap-2-openapi-typy-spraw.md` i `docs/moduly/mercury.md` | **GO**: wykonane |
 | 8 | Wydać `mercury-lib` 3.0.4.7 | **GO**: wydane (tag lokalny, wypchnięcie w wierszu „Publikacja”) |
 | 9 | Nieopisane operacje `CaseBusinessExtRest`, opisy pól `MrcCaseHeader` i stron wyniku | operacje: **GO** (kategorie A, B, C), opisy pól `MrcCaseHeader` i stron wyniku: poza DoD, nie zrobione |

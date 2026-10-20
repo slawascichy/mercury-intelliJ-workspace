@@ -44,12 +44,12 @@ Znaczenie kolumn (jedno znaczenie, bez mieszania „zrobione w kodzie” z „do
 | Etap 2: usługi per typ i `CASE_AS_TYPE` (kategorie A, B, C, migracja sprawy) | ✅ | ✅ | **GO** | poza zakresem decyzją D21: `fieldMetricQuery`, `history/find`, `loadSampleByTypeName`, kategoria D |
 | Etap 2, krok 8: strona wyboru typu i Swagger UI per typ (logowanie sesją) | ✅ | ✅ | **GO** | sprawdzone w przeglądarce przez autora |
 | Etap 2, krok 6: lokalizacja etykiet i nazw opcji (`${…}`, `?lang=`, `?l=`, `Accept-Language`) | ✅ | ✅ | **GO** | sprawdzone na serwerze (`CalendarUserEvent` w `pl`, `en`, `de`); pliki `*_de.properties` przetłumaczone z niderlandzkiego na niemiecki (obserwacja 50); strony Swagger UI przyjmują `?l=` (alias `?lang=`) |
-| Etap 2: test w obie strony (`loadSampleByTypeCode` → walidacja schematem → `save` bez nowej wersji typu) | ✅ | – | **NO-GO** | warunek DoD etapu 2. Wykonany 2026-10-20. Po poprawkach 51–54 i z `forceChangeType=false` (obs. 55): przykłady przechodzą walidację w 76 z 76 typów, `save` nie tworzy nowej wersji typu w żadnym z 76 (wyjątki: 4 typy z kluczem, 1 odpowiedź niezgodna z `enum`). Do decyzji autora (GO) |
+| Etap 2: test w obie strony (`loadSampleByTypeCode` → walidacja schematem → `save` bez nowej wersji typu) | ✅ | ✅ | **GO** | GO autora 2026-10-20. Warunek DoD etapu 2. Wykonany 2026-10-20. Po poprawkach 51–54 i z `forceChangeType=false` (obs. 55): przykłady przechodzą walidację w 76 z 76 typów, `save` nie tworzy nowej wersji typu w żadnym z 76 (wyjątki: 4 typy z kluczem, 1 odpowiedź niezgodna z `enum`). |
 | Etap 3: zgodność komunikacji węzłów (kontrakt XML, kontrola wersji węzłów, testy) | ✅ | ✅ | **GO** | |
-| Wydanie `mercury-lib` 3.0.4.7 (artefakty wdrożone, tag lokalny) | ✅ | ✅ | **GO** | wypchnięcie tagu: wiersz „Publikacja” |
+| Wydanie `mercury-lib` 3.0.4.7 (artefakty wdrożone, tag `3.0.4.7` wypchnięty) | ✅ | ✅ | **GO** | |
 | Dokumentacja workspace (`docs/moduly/mercury.md`, `docs/obserwacje.md`, `TASK.md`, etapy, podsumowania) | ✅ | ✅ | **GO** | uspójniona 2026-10-20 |
-| Publikacja: wypchnięcie commitów i tagów na zdalne repozytoria | – | – | **NO-GO** | niewypchnięte: `mercury` 22 commity, `mercury-lib` 9 commitów i tag `3.0.4.7`, workspace 16 commitów. Tagi `3.0.4.1`–`3.0.4.6` są na zdalnym, `hgdb-client-open` jest zsynchronizowany, `mercury-docker`, `mercury-cmd`, `mercury-client` bez zmian |
-| **Zadanie 133 jako całość (wydanie)** | – | – | **NO-GO** | do GO: „test w obie strony” z etapu 2 i publikacja |
+| Publikacja: wypchnięcie commitów i tagów na zdalne repozytoria | – | – | **NO-GO** | stan z 2026-10-20: `mercury-lib` (z tagiem `3.0.4.7`) i `hgdb-client-open` (tag `3.1.4.7`, wersja lib podbita do `3.0.4.7`) są wypchnięte i zsynchronizowane. Niewypchnięte: `mercury` 1 commit (poprawki obserwacji 51–55), workspace 20 commitów. `mercury-docker`, `mercury-cmd`, `mercury-client` bez zmian |
+| **Zadanie 133 jako całość (wydanie)** | – | – | **NO-GO** | do GO: publikacja (push `mercury` i workspace) |
 
 **Poza DoD, decyzja autora (nie blokuje wydania):** krok 7 etapu 2 (cache i `ETag`; wymaganie „zmiana typu widoczna bez restartu, także
 na drugim węźle” jest spełnione, bo specyfikacja nie jest buforowana), automatyczny token dla „Try it out” (działa przycisk Authorize),

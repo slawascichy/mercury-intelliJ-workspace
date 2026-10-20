@@ -8,7 +8,7 @@ Serwer w czasie działania buduje dokumentację OpenAPI dla podanego kodu typu s
 na podstawie ostatniej wersji typu (`isLatestVersion = true`) albo wskazanej wersji (parametr `v`). Dokumentacja opisuje
 **logiczny JSON sprawy** (decyzja D2 = a) i usługi `*ExtRest`, które go przyjmują i zwracają.
 
-## Status etapu (2026-10-20): NO-GO
+## Status etapu (2026-10-20): GO
 
 Źródło prawdy o statusie: [TASK.md, „Status zadania”](TASK.md#status-zadania-stan-na-2026-10-20). Kolumny jak tam: **Kod**
 (zaimplementowane i przetestowane), **Commit** (zatwierdzone), **GO/NO-GO** (zakres kroku kompletny).
@@ -24,9 +24,9 @@ na podstawie ostatniej wersji typu (`isLatestVersion = true`) albo wskazanej wer
 | 6 | Lokalizacja etykiet i nazw opcji (`${…}`, `?lang=`, `?l=`, `Accept-Language`), zapas `recomendedLabel` → `definitionName` | ✅ | ✅ | **GO** | sprawdzone na serwerze w `pl`, `en`, `de`; strony przyjmują `?l=` (alias `?lang=`) |
 | 7 | Cache i `ETag` | ⬜ | – | **poza DoD** | decyzja autora, opcja: wymaganie „zmiana typu widoczna bez restartu, także na drugim węźle” jest spełnione, bo specyfikacja nie jest buforowana |
 | 8 | Strona wyboru typu i Swagger UI per typ, logowanie sesją | ✅ | ✅ | **GO** | sprawdzone w przeglądarce przez autora. Automatyczny token dla „Try it out”: poza DoD (działa Authorize) |
-| – | Test w obie strony (`loadSampleByTypeCode` → walidacja schematem → `save` bez nowej wersji typu) | ✅ | – | **NO-GO** | wykonany 2026-10-20. Po poprawkach 51–54 i z `forceChangeType=false` (obs. 55): przykłady przechodzą walidację w 76 z 76 typów, a `save` nie tworzy nowej wersji typu w żadnym z 76; wyjątki: 4 typy z kluczem (pusty klucz w przykładzie) i 1 odpowiedź niezgodna z `enum` (`POLISA2`). Do decyzji autora (GO) |
+| – | Test w obie strony (`loadSampleByTypeCode` → walidacja schematem → `save` bez nowej wersji typu) | ✅ | ✅ | **GO** | GO autora 2026-10-20. Wykonany 2026-10-20. Po poprawkach 51–54 i z `forceChangeType=false` (obs. 55): przykłady przechodzą walidację w 76 z 76 typów, a `save` nie tworzy nowej wersji typu w żadnym z 76; wyjątki: 4 typy z kluczem (pusty klucz w przykładzie) i 1 odpowiedź niezgodna z `enum` (`POLISA2`). |
 
-Do GO etapu: test w obie strony.
+Wszystkie obszary etapu mają decyzję GO.
 
 ## Kontekst i Wymagania
 
@@ -602,7 +602,7 @@ Status każdego punktu (GO / NO-GO) zgodny z tabelą na górze:
 - **GO.** Obsłużone wszystkie wartości `AttributeType` i sprawy zależne (z ochroną przed cyklami). Uwaga: `URL` i `CURRENCY` z kodu.
 - **GO.** Etykiety, opisy i nazwy opcji z kluczami `${…}` są tłumaczone na język żądania. Test na typach
   predefiniowanych kalendarza (`CalendarUserEvent`) w co najmniej dwóch językach (krok 6): sprawdzone na serwerze w `pl`, `en` i `de`.
-- **NO-GO (test wykonany, nie przechodzi: obs. 51–55).** Test: przykład z `loadSampleByTypeCode` przechodzi walidację schematem, a `save` danych zgodnych
+- **GO (autora, 2026-10-20; z `forceChangeType=false`, obs. 51–55).** Test: przykład z `loadSampleByTypeCode` przechodzi walidację schematem, a `save` danych zgodnych
   ze schematem nie tworzy nowej wersji typu.
 - **GO.** Zmiana typu (nowa wersja) jest widoczna w dokumentacji bez restartu, także na drugim węźle klastra
   (specyfikacja nie jest buforowana, każde żądanie czyta bazę).

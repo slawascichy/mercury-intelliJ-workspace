@@ -21,7 +21,7 @@ jedno znaczenie i są zgodne z tą tabelą:
 | Etap 2: usługi per typ i `CASE_AS_TYPE` (kategorie A, B, C) | ✅ | ✅ | **GO** |
 | Etap 2, krok 8: strona wyboru typu i Swagger UI per typ | ✅ | ✅ | **GO** |
 | Etap 2, krok 6: lokalizacja etykiet (`${…}`, `?lang=`, `?l=`) | ✅ | ✅ | **GO** (sprawdzone na serwerze w `pl`, `en`, `de`) |
-| Etap 2: test w obie strony (walidacja schematem, `save` bez nowej wersji) | ⬜ | – | **NO-GO** |
+| Etap 2: test w obie strony (walidacja schematem, `save` bez nowej wersji, z `forceChangeType=false`) | ✅ | ✅ | **GO** |
 | Etap 3: zgodność komunikacji węzłów | ✅ | ✅ | **GO** |
 | Wydanie `mercury-lib` 3.0.4.7 | ✅ | ✅ | **GO** |
 | Dokumentacja workspace | ✅ | ✅ | **GO** |
@@ -34,7 +34,7 @@ jedno znaczenie i są zgodne z tą tabelą:
 - **GO:** parametr kontekstu `CASE_AS_TYPE` i usługi per typ `/rest/service/types/{kod}/…` (kategorie A, B, C), decyzje D17-D21.
 - **GO:** strona wyboru typu `/swagger-ui/types.html`, wersje typów (`?v=`, `?typeId=`, `versions.json`), logowanie sesją.
 - **GO:** dane testowe z przykładów (DTO, SoapUI) wczytane do bazy testowej.
-- **NO-GO:** test w obie strony. Poza DoD: krok 7 (cache i `ETag`), automatyczny token
+- **GO:** test w obie strony (GO autora 2026-10-20). Poza DoD: krok 7 (cache i `ETag`), automatyczny token
   dla „Try it out”.
 
 ## Decyzje użytkownika (potwierdzone)
@@ -114,8 +114,7 @@ jedno znaczenie i są zgodne z tą tabelą:
 
 ## Co zostało (do GO całego zadania)
 
-1. **NO-GO:** test w obie strony: `loadSampleByTypeCode` → walidacja schematem → `save` bez nowej wersji typu.
-2. **NO-GO:** publikacja: wypchnięcie commitów (`mercury` 22, `mercury-lib` 9, workspace 16) i tagu `3.0.4.7`. Wykonuje autor.
+1. **NO-GO:** publikacja: wypchnięcie commitów (`mercury` 1, workspace 20). `mercury-lib` z tagiem `3.0.4.7` i `hgdb-client-open` (tag `3.1.4.7`) są już wypchnięte. Wykonuje autor.
 
 Poza DoD (decyzja autora, nie blokuje wydania): krok 7 (cache, `ETag`), automatyczny token dla „Try it out”, poprawki z obserwacji 47-49,
 uzupełnienie Javadoc `CASE_AS_TYPE` w `mercury-lib` o `findFirst` (przy następnym wydaniu biblioteki), operacje kategorii D.
