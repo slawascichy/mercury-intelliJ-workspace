@@ -26,6 +26,10 @@ Swagger nie wymaga zmiany Javy ani zadania 191. Jedyny punkt wspólny to wersja 
 
 ## Status zadania (stan na 2026-10-20)
 
+**Zadanie zamknięte 2026-10-20.** Gałąź `hgdb-133` jest włączona do `master` w `mercury-lib` (tag `3.0.4.7`), `mercury` i
+`hgdb-client-open` (tag `3.1.4.7`); sprawdzone po `git fetch` (czubek `hgdb-133` jest przodkiem `origin/master` we wszystkich trzech).
+Workspace jest na `main` i zsynchronizowany z `origin`. Rzeczy otwarte po zamknięciu są w zadaniach 190–193 i w sekcji „Poza DoD”.
+
 **Jedno źródło prawdy o statusie.** Etapy i podsumowania odsyłają do tej tabeli. Podsumowania dzienne
 (`podsumowanie-*.md`, `copilot-podsumowanie-*.md`) opisują stan z danego dnia i nie zmieniają statusu.
 
@@ -48,7 +52,7 @@ Znaczenie kolumn (jedno znaczenie, bez mieszania „zrobione w kodzie” z „do
 | Etap 3: zgodność komunikacji węzłów (kontrakt XML, kontrola wersji węzłów, testy) | ✅ | ✅ | **GO** | |
 | Wydanie `mercury-lib` 3.0.4.7 (artefakty wdrożone, tag `3.0.4.7` wypchnięty) | ✅ | ✅ | **GO** | |
 | Dokumentacja workspace (`docs/moduly/mercury.md`, `docs/obserwacje.md`, `TASK.md`, etapy, podsumowania) | ✅ | ✅ | **GO** | uspójniona 2026-10-20 |
-| Publikacja: wypchnięcie commitów i tagów na zdalne repozytoria | ✅ | ✅ | **GO** | stan z 2026-10-20 (po pushu autora): `mercury`, `mercury-lib` (tag `3.0.4.7`), `hgdb-client-open` (tag `3.1.4.7`, wersja lib podbita do `3.0.4.7`) i workspace są wypchnięte i zsynchronizowane z `origin`. `mercury-docker`, `mercury-cmd`, `mercury-client` bez zmian |
+| Publikacja: wypchnięcie commitów i tagów na zdalne repozytoria | ✅ | ✅ | **GO** | stan z 2026-10-20 (po pushu autora): `mercury`, `mercury-lib` (tag `3.0.4.7`), `hgdb-client-open` (tag `3.1.4.7`, wersja lib podbita do `3.0.4.7`) i workspace są wypchnięte i zsynchronizowane z `origin`, a `hgdb-133` jest włączona do `master` w `mercury-lib`, `mercury` i `hgdb-client-open`. `mercury-docker`, `mercury-cmd`, `mercury-client` bez zmian |
 | **Zadanie 133 jako całość (wydanie)** | ✅ | ✅ | **GO** | wszystkie obszary GO, publikacja wykonana (2026-10-20) |
 
 **Poza DoD, decyzja autora (nie blokuje wydania):** krok 7 etapu 2 (cache i `ETag`; wymaganie „zmiana typu widoczna bez restartu, także

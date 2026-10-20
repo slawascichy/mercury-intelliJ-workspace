@@ -114,7 +114,7 @@ jedno znaczenie i są zgodne z tą tabelą:
 
 ## Co zostało
 
-Do GO całego zadania nic: wszystkie obszary mają decyzję GO, a publikacja jest wykonana (`mercury`, `mercury-lib` z tagiem `3.0.4.7`,
+Zadanie zamknięte 2026-10-20 (gałąź `hgdb-133` włączona do `master` w `mercury-lib`, `mercury` i `hgdb-client-open`). Do GO całego zadania nic: wszystkie obszary mają decyzję GO, a publikacja jest wykonana (`mercury`, `mercury-lib` z tagiem `3.0.4.7`,
 `hgdb-client-open` z tagiem `3.1.4.7` i workspace są wypchnięte).
 
 Poza DoD (decyzja autora, nie blokuje wydania): krok 7 (cache, `ETag`), automatyczny token dla „Try it out”, poprawki z obserwacji 47-49,
