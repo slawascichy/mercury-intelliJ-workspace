@@ -43,7 +43,7 @@ Znaczenie kolumn (jedno znaczenie, bez mieszania „zrobione w kodzie” z „do
 | Etap 2, krok 5: wersje typu (`?v=`, `?typeId=`, `versions.json`, reguła wersji typów zależnych D20) | ✅ | ✅ | **GO** | sprawdzone na serwerze na typie z kilkoma wersjami |
 | Etap 2: usługi per typ i `CASE_AS_TYPE` (kategorie A, B, C, migracja sprawy) | ✅ | ✅ | **GO** | poza zakresem decyzją D21: `fieldMetricQuery`, `history/find`, `loadSampleByTypeName`, kategoria D |
 | Etap 2, krok 8: strona wyboru typu i Swagger UI per typ (logowanie sesją) | ✅ | ✅ | **GO** | sprawdzone w przeglądarce przez autora |
-| Etap 2, krok 6: lokalizacja etykiet i nazw opcji (`${…}`, `?lang=`, `Accept-Language`) | ✅ | ✅ | **GO** | sprawdzone na serwerze (`CalendarUserEvent` w `pl`, `en`); pliki `*_de.properties` przetłumaczone z niderlandzkiego na niemiecki (obserwacja 50), wersja `de` do sprawdzenia po wdrożeniu |
+| Etap 2, krok 6: lokalizacja etykiet i nazw opcji (`${…}`, `?lang=`, `?l=`, `Accept-Language`) | ✅ | ✅ | **GO** | sprawdzone na serwerze (`CalendarUserEvent` w `pl`, `en`, `de`); pliki `*_de.properties` przetłumaczone z niderlandzkiego na niemiecki (obserwacja 50); strony Swagger UI przyjmują `?l=` (alias `?lang=`) |
 | Etap 2: test w obie strony (`loadSampleByTypeCode` → walidacja schematem → `save` bez nowej wersji typu) | ⬜ | – | **NO-GO** | warunek DoD etapu 2 |
 | Etap 3: zgodność komunikacji węzłów (kontrakt XML, kontrola wersji węzłów, testy) | ✅ | ✅ | **GO** | |
 | Wydanie `mercury-lib` 3.0.4.7 (artefakty wdrożone, tag lokalny) | ✅ | ✅ | **GO** | wypchnięcie tagu: wiersz „Publikacja” |

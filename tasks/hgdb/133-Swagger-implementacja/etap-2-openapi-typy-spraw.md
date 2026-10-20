@@ -21,12 +21,12 @@ na podstawie ostatniej wersji typu (`isLatestVersion = true`) albo wskazanej wer
 | 4 | Operacje `*ExtRest` w specyfikacji typu | ✅ | ✅ | **GO** | |
 | 5 | Wersje typu: `?v=`, `?typeId=`, `versions.json`, reguła wersji typów zależnych (D20) | ✅ | ✅ | **GO** | |
 | dod. | Usługi per typ i `CASE_AS_TYPE` (kategorie A, B, C, migracja), decyzje D17–D21 | ✅ | ✅ | **GO** | poza zakresem: `fieldMetricQuery`, `history/find`, `loadSampleByTypeName`, kategoria D |
-| 6 | Lokalizacja etykiet i nazw opcji (`${…}`, `?lang=`, `Accept-Language`), zapas `recomendedLabel` → `definitionName` | ✅ | ⬜ | **NO-GO** | kod gotowy i sprawdzony na serwerze; do GO brakuje tylko commitu |
+| 6 | Lokalizacja etykiet i nazw opcji (`${…}`, `?lang=`, `?l=`, `Accept-Language`), zapas `recomendedLabel` → `definitionName` | ✅ | ✅ | **GO** | sprawdzone na serwerze w `pl`, `en`, `de`; strony przyjmują `?l=` (alias `?lang=`) |
 | 7 | Cache i `ETag` | ⬜ | – | **poza DoD** | decyzja autora, opcja: wymaganie „zmiana typu widoczna bez restartu, także na drugim węźle” jest spełnione, bo specyfikacja nie jest buforowana |
 | 8 | Strona wyboru typu i Swagger UI per typ, logowanie sesją | ✅ | ✅ | **GO** | sprawdzone w przeglądarce przez autora. Automatyczny token dla „Try it out”: poza DoD (działa Authorize) |
 | – | Test w obie strony (`loadSampleByTypeCode` → walidacja schematem → `save` bez nowej wersji typu) | ⬜ | – | **NO-GO** | warunek DoD |
 
-Do GO etapu: commit kroku 6 i test w obie strony.
+Do GO etapu: test w obie strony.
 
 ## Kontekst i Wymagania
 
@@ -228,10 +228,10 @@ nazwa definicji; bez etykiet brak tytułu. Opis pola (`ParamDefinition.descripti
 tłumaczone, a nierozwiązane klucze pomijane. Nazwy opcji słowników JSON trafiają do `x-enumNames` (na `items` dla list), `enum`
 zostaje z wartościami; klucz bez tłumaczenia daje wartość. Język: `?lang=` (`pl`, `en-GB`, `en_GB`; niepoprawna wartość jest
 pomijana) ma pierwszeństwo przed `Accept-Language`, a bez nich zostaje język systemowy; w `info` jest `x-language`. W `types.html`
-jest wybór języka (zapamiętywany w przeglądarce). Specyfikacja nie jest buforowana, więc wersja językowa nie wymaga klucza cache.
+jest wybór języka (zapamiętywany w przeglądarce); parametr `?l=` w adresie strony (alias `?lang=`) ma pierwszeństwo przed zapamiętanym wyborem, a w `index.html?spec=…` jest dopisywany do adresu specyfikacji typu (jak na stronie głównej i liście usług REST, które używają `l`). Specyfikacja nie jest buforowana, więc wersja językowa nie wymaga klucza cache.
 Sprawdzone na `CalendarUserEvent`: `pl` (opis „Zdarzenie kalendarzowe”, pola „Temat zdarzenia”), `en` (“Event Calendar”, “Subject
 Event”, opcje typu `Absence`, `Holidays`…), `de`, nagłówek `Accept-Language: en-GB` daje `x-language = en`, typ bez kluczy (`TstMigB`)
-bez zmian. Obserwacja: `resources_de.properties` zawiera teksty po niderlandzku (obserwacja 50). Testy: `CaseTypeLocalizationTest` (17).
+bez zmian. Obserwacja 50 (`resources_de.properties` po niderlandzku) naprawiona: `de` daje „Kalenderereignis” i opcje `Abwesenheit`, `Urlaub`… (sprawdzone na serwerze po wdrożeniu 2026-10-20). `WebAppMsg_de.properties` jest w `\u`, bo inaczej strona główna (`?l=de`) pokazuje `Ã¼`. Testy: `CaseTypeLocalizationTest` (17).
 
 **Wyszukiwanie na polach z indeksu (2026-10-20):** nazwy pól do zapytań pochodzą z `CaseIndexerFieldsManagerRest`
 (`getFieldsByTypeCodes`, `getCategories`, `getSearchTypes`; dokument `003_Architecture/003_Index_Lucene`, model 3.0: pola
@@ -568,7 +568,7 @@ Status każdego punktu (GO / NO-GO) zgodny z tabelą na górze:
 - **GO.** Specyfikacja opisuje logiczny JSON sprawy oraz operacje `CaseBusinessExtRest` (co najmniej
   `find`, `save`, `loadSampleByTypeCode`, `searchByParams`) z `$ref` do schematu typu.
 - **GO.** Obsłużone wszystkie wartości `AttributeType` i sprawy zależne (z ochroną przed cyklami). Uwaga: `URL` i `CURRENCY` z kodu.
-- **NO-GO (kod gotowy, brakuje commitu).** Etykiety, opisy i nazwy opcji z kluczami `${…}` są tłumaczone na język żądania. Test na typach
+- **GO.** Etykiety, opisy i nazwy opcji z kluczami `${…}` są tłumaczone na język żądania. Test na typach
   predefiniowanych kalendarza (`CalendarUserEvent`) w co najmniej dwóch językach (krok 6): sprawdzone na serwerze w `pl`, `en` i `de`.
 - **NO-GO.** Test: przykład z `loadSampleByTypeCode` przechodzi walidację schematem, a `save` danych zgodnych
   ze schematem nie tworzy nowej wersji typu.

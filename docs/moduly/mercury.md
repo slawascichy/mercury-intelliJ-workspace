@@ -144,10 +144,10 @@ Status: [TASK.md](../../tasks/hgdb/133-Swagger-implementacja/TASK.md#status-zada
   `history/findByCaseIdAllVersions`. Dla list i wyników stronicowanych typ trafia do zapytania, dla pojedynczej sprawy jest
   sprawdzany w odpowiedzi.
 - **Język opisów.** Teksty typu w postaci `${klucz}` (etykiety, opisy, nazwy opcji słowników) są tłumaczone przez `IResourceLogic`
-  na język z `?lang=` (`pl`, `en-GB`, `en_GB`), a bez niego z nagłówka `Accept-Language` albo języka systemu. Specyfikacja ma
+  na język z `?lang=` (`pl`, `en-GB`, `en_GB`; na stronach Swagger UI parametr `?l=`, jak na stronie głównej, z aliasem `?lang=`), a bez niego z nagłówka `Accept-Language` albo języka systemu. Specyfikacja ma
   `info.x-language`, a przetłumaczone nazwy opcji trafiają do `x-enumNames` (obok `enum` z wartościami). Klucz bez tłumaczenia jest
   pomijany, a tytuł pola wraca do `recomendedLabel`, potem do nazwy definicji.
-- **Strona wyboru typu.** `/swagger-ui/types.html` (z wyborem języka opisów) (chroniona logowaniem w `web.xml`) pokazuje typy i ich wersje, a kliknięcie otwiera
+- **Strona wyboru typu.** `/swagger-ui/types.html` (z wyborem języka opisów; `types.html?l=de` ustawia język, a `index.html?spec=…&l=de` dopisuje `lang` do adresu specyfikacji typu) (chroniona logowaniem w `web.xml`) pokazuje typy i ich wersje, a kliknięcie otwiera
   Swagger UI z `index.html?spec=../rest/openapi/types/{kod}.json[?typeId=…]`. Pliki `swagger-initializer.js` i `types.html` mają
   `Cache-Control: no-store` (osobne mapowania `mvc:resources` przed `/swagger-ui/**`). „Try it out” dla `POST /rest/service/…`
   wymaga tokenu (przycisk Authorize, przepływ `password`).
