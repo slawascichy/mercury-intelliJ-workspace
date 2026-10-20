@@ -24,7 +24,7 @@ na podstawie ostatniej wersji typu (`isLatestVersion = true`) albo wskazanej wer
 | 6 | Lokalizacja etykiet i nazw opcji (`${…}`, `?lang=`, `?l=`, `Accept-Language`), zapas `recomendedLabel` → `definitionName` | ✅ | ✅ | **GO** | sprawdzone na serwerze w `pl`, `en`, `de`; strony przyjmują `?l=` (alias `?lang=`) |
 | 7 | Cache i `ETag` | ⬜ | – | **poza DoD** | decyzja autora, opcja: wymaganie „zmiana typu widoczna bez restartu, także na drugim węźle” jest spełnione, bo specyfikacja nie jest buforowana |
 | 8 | Strona wyboru typu i Swagger UI per typ, logowanie sesją | ✅ | ✅ | **GO** | sprawdzone w przeglądarce przez autora. Automatyczny token dla „Try it out”: poza DoD (działa Authorize) |
-| – | Test w obie strony (`loadSampleByTypeCode` → walidacja schematem → `save` bez nowej wersji typu) | ⬜ | – | **NO-GO** | warunek DoD |
+| – | Test w obie strony (`loadSampleByTypeCode` → walidacja schematem → `save` bez nowej wersji typu) | ✅ | – | **NO-GO** | wykonany 2026-10-20. Po poprawkach 51–54 i z `forceChangeType=false` (obs. 55): przykłady przechodzą walidację w 76 z 76 typów, a `save` nie tworzy nowej wersji typu w żadnym z 76; wyjątki: 4 typy z kluczem (pusty klucz w przykładzie) i 1 odpowiedź niezgodna z `enum` (`POLISA2`). Do decyzji autora (GO) |
 
 Do GO etapu: test w obie strony.
 
@@ -232,6 +232,38 @@ jest wybór języka (zapamiętywany w przeglądarce); parametr `?l=` w adresie s
 Sprawdzone na `CalendarUserEvent`: `pl` (opis „Zdarzenie kalendarzowe”, pola „Temat zdarzenia”), `en` (“Event Calendar”, “Subject
 Event”, opcje typu `Absence`, `Holidays`…), `de`, nagłówek `Accept-Language: en-GB` daje `x-language = en`, typ bez kluczy (`TstMigB`)
 bez zmian. Obserwacja 50 (`resources_de.properties` po niderlandzku) naprawiona: `de` daje „Kalenderereignis” i opcje `Abwesenheit`, `Urlaub`… (sprawdzone na serwerze po wdrożeniu 2026-10-20). `WebAppMsg_de.properties` jest w `\u`, bo inaczej strona główna (`?l=de`) pokazuje `Ã¼`. Testy: `CaseTypeLocalizationTest` (17).
+
+**Test w obie strony (2026-10-20):** na serwerze testowym, token z `POST /rest/token`, walidacja Ajv (JSON Schema 2020-12) schematem
+`components.schemas.<typ>` z `/rest/openapi/types/{kod}.json`.
+
+1. **Przykład → schemat (81 typów, tylko odczyt).** Przykład z `loadSampleByTypeCode` przechodzi walidację w 1 typie, po usunięciu
+   pól `null` w 73 (obs. 51: schemat nie dopuszczał `null`). Z pozostałych 8: cztery typy z kluczem liczbowym zwracanym jako tekst
+   (obs. 52: `BpmBPDInstance`, `BpmTask`, `FsmBusinessNetworkArea`, `GeoAddressRegister`), trzy `POLISA1–3` (schemat wymaga
+   pól, np. `NazwiskoKlienta`, które przykład ma puste) i `KLIENT1` (jest na liście typów, ale `loadSampleByTypeCode` zwraca
+   „Nie znaleziono danych”, SQL03).
+2. **`save` przykładu (11 typów).** NPE bez `forceAddStore2Type` (obs. 53), NPE przy pustej liście (obs. 54: `Invoice`,
+   `FSMServiceOrder`, `BpmBPDInstance`, `FsmBusinessNetworkArea`). Bez nowej wersji typu zapisały się `TstMigB`, `FsmAddress`,
+   `ContrahentAddress` i `DocumentBasicInfo`. Nowa wersja powstała dla `GeoAddressRegister`, dla dokumentu częściowego `TstMigB`
+   (typ zawężony do jednego pola) i dla typu predefiniowanego `CalendarUserEvent` (obs. 55).
+3. **Skutki w bazie testowej.** Dodatkowe wersje typów: `TstMigB` 2.0 (763903), `CalendarUserEvent` (763902),
+   `GeoAddressRegister` (763904) oraz kilka spraw testowych.
+
+**Powtórzenie po poprawce `null` (2026-10-20, baza zasilona od nowa: testy `mvn test` w `mercury` czyszczą ją celowo, 76 typów):**
+przykład przechodzi walidację w 74 z 76 typów (zostały `BpmBPDInstance` i `BpmTask`: pola o podtypie `Long` zwracane jako tekst, schemat mówi `number`; to nie jest sprawa klucza, obs. 52). Zapis
+przykładu (`save`, `forceAddStore2Type: false`) bez nowej wersji typu i z odpowiedzią zgodną ze schematem: `TstMigB`, `FsmBusinessNetworkArea`,
+`GeoAddressRegister`, `FsmAddress`, `ContrahentAddress`, `DocumentBasicInfo` (6 z 9 sprawdzonych). NPE przy pustej liście nadal
+dla `Invoice`, `FSMServiceOrder`, `BpmBPDInstance` (obs. 54). Skrypty testu: `rt1.js`, `rt2.js`, `seed.js` w scratchpadzie sesji.
+
+Poprawka obs. 51: `CaseTypeFieldSchema.allowNull` (typy proste i obiektowe dostają `"null"`; tablice i `$ref` bez zmian). Zmienione testy
+`CaseType*` (85 testów przechodzi). Przy okazji poprawiono `LuceneFieldsLabelsFactoryTest` (oczekiwał holenderskiej etykiety dla `de`).
+Obs. 53 poprawiona (`forceAddStore2Type` domyślnie `false`, sprawdzone na serwerze), obs. 52 poprawiona w definicjach typów BPM (kod gotowy; istniejące bazy zachowują podtyp `Long`). Obs. 54 poprawiona (`CaseBusiness.addParams`: pusta lista dostaje typ z poprzedniej wersji typu): `Invoice` i `FSMServiceOrder` zapisują się bez nowej wersji typu i z odpowiedzią zgodną ze schematem. `BpmBPDInstance` zapisuje się z nową wersją typu, bo definicja BPM ma jeszcze podtyp `Long` (obs. 52). **Trzeci przebieg (2026-10-20, baza wyczyszczona testami `mercury`, 76 typów, definicje BPM z podtypem `Number`):** przykład przechodzi
+walidację schematem w **76 z 76** typów. `save` przykładu: 53 typy bez nowej wersji i z odpowiedzią zgodną ze schematem, 19 z nową
+wersją typu, 4 z błędem integralności (obs. 55d, 55e). Nowe wersje różnią się w 16 typach tylko metadanymi definicji (tytuły, opisy, GUI),
+w 3 brakowało pola z listą wartości prostych (poprawione w `CaseBusiness.addParams`, sprawdzone na nowym typie `TstList`). **Obs. 55, decyzja autora:** nowe wersje typu minimalizujemy parametrem `saveRequestContext.forceChangeType=false` (`context.requestProperties`),
+a ręcznie opracowane definicje mogą być nadpisane. Sprawdzone na serwerze: z `forceChangeType=false` zapis przykładu 76 typów nie tworzy
+żadnej nowej wersji (71 zapisów zgodnych ze schematem, 4 błędy integralności: typy z kluczem `pkPropertyName` mają w przykładzie pusty klucz,
+1 odpowiedź `POLISA2` niezgodna z `enum` pola `RodzajPolisy`). Do GO zostaje: wykonanie testu w obie strony z `forceChangeType=false` jako
+warunku DoD (zrobione), zatwierdzenie kodu i publikacja. Analiza typu z porównaniem wektorowym: osobne zadanie.
 
 **Wyszukiwanie na polach z indeksu (2026-10-20):** nazwy pól do zapytań pochodzą z `CaseIndexerFieldsManagerRest`
 (`getFieldsByTypeCodes`, `getCategories`, `getSearchTypes`; dokument `003_Architecture/003_Index_Lucene`, model 3.0: pola
@@ -570,7 +602,7 @@ Status każdego punktu (GO / NO-GO) zgodny z tabelą na górze:
 - **GO.** Obsłużone wszystkie wartości `AttributeType` i sprawy zależne (z ochroną przed cyklami). Uwaga: `URL` i `CURRENCY` z kodu.
 - **GO.** Etykiety, opisy i nazwy opcji z kluczami `${…}` są tłumaczone na język żądania. Test na typach
   predefiniowanych kalendarza (`CalendarUserEvent`) w co najmniej dwóch językach (krok 6): sprawdzone na serwerze w `pl`, `en` i `de`.
-- **NO-GO.** Test: przykład z `loadSampleByTypeCode` przechodzi walidację schematem, a `save` danych zgodnych
+- **NO-GO (test wykonany, nie przechodzi: obs. 51–55).** Test: przykład z `loadSampleByTypeCode` przechodzi walidację schematem, a `save` danych zgodnych
   ze schematem nie tworzy nowej wersji typu.
 - **GO.** Zmiana typu (nowa wersja) jest widoczna w dokumentacji bez restartu, także na drugim węźle klastra
   (specyfikacja nie jest buforowana, każde żądanie czyta bazę).

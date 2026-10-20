@@ -44,7 +44,7 @@ Znaczenie kolumn (jedno znaczenie, bez mieszania „zrobione w kodzie” z „do
 | Etap 2: usługi per typ i `CASE_AS_TYPE` (kategorie A, B, C, migracja sprawy) | ✅ | ✅ | **GO** | poza zakresem decyzją D21: `fieldMetricQuery`, `history/find`, `loadSampleByTypeName`, kategoria D |
 | Etap 2, krok 8: strona wyboru typu i Swagger UI per typ (logowanie sesją) | ✅ | ✅ | **GO** | sprawdzone w przeglądarce przez autora |
 | Etap 2, krok 6: lokalizacja etykiet i nazw opcji (`${…}`, `?lang=`, `?l=`, `Accept-Language`) | ✅ | ✅ | **GO** | sprawdzone na serwerze (`CalendarUserEvent` w `pl`, `en`, `de`); pliki `*_de.properties` przetłumaczone z niderlandzkiego na niemiecki (obserwacja 50); strony Swagger UI przyjmują `?l=` (alias `?lang=`) |
-| Etap 2: test w obie strony (`loadSampleByTypeCode` → walidacja schematem → `save` bez nowej wersji typu) | ⬜ | – | **NO-GO** | warunek DoD etapu 2 |
+| Etap 2: test w obie strony (`loadSampleByTypeCode` → walidacja schematem → `save` bez nowej wersji typu) | ✅ | – | **NO-GO** | warunek DoD etapu 2. Wykonany 2026-10-20. Po poprawkach 51–54 i z `forceChangeType=false` (obs. 55): przykłady przechodzą walidację w 76 z 76 typów, `save` nie tworzy nowej wersji typu w żadnym z 76 (wyjątki: 4 typy z kluczem, 1 odpowiedź niezgodna z `enum`). Do decyzji autora (GO) |
 | Etap 3: zgodność komunikacji węzłów (kontrakt XML, kontrola wersji węzłów, testy) | ✅ | ✅ | **GO** | |
 | Wydanie `mercury-lib` 3.0.4.7 (artefakty wdrożone, tag lokalny) | ✅ | ✅ | **GO** | wypchnięcie tagu: wiersz „Publikacja” |
 | Dokumentacja workspace (`docs/moduly/mercury.md`, `docs/obserwacje.md`, `TASK.md`, etapy, podsumowania) | ✅ | ✅ | **GO** | uspójniona 2026-10-20 |
