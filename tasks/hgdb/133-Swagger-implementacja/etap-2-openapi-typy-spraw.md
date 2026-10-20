@@ -169,14 +169,56 @@ wskazuje typ sprawy, dzięki czemu implementacja ogólnych usług `CaseBusinessE
 - Klucz główny (`uniqueConstraintParamName`) kodu `A` względem sprawy z `B`: czy wyszukiwanie po PK nie znajdzie sprawy o tej samej wartości klucza w `A` (kolizja).
 - Czy wszystkie ścieżki zapisu (`save`, `saveList`, `initModel`) przechodzą przez `transform2Cases`/`step2TryIdentifyType`.
 
-**Stan implementacji (2026-10-20, niezbudowane, niezatwierdzone):** w `mercury-srv` metoda `CaseBusinessSupport.step2IdentifyTargetType`
+**Test na serwerze (2026-10-20, Tomcat z `mercury-server`, token OAuth `mrc-user`, typy testowe `TstMigA`, `TstMigB`, `Tst.Dot` zostały w bazie):**
+migracja `A → B` przez `/types/TstMigB/save` tworzy nową sprawę w `B` z `previousVersionId` i `rootVersionId` jak w `A`, a stara
+dostaje `Z` (także gdy `B` ma podzbiór pól `A`, i bez `dirty` w żądaniu: migracja ustawia `dirty` sama); `find` sprawy typu `B`
+przez `/types/TstMigA/find` daje błąd, przez `/types/TstMigB/find` sprawę; `searchByQuery` i `searchByParams` przez ścieżkę typu
+zwracają tylko sprawy tego typu (także z `mrc_status:A`); spec typu zwraca 200 dla `TstMigA`, `TstMigB`, `CalendarUserEvent`,
+`Tst.Dot` (kod z kropką działa w spec i w ścieżce usługi) i 404 dla nieznanego typu. Błędy znalezione na serwerze i poprawione:
+spec typu miała 401 mimo tokenu (brak parametru fabryki OAuth, zapasowa `mercuryDbOAuthFactory`) i 500 (`@Transactional` jest
+ignorowane w kontekście serwletu, zamieniono na `TransactionTemplate`), obserwacje 46-49 w `docs/obserwacje.md`.
+
+**Strona wyboru typu i wersje (2026-10-20, kroki 5 i część 8):** `/swagger-ui/types.html` (adres dodany do ograniczenia
+logowania w `web.xml`, po zalogowaniu formularzem wraca na stronę) pobiera `GET /rest/openapi/types.json` (kody, etykiety,
+aliasy) i na żądanie `GET /rest/openapi/types/{kod}/versions.json` (`typeId`, `version` w postaci `3.1`, `latest`,
+`active`). Kliknięcie kodu otwiera `index.html?spec=../rest/openapi/types/{kod}.json`, wersji
+`…{kod}.json?typeId=…`. Spec wskazanej wersji: `?typeId=` (ma pierwszeństwo) albo `?v=3.1` (samo `3` to `3.0`); nieznana wersja
+albo `typeId` innego kodu daje 404 (`CaseTypeOpenApiService.select`). `swagger-initializer.js` przyjmuje `spec` tylko w postaci
+`../rest/openapi/types/{kod}.json[?v=|typeId=]`. Sprawdzone na serwerze przez `curl` z sesją: przekierowanie na logowanie i
+powrót na stronę, lista 11 typów, wersje, spec bez parametrów, z `typeId`, `v=1.0`, `v=1`, 404 dla `v=2.0`, `typeId=1` i `typeId`
+innego typu. Nie sprawdzone w prawdziwej przeglądarce (działanie JavaScriptu strony i Swagger UI). „Try it out” dla `POST
+/rest/service/...` wymaga tokenu (przycisk Authorize, przepływ `password`). Zostaje: lokalizacja (krok 6), cache i `ETag` (krok 7),
+automatyczny token dla sesji.
+
+**Wyszukiwanie na polach z indeksu (2026-10-20):** nazwy pól do zapytań pochodzą z `CaseIndexerFieldsManagerRest`
+(`getFieldsByTypeCodes`, `getCategories`, `getSearchTypes`; dokument `003_Architecture/003_Index_Lucene`, model 3.0: pola
+stałe z prefiksem `mrc_`, np. `mrc_status`, `mrc_typeCodeValue`, `mrc_rootVersionId`, pola typu pod własną nazwą, np. `nazwa`,
+`kod`). Sprawdzone zapytania `searchByQuery`/`searchByParams` przez `/types/{kod}/…` i usługę ogólną: `nazwa:Adam2` daje 1
+sprawę w `TstMigB` i 0 w `TstMigA`; `kod:K10` daje 1 w `TstMigB`, a usługa ogólna 2 (stara wersja w `A` i nowa w `B`);
+`mrc_rootVersionId:"TstMigA.2008704"` daje 2 wersje przez usługę ogólną i po 1 przez ścieżkę typu; `mrc_status:A AND kod:K10`,
+`mrc_luceneDocumentMemo:Adam2` i `searchByParams` z kluczem `nazwa`/`kod` zwracają wyniki ograniczone do typu. `*:*` nie jest
+akceptowane (obserwacja 48). Pomysł na później: opisać w specyfikacji typu nazwy pól indeksu (`x-luceneField`, typ wyszukiwania)
+na podstawie tego samego źródła, żeby zapytania dało się budować ze specyfikacji.
+
+**Dostęp z przeglądarki (2026-10-20):** endpoint specyfikacji typu przyjmuje token OAuth, a gdy go nie ma, sesję użytkownika
+zalogowanego formularzem Tomcata (`RestServicesHelper.createContextBasedOnSession`: nazwa i role z `Principal`). Logowanie:
+`/mercury-ws-app/login/` (przekierowanie na formularz `j_security_check`), potem
+`/mercury-ws-app/rest/openapi/types/{kod}.json` w tej samej przeglądarce. Sprawdzone na serwerze: bez sesji 401, z sesją 200,
+z fałszywym `JSESSIONID` 401. Usługi `POST /rest/service/...` nadal wymagają tokenu (dotyczy kroku 8). Powód wyboru: ciasteczko
+`OIDSESSIONTOKEN` czyta `OAuthFactory`, ale nic go nie ustawia, a `TomcatLdapRealm` bez atrybutów `oauth*` (tak jest w
+`server.xml` testowego serwera) nie wystawia tokenu w principalu.
+
+**Stan implementacji (2026-10-20, zbudowane z `mercury-lib` 3.0.4.7, 60 testów jednostkowych przechodzi, zmiany z testu na serwerze (4 pliki w `mercury`) niezatwierdzone):** w `mercury-srv` metoda `CaseBusinessSupport.step2IdentifyTargetType`
 (ostatnia wersja typu ze wskazanego kodu, `className` nadpisane nazwą typu, brak typu to błąd), jej użycie w
 `CaseBusiness.transform2CasesInSameThread` tylko dla pierwszej iteracji (sprawa główna) oraz pominięcie przywracania starego
 typu w `CaseLogicHelperService.updateCaseWithHistory`, gdy nowy typ ma kod z parametru. W `mercury-ws-app`
 `CaseTypeServicesController` (`/rest/service/types/{typeCode}/{operation}`: `save`, `initModel`, `find`, `findFirst`,
 `loadSampleByTypeCode`, `searchByParams`, `searchByQuery`) i ścieżki w `CaseTypeOperations`. Kod wymaga `mercury-lib` 3.0.4.7
-(`RequestContextes`), więc budowanie możliwe po wydaniu biblioteki i podbiciu `mercury.static.version`. Do sprawdzenia na
-serwerze: ograniczenie `searchByParams` kluczem `LUCENE_TYPE_CODE_VALUE` w `paramsMap` i zapytania `searchByQuery` z
+(`RequestContextes`). Scenariusz testu na serwerze: (1) zapis sprawy typu `A` przez `/rest/service/types/A/save`, (2) zapis
+tej samej sprawy (z `caseId`) przez `/rest/service/types/B/save` (migracja do istniejącego typu `B`; oczekiwane: nowy `caseId`,
+`previousVersionId` = stary, stara sprawa `Z`, `rootVersionId` bez zmian), (3) to samo dla `B` o podzbiorze pól `A`
+(sprawdza pominięcie przywracania starego typu), (4) `find` sprawy typu `B` przez `/types/A/find` (oczekiwany błąd), (5)
+`searchByQuery` i `searchByParams` przez ścieżkę typu, (6) typ z kropką w kodzie. Do sprawdzenia na serwerze: ograniczenie `searchByParams` kluczem `LUCENE_TYPE_CODE_VALUE` w `paramsMap` i zapytania `searchByQuery` z
 klauzulą po tym polu (nie zweryfikowane, że pole przyjmuje taki zapis), migracja sprawy między typami z różnym zestawem pól.
 
 **Skutek dla planu:** nowy krok między krokami 4 i 5 „usługi per typ”: odczyt parametru w `step1`/`step2` (tylko sprawa główna),
