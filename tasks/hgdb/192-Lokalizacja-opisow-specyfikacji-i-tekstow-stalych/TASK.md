@@ -32,8 +32,9 @@ Tekstem domyślnym jest angielski, pierwszym katalogiem tłumaczeń polski.
   **Zmieni to opisy w WSDL.**
 
 ### Wybór języka (stan po zadaniu 133, krok 6)
-- API specyfikacji: `?lang=` (pl, en-GB, en_GB; wartość błędna jest ignorowana), potem `Accept-Language`,
-  potem język systemu.
+- API specyfikacji: dziś `?lang=` (pl, en-GB, en_GB; wartość błędna jest ignorowana), potem `Accept-Language`,
+  potem język systemu. **Ustalenie z 2026-10-20:** w `/rest/openapi.json` i w specyfikacji typu parametrem głównym ma być
+  `?l=`, a `?lang=` jego aliasem (jak na stronach). Kolejność bez zmian. Do zrobienia w etapie 1 (strona serwerowa).
 - Strony `types.html` i `index.html`: parametr `?l=` (jak na stronie głównej i liście usług REST), alias `?lang=`.
   Wartość trafia do adresu specyfikacji typu. Pełna specyfikacja statyczna na razie ignoruje język.
 - Aktualne języki zasobów: pl, en, de, es, fr, ko.
@@ -54,7 +55,7 @@ webjara używanej w projekcie. Dwa warianty:
 
 | Obszar | Zakres | Stan |
 |---|---|---|
-| Etap 1 | Opisy specyfikacji statycznej | ⬜ nie rozpoczęto |
+| Etap 1 | Opisy specyfikacji statycznej | 🟡 w toku: katalogi pl, en, de zatwierdzone, generator gotowy (niezatwierdzony), serwer (wybór języka) do zrobienia. [Podsumowanie 2026-10-20](podsumowanie-2026-10-20.md) |
 | Etap 2 | Teksty stałe specyfikacji per typ | ⬜ nie rozpoczęto |
 | Etap 3 | Własne strony `swagger-ui-config` | ⬜ nie rozpoczęto |
 | Etap 4 | Interfejs Swagger UI | ⬜ nie rozpoczęto |
@@ -63,7 +64,7 @@ webjara używanej w projekcie. Dwa warianty:
 
 | # | Pytanie | Uwagi |
 |---|---|---|
-| Q1 | Które języki obejmuje pierwsze wydanie tłumaczeń? | Poza pl i en są jeszcze de, es, fr, ko (zasoby `resources_*` już istnieją) |
+| Q1 | Które języki obejmuje pierwsze wydanie tłumaczeń? | Zrobione pl, en, de (2026-10-20). Poza nimi są jeszcze es, fr, ko (zasoby `resources_*` już istnieją) |
 | Q2 | Czy tłumaczymy opisy w WSDL (zmiana tekstów adnotacji)? | Wynika z D22, wymaga uzgodnienia z wydaniem |
 | Q3 | Wariant dla interfejsu Swagger UI (plugin czy warstwa DOM)? | Rozstrzygnąć po sprawdzeniu wersji webjara |
 
