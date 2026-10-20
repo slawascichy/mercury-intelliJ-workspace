@@ -298,6 +298,44 @@ Specyfikacja typu opisuje te operacje (tagi `CaseSearchExtRest`, `CaseHistoryTra
 typu błąd, `search/searchByQuery` z `kod:K10` po 1 sprawie w obu typach, `search/explainPlanSearchByQuery` pokazuje zapytanie z klauzulą
 `mrc_typeCodeValue`.
 
+**Kategoria C (2026-10-20, wdrożone i sprawdzone na serwerze):** `loadSubCase` (jedna sprawa zależna) i `loadSubCaseList` (lista)
+w `/types/{kod}/…`: sprawa nadrzędna (`caseId`) musi być typu ze ścieżki, `fieldName` w specyfikacji jest enumem pól typu o
+odpowiednim kształcie (`SUBCASE` pojedyncze albo lista), a odpowiedź to `$ref` (albo `oneOf`) typów zależnych tych pól
+(`ExtRest.SubCaseEnvelope`, `ExtRest.SubCaseListEnvelope`); operacja jest pomijana w specyfikacji typu, który nie ma takich pól.
+`searchInDB`: filtr typu przez `caseHeader.typeCode` (nadpisywany ścieżką), a klucze `paramsMap` opisane jako pola typu.
+`search/dateMetricQuery`: klauzula typu w `query`, `dateFieldsNames` jako enum (`mrc_createDate`, `mrc_lastModifyDate`,
+`mrc_dueDate`, `mrc_endDate` i pola typu o typie `DATE`, `DATE_LONG`, `TIME`). **Pominięte:** `fieldMetricQuery`, bo liczy wartości
+pola w całym indeksie, a `filterClause` filtruje wartości, nie dokumenty (sprawdzone: `kod` zlicza wartości ze wszystkich typów),
+więc nie da się go ograniczyć do typu bez zmiany w logice. Wynik na danych z przykładów: `FSMServiceOrder.loadSubCase` pole
+`extendedDetails`, `loadSubCaseList` pole `agreementList`, `Invoice.loadSubCaseList` pole `invoicePosition` (4 pozycje),
+`Invoice.searchInDB` po `invoiceNo`, `Invoice.search/dateMetricQuery` po `mrc_createDate`; `loadSubCase` na sprawie innego typu daje
+błąd niezgodnego typu. Enumy `fieldName` w specyfikacji: `FSMServiceOrder` 6 pól pojedynczych i 4 listy, `ZpiPlan` 9 i 1,
+`Invoice` 1 i 1, `TestMrcObject2` 2 i 1.
+
+**Dane testowe z przykładów (2026-10-20):** do bazy testowej wczytano typy i sprawy z `mercury-ws-dto-api/dto-samples/MrcObject.v1.xml`
+(`SlawasTestObj`, `Fsm*`), `mercury-srv/MrcList.v1.xml` (`GeoAddressRegister` z `GeoAddressRegisterBusiness`, 3 sprawy) oraz z
+projektów SoapUI w `D:\workspace\SoapUI` (136 żądań XML i 5 JSON ze sprawami): `FSMServiceOrder` (33 typy, najgłębsze drzewo),
+`ZpiPlan` (10 typów), `Invoice` (4), `SlmAddress` (4), `TestMrcObject2`, `SC-NEW-1`, `SlawasTestObj1`, `LukasPresentation` (po 2-3 typy)
+i kilkanaście typów jednopoziomowych (m.in. `TerytStreet`, `SciPresentation`, `POLISA_LIST_DOK`, `KissProcessInstance`, `Month`); w
+sumie 81 typów w systemie. Konwersja XML "variable" i XML DTO na logiczny JSON: skrypty `dto2json.ps1`, `soapui2json.js`
+(scratchpad sesji). Puste tablice i `null` są pomijane, bo `save` kończy się na nich `NullPointerException` (puste listy w
+sprawach zależnych nie mają typu). `TerytCity` nie zapisał się (`Transaction silently rolled back`), `TestMrcObject` (REST) odrzucony
+przez klucz unikalny `TestRole`.
+
+**Wersja typów zależnych w specyfikacji (2026-10-20, decyzja autora, wdrożone i sprawdzone na serwerze):** Copilot wprowadził
+wybór typów zależnych z wersji **dokładnie równej** `version.versionMinor` typu głównego. Przegląd wykazał, że numery wersji różnych typów
+są niezależne: na `FSMServiceOrder` (jedna wersja głównego `1.0`) dawało to 62 schematy zamiast 64, bo dwa typy zależne miały inną
+wersję. Autor wybrał alternatywę, wdrożoną w `CaseTypeOpenApiService.loadSubTypeForSpec` i `selectValidAt`:
+(1) bez `?v=`/`?typeId=` albo gdy wskazana wersja typu głównego jest ostatnia (`isLatestVersion`): **ostatnie** wersje typów zależnych,
+więc `?typeId=<ostatnia>` daje to samo co bez parametrów; (2) dla starszej wersji typu głównego: wersja typu zależnego **obowiązująca w
+chwili początku wersji głównej** (`fromDate` zależnego nie później niż `fromDate` głównego i `toDate` puste albo późniejsze; koniec
+przedziału wyłączony, bo nowa wersja ma `fromDate` równe `toDate` poprzedniej; przy kilku pasujących wygrywa późniejszy początek);
+(3) gdy żadna wersja nie obowiązywała (typ zależny powstał później) albo typ główny nie ma `fromDate`: **ostatnia** wersja.
+Sprawdzenie na serwerze: `FSMServiceOrder.json`, `?v=1.0` i `?typeId=` dają po 64 schematy. `TstSubParent` ma wersje 1.0 i 2.0, a
+zależny `TstSubItem` dostał wersję 2.0 (pole `uwagi`) po wersji 1.0 głównego i przed wersją 2.0 głównego: spec bez parametrów, `?v=2.0`
+i `?typeId=` ostatniej mają `TstSubItem` 2.0 (`ilosc`, `produkt`, `uwagi`), a `?v=1.0` i `?typeId=` starszej mają `TstSubItem` 1.0
+(`ilosc`, `produkt`). Testy jednostkowe `CaseTypeVersionSelectTest` (11).
+
 5. **Proponowana kolejność:** (1) klucz pamięci podręcznej z `caseAsType`; (2) kategoria B (większość to zmiana mapowania w
    `CaseTypeOperations` i kontrolerze); (3) `loadSubCase*` i `searchInDB` z enumami z typu; (4) metryki; (5) D tylko jako opis
    „operacja ogólna, nie przypisana do typu”.
