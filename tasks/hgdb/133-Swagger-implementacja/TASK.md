@@ -48,8 +48,8 @@ Znaczenie kolumn (jedno znaczenie, bez mieszania „zrobione w kodzie” z „do
 | Etap 3: zgodność komunikacji węzłów (kontrakt XML, kontrola wersji węzłów, testy) | ✅ | ✅ | **GO** | |
 | Wydanie `mercury-lib` 3.0.4.7 (artefakty wdrożone, tag `3.0.4.7` wypchnięty) | ✅ | ✅ | **GO** | |
 | Dokumentacja workspace (`docs/moduly/mercury.md`, `docs/obserwacje.md`, `TASK.md`, etapy, podsumowania) | ✅ | ✅ | **GO** | uspójniona 2026-10-20 |
-| Publikacja: wypchnięcie commitów i tagów na zdalne repozytoria | – | – | **NO-GO** | stan z 2026-10-20: `mercury-lib` (z tagiem `3.0.4.7`) i `hgdb-client-open` (tag `3.1.4.7`, wersja lib podbita do `3.0.4.7`) są wypchnięte i zsynchronizowane. Niewypchnięte: `mercury` 1 commit (poprawki obserwacji 51–55), workspace 20 commitów. `mercury-docker`, `mercury-cmd`, `mercury-client` bez zmian |
-| **Zadanie 133 jako całość (wydanie)** | – | – | **NO-GO** | do GO: publikacja (push `mercury` i workspace) |
+| Publikacja: wypchnięcie commitów i tagów na zdalne repozytoria | ✅ | ✅ | **GO** | stan z 2026-10-20 (po pushu autora): `mercury`, `mercury-lib` (tag `3.0.4.7`), `hgdb-client-open` (tag `3.1.4.7`, wersja lib podbita do `3.0.4.7`) i workspace są wypchnięte i zsynchronizowane z `origin`. `mercury-docker`, `mercury-cmd`, `mercury-client` bez zmian |
+| **Zadanie 133 jako całość (wydanie)** | ✅ | ✅ | **GO** | wszystkie obszary GO, publikacja wykonana (2026-10-20) |
 
 **Poza DoD, decyzja autora (nie blokuje wydania):** krok 7 etapu 2 (cache i `ETag`; wymaganie „zmiana typu widoczna bez restartu, także
 na drugim węźle” jest spełnione, bo specyfikacja nie jest buforowana), automatyczny token dla „Try it out” (działa przycisk Authorize),
@@ -87,6 +87,8 @@ Zadania wydzielone:
   (opisy operacji, kopert i parametrów usług per typ) trzeba przenieść do tego samego mechanizmu. Dotychczasowe polskie opisy
   w adnotacjach trzeba przetłumaczyć na angielski, a polskie wersje przenieść do katalogu `pl`. Zmieni to opisy w WSDL.
 
+- [193 – Analiza typu sprawy z porównaniem wektorowym](../193-Analiza-typu-porownanie-wektorowe/TASK.md): ograniczenie
+  przypadkowych wersji typu przy `save` miarą odległości nowej definicji od istniejącej (obserwacja 55, propozycja do rozważenia).
 - [190 – Dokumentacja metadanych typów](../190-Dokumentacja-metadane-typow/TASK.md): poprawa strony
   „Case metadata” na hgdb.org według kodu (rozbieżności wykryte w etapie 2).
 - [191 – Rewizja wersji i migracja na Javę 17](../191-Rewizja-wersji-migracja-Java17/TASK.md):
@@ -277,7 +279,7 @@ Opis pojęć: `docusaurus-hgdb/docs/003_Architecture/001_Cases_MetaData/index.md
 - Dokumentacja workspace zaktualizowana: `docs/moduly/mercury.md` (Swagger, nowe endpointy,
   wersja Jacksona), nowe pozycje w `docs/obserwacje.md`.
 - Wszystkie obszary w tabeli „Status zadania” mają decyzję **GO**, a commity i tagi są wypchnięte (wiersz „Publikacja”).
-  Stan na 2026-10-20: **NO-GO** (patrz tabela).
+  Stan na 2026-10-20: **GO** (patrz tabela).
 
 ## Kluczowe Pliki w Projekcie
 

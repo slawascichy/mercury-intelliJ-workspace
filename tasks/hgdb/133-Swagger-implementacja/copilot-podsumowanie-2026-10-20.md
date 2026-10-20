@@ -25,8 +25,8 @@ jedno znaczenie i są zgodne z tą tabelą:
 | Etap 3: zgodność komunikacji węzłów | ✅ | ✅ | **GO** |
 | Wydanie `mercury-lib` 3.0.4.7 | ✅ | ✅ | **GO** |
 | Dokumentacja workspace | ✅ | ✅ | **GO** |
-| Publikacja: wypchnięcie commitów i tagów | – | – | **NO-GO** |
-| **Zadanie 133 jako całość (wydanie)** | – | – | **NO-GO** |
+| Publikacja: wypchnięcie commitów i tagów | ✅ | ✅ | **GO** |
+| **Zadanie 133 jako całość (wydanie)** | ✅ | ✅ | **GO** |
 
 ## Zakres dnia
 
@@ -112,9 +112,10 @@ jedno znaczenie i są zgodne z tą tabelą:
 5. Zmiana nazwy parametru bez okresu przejściowego: integratorzy używający `saveRequestContext.saveCaseAsType` muszą przejść na
    `requestContext.caseAsType` (parametr wcześniej nic nie robił, więc ryzyko jest niewielkie).
 
-## Co zostało (do GO całego zadania)
+## Co zostało
 
-1. **NO-GO:** publikacja: wypchnięcie commitów (`mercury` 1, workspace 20). `mercury-lib` z tagiem `3.0.4.7` i `hgdb-client-open` (tag `3.1.4.7`) są już wypchnięte. Wykonuje autor.
+Do GO całego zadania nic: wszystkie obszary mają decyzję GO, a publikacja jest wykonana (`mercury`, `mercury-lib` z tagiem `3.0.4.7`,
+`hgdb-client-open` z tagiem `3.1.4.7` i workspace są wypchnięte).
 
 Poza DoD (decyzja autora, nie blokuje wydania): krok 7 (cache, `ETag`), automatyczny token dla „Try it out”, poprawki z obserwacji 47-49,
 uzupełnienie Javadoc `CASE_AS_TYPE` w `mercury-lib` o `findFirst` (przy następnym wydaniu biblioteki), operacje kategorii D.
