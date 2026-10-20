@@ -3,6 +3,9 @@
 Zadanie nadrzędne: [TASK.md](TASK.md). Zależy od: zmian kontraktu XML w `mercury-lib`
 (patrz „Stan realizacji”). Etap 1 i 2 nie czekają na ten etap, ale **wydanie** zadania tak.
 
+**Status etapu (2026-10-20): GO** (kod, testy i commit gotowe, punkty 1-4, 6 i 7 zakresu zrobione). Wypchnięcie commitów i tagów
+to osobny wiersz „Publikacja” w [TASK.md, „Status zadania”](TASK.md#status-zadania-stan-na-2026-10-20), a nie warunek GO etapu.
+
 ## Cel zadania
 Zniwelować ryzyka, które wprowadziło dopasowanie klas JAXB do XSD (kwalifikowane elementy XML modelu
 obiektu MRC): węzły serwera i klienci o różnych wersjach biblioteki mają nadal poprawnie wymieniać dane.
@@ -90,7 +93,7 @@ bibliotek). Wersje mieszane są dopuszczalne tylko w oknie wdrożenia. Zapis w [
    brak nazwy, klasy i elementów). Ta sama próbka w formacie nowym jest czytana w całości (kontrola). Test jest
    charakterystyką ryzyka R1, nie zabezpieczeniem: przy opcji A zabezpieczeniem jest kontrola wersji (punkt 4).
    Kierunek odwrotny (stary odbiorca, nowy nadawca) nie jest testowany: wymaga starej biblioteki w classpath.
-4. ✅ **Mechanizm wersji (opcja A)** (`mercury`, 2026-10-18, niezatwierdzone):
+4. ✅ **Mechanizm wersji (opcja A)** (`mercury`, 2026-10-18, zatwierdzone):
    - `HeartbeatMessage.version` i `NodeStatus.version` niosą `mercury.version` (wersja `mercury-lib`, `MercuryConfigConst.PROP_LIB_VERSION`).
    - `NodeConfigProperties.isVersionCompatible(wersja)`: wersje muszą być **identyczne**. Węzeł bez wersji (starsze wydanie) jest niezgodny.
      Wyłącznik: `mercury.node.version.check=false` (domyślnie włączona). Gdy ta instancja nie zna własnej wersji, nie porównuje.
@@ -118,7 +121,10 @@ bibliotek). Wersje mieszane są dopuszczalne tylko w oknie wdrożenia. Zapis w [
    `minor_version.txt` w `mercury-lib` (`up_minor_version.sh 2`) i `install.sh` (4 warianty baz), `mvn versions:set 3.0.4.2` i
    `mercury.static.version` w `mercury`, `mercury.project.version` w `hgdb-client-open` oraz własny numer klienta `minor_version.txt` 3.1.4.1 → 3.1.4.2; budowy lokalne przeszły (budowę klienta na nowym numerze, `install.sh`, trzeba jeszcze wykonać).
    Notatki wydania: [docs/wydanie-3.0.4.2.md](../../../docs/wydanie-3.0.4.2.md), opis w `docs/moduly/mercury.md`.
-   Testy `mercury` na 3.0.4.2 zielone (jedna niestabilna porażka w `SrvTest`, szczegóły w notatkach), `install.sh` klienta, commity, `deploy.sh` i tagi lokalne wykonane. **Pozostaje:** wypchnięcie tagów i commitów na zdalne repozytoria.
+   Testy `mercury` na 3.0.4.2 zielone (jedna niestabilna porażka w `SrvTest`, szczegóły w notatkach), `install.sh` klienta, commity, `deploy.sh` i tagi wykonane.
+   Kolejne wydania `mercury-lib` tego zadania: 3.0.4.3 do 3.0.4.7 (etap 1 i 2). Tagi `3.0.4.1`–`3.0.4.6` są na zdalnym repozytorium
+   `mercury-lib`, tag `3.0.4.7` i część commitów jeszcze nie (sprawdzone 2026-10-20). To jedyna otwarta sprawa tego punktu i jest
+   prowadzona w wierszu „Publikacja” w [TASK.md](TASK.md#status-zadania-stan-na-2026-10-20), nie w statusie etapu.
 7. ✅ **R4:** dopasowano `MrcCaseHeader` (`mercury-lib`, `mercury-srv-api`, test `MrcCaseHeaderXmlContractTest` w `mercury-ws-dto-api`: kwalifikowane elementy, round-trip, walidacja XSD na MOXy i RI). Pozostałe klasy `Mrc*` zostają bez zmian (uzasadnienie w tabeli ryzyk).
 
 ## Definicja Gotowości (DoD)

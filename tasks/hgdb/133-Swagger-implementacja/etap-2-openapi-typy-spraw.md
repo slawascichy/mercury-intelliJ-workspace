@@ -8,6 +8,26 @@ Serwer w czasie działania buduje dokumentację OpenAPI dla podanego kodu typu s
 na podstawie ostatniej wersji typu (`isLatestVersion = true`) albo wskazanej wersji (parametr `v`). Dokumentacja opisuje
 **logiczny JSON sprawy** (decyzja D2 = a) i usługi `*ExtRest`, które go przyjmują i zwracają.
 
+## Status etapu (2026-10-20): NO-GO
+
+Źródło prawdy o statusie: [TASK.md, „Status zadania”](TASK.md#status-zadania-stan-na-2026-10-20). Kolumny jak tam: **Kod**
+(zaimplementowane i przetestowane), **Commit** (zatwierdzone), **GO/NO-GO** (zakres kroku kompletny).
+
+| Krok | Zakres | Kod | Commit | Decyzja | Warunek / uwaga |
+|---|---|---|---|---|---|
+| 1 | Szkielet `GET /rest/openapi/types/{kod}.json`, transakcja tylko do odczytu, 401 bez tokenu i sesji, 404 dla nieznanego typu | ✅ | ✅ | **GO** | |
+| 2 | Mapowanie `AttributeType` → schemat pola, `enum` słowników JSON, rozszerzenia `x-…` | ✅ | ✅ | **GO** | `URL` i `CURRENCY` opisane z kodu, kształt JSON niepotwierdzony na danych (ryzyko niskie, nieblokujące) |
+| 3 | Sprawy zależne jako `$ref`, ochrona przed cyklami, limit `maxDepthResult` | ✅ | ✅ | **GO** | |
+| 4 | Operacje `*ExtRest` w specyfikacji typu | ✅ | ✅ | **GO** | |
+| 5 | Wersje typu: `?v=`, `?typeId=`, `versions.json`, reguła wersji typów zależnych (D20) | ✅ | ✅ | **GO** | |
+| dod. | Usługi per typ i `CASE_AS_TYPE` (kategorie A, B, C, migracja), decyzje D17–D21 | ✅ | ✅ | **GO** | poza zakresem: `fieldMetricQuery`, `history/find`, `loadSampleByTypeName`, kategoria D |
+| 6 | Lokalizacja etykiet i nazw opcji (`${…}`, `?lang=`, `Accept-Language`), zapas `recomendedLabel` → `definitionName` | ✅ | ⬜ | **NO-GO** | kod gotowy i sprawdzony na serwerze; do GO brakuje tylko commitu |
+| 7 | Cache i `ETag` | ⬜ | – | **poza DoD** | decyzja autora, opcja: wymaganie „zmiana typu widoczna bez restartu, także na drugim węźle” jest spełnione, bo specyfikacja nie jest buforowana |
+| 8 | Strona wyboru typu i Swagger UI per typ, logowanie sesją | ✅ | ✅ | **GO** | sprawdzone w przeglądarce przez autora. Automatyczny token dla „Try it out”: poza DoD (działa Authorize) |
+| – | Test w obie strony (`loadSampleByTypeCode` → walidacja schematem → `save` bez nowej wersji typu) | ⬜ | – | **NO-GO** | warunek DoD |
+
+Do GO etapu: commit kroku 6 i test w obie strony.
+
 ## Kontekst i Wymagania
 
 Model typów, wersjonowanie i propagację zmian opisuje [TASK.md](TASK.md#definicje-typów-spraw).
@@ -200,6 +220,19 @@ po `mrc_typeCodeValue`, jedna sprawa), a bez parametru działa jak dotąd. (3) P
 `requestProperties` z `"requestContext.caseAsType": "<kod>"` (`CaseTypeOperations.presetCaseAsType`). Javadoc `CASE_AS_TYPE`
 w `mercury-lib` nie wspomina o `findFirst`, do uzupełnienia przy następnym wydaniu biblioteki.
 
+**Lokalizacja (krok 6, 2026-10-20, kod gotowy i sprawdzony na serwerze, czeka na commit):** `CaseTypeLocalizer` tłumaczy teksty w
+postaci `${klucz}` przez `IResourceLogic.getMessage` w języku z `Context.locale` (pierwsza część, domyślnie język systemu), z pamięcią
+na czas jednej specyfikacji. Zasady: tekst bez klucza zostaje; klucz bez tłumaczenia jest pomijany. Tytuł pola to pierwsza etykieta z
+tłumaczeniem w kolejności `SubType.label`, `TypeParam.label`, `recomendedLabel`, a gdy etykiety są, ale żadna nie ma tłumaczenia,
+nazwa definicji; bez etykiet brak tytułu. Opis pola (`ParamDefinition.description` i tooltip, bez domyślnego) i opis typu są
+tłumaczone, a nierozwiązane klucze pomijane. Nazwy opcji słowników JSON trafiają do `x-enumNames` (na `items` dla list), `enum`
+zostaje z wartościami; klucz bez tłumaczenia daje wartość. Język: `?lang=` (`pl`, `en-GB`, `en_GB`; niepoprawna wartość jest
+pomijana) ma pierwszeństwo przed `Accept-Language`, a bez nich zostaje język systemowy; w `info` jest `x-language`. W `types.html`
+jest wybór języka (zapamiętywany w przeglądarce). Specyfikacja nie jest buforowana, więc wersja językowa nie wymaga klucza cache.
+Sprawdzone na `CalendarUserEvent`: `pl` (opis „Zdarzenie kalendarzowe”, pola „Temat zdarzenia”), `en` (“Event Calendar”, “Subject
+Event”, opcje typu `Absence`, `Holidays`…), `de`, nagłówek `Accept-Language: en-GB` daje `x-language = en`, typ bez kluczy (`TstMigB`)
+bez zmian. Obserwacja: `resources_de.properties` zawiera teksty po niderlandzku (obserwacja 50). Testy: `CaseTypeLocalizationTest` (17).
+
 **Wyszukiwanie na polach z indeksu (2026-10-20):** nazwy pól do zapytań pochodzą z `CaseIndexerFieldsManagerRest`
 (`getFieldsByTypeCodes`, `getCategories`, `getSearchTypes`; dokument `003_Architecture/003_Index_Lucene`, model 3.0: pola
 stałe z prefiksem `mrc_`, np. `mrc_status`, `mrc_typeCodeValue`, `mrc_rootVersionId`, pola typu pod własną nazwą, np. `nazwa`,
@@ -218,18 +251,16 @@ z fałszywym `JSESSIONID` 401. Usługi `POST /rest/service/...` nadal wymagają 
 `OIDSESSIONTOKEN` czyta `OAuthFactory`, ale nic go nie ustawia, a `TomcatLdapRealm` bez atrybutów `oauth*` (tak jest w
 `server.xml` testowego serwera) nie wystawia tokenu w principalu.
 
-**Stan implementacji (2026-10-20, zbudowane z `mercury-lib` 3.0.4.7, 60 testów jednostkowych przechodzi, zmiany z testu na serwerze (4 pliki w `mercury`) niezatwierdzone):** w `mercury-srv` metoda `CaseBusinessSupport.step2IdentifyTargetType`
-(ostatnia wersja typu ze wskazanego kodu, `className` nadpisane nazwą typu, brak typu to błąd), jej użycie w
-`CaseBusiness.transform2CasesInSameThread` tylko dla pierwszej iteracji (sprawa główna) oraz pominięcie przywracania starego
-typu w `CaseLogicHelperService.updateCaseWithHistory`, gdy nowy typ ma kod z parametru. W `mercury-ws-app`
-`CaseTypeServicesController` (`/rest/service/types/{typeCode}/{operation}`: `save`, `initModel`, `find`, `findFirst`,
-`loadSampleByTypeCode`, `searchByParams`, `searchByQuery`) i ścieżki w `CaseTypeOperations`. Kod wymaga `mercury-lib` 3.0.4.7
-(`RequestContextes`). Scenariusz testu na serwerze: (1) zapis sprawy typu `A` przez `/rest/service/types/A/save`, (2) zapis
-tej samej sprawy (z `caseId`) przez `/rest/service/types/B/save` (migracja do istniejącego typu `B`; oczekiwane: nowy `caseId`,
-`previousVersionId` = stary, stara sprawa `Z`, `rootVersionId` bez zmian), (3) to samo dla `B` o podzbiorze pól `A`
-(sprawdza pominięcie przywracania starego typu), (4) `find` sprawy typu `B` przez `/types/A/find` (oczekiwany błąd), (5)
-`searchByQuery` i `searchByParams` przez ścieżkę typu, (6) typ z kropką w kodzie. Do sprawdzenia na serwerze: ograniczenie `searchByParams` kluczem `LUCENE_TYPE_CODE_VALUE` w `paramsMap` i zapytania `searchByQuery` z
-klauzulą po tym polu (nie zweryfikowane, że pole przyjmuje taki zapis), migracja sprawy między typami z różnym zestawem pól.
+**Stan implementacji usług per typ (2026-10-20: kod GO, zatwierdzone, sprawdzone na serwerze; status etapu w tabeli na górze):** w
+`mercury-srv` metoda `CaseBusinessSupport.step2IdentifyTargetType` (ostatnia wersja typu ze wskazanego kodu, `className`
+nadpisane nazwą typu, brak typu to błąd), jej użycie w `CaseBusiness.transform2CasesInSameThread` tylko dla pierwszej iteracji
+(sprawa główna) oraz pominięcie przywracania starego typu w `CaseLogicHelperService.updateCaseWithHistory`, gdy nowy typ ma kod
+z parametru. W `mercury-ws-app` `CaseTypeServicesController` i ścieżki w `CaseTypeOperations`. Kod wymaga `mercury-lib` 3.0.4.7
+(`RequestContextes`). Scenariusz sprawdzony na serwerze: zapis sprawy typu `A` przez `/types/A/save`, migracja tej sprawy
+(`caseId`) przez `/types/B/save` do typu `B` (nowy `caseId`, `previousVersionId` = stary, stara sprawa `Z`, `rootVersionId` bez
+zmian), także gdy `B` ma podzbiór pól `A`, `find` sprawy typu `B` przez `/types/A/find` (błąd), `searchByQuery` i `searchByParams` z
+ograniczeniem do typu (pole `mrc_typeCodeValue` przyjmuje taki zapis), typ z kropką w kodzie. Dalsze opisy sprawdzeń: poniżej
+(„Wyszukiwanie na polach z indeksu”, „Kategoria C”).
 
 **Skutek dla planu:** nowy krok między krokami 4 i 5 „usługi per typ”: odczyt parametru w `step1`/`step2` (tylko sprawa główna),
 pominięcie przywracania starego typu, kontroler `/rest/service/types/{typeCode}/{operation}`, zmiana ścieżek w
@@ -530,19 +561,22 @@ schematem → `save` bez zmiany wersji typu.
 
 ## Definicja Gotowości (DoD)
 
-- Endpoint zwraca poprawną specyfikację OpenAPI 3 dla istniejącego kodu typu i 404 dla nieznanego.
-- Parametr `v` zwraca specyfikację podanej wersji typu, a dla nieistniejącej wersji 404.
-- Specyfikacja opisuje logiczny JSON sprawy oraz operacje `CaseBusinessExtRest` (co najmniej
+Status każdego punktu (GO / NO-GO) zgodny z tabelą na górze:
+
+- **GO.** Endpoint zwraca poprawną specyfikację OpenAPI 3 dla istniejącego kodu typu i 404 dla nieznanego.
+- **GO.** Parametr `v` zwraca specyfikację podanej wersji typu, a dla nieistniejącej wersji 404 (także `typeId`).
+- **GO.** Specyfikacja opisuje logiczny JSON sprawy oraz operacje `CaseBusinessExtRest` (co najmniej
   `find`, `save`, `loadSampleByTypeCode`, `searchByParams`) z `$ref` do schematu typu.
-- Obsłużone wszystkie wartości `AttributeType` i sprawy zależne (z ochroną przed cyklami).
-- Etykiety, opisy i nazwy opcji z kluczami `${…}` są tłumaczone na język żądania. Test na typach
-  predefiniowanych kalendarza (`CalendarUserEvent`) w co najmniej dwóch językach.
-- Test: przykład z `loadSampleByTypeCode` przechodzi walidację schematem, a `save` danych zgodnych
+- **GO.** Obsłużone wszystkie wartości `AttributeType` i sprawy zależne (z ochroną przed cyklami). Uwaga: `URL` i `CURRENCY` z kodu.
+- **NO-GO (kod gotowy, brakuje commitu).** Etykiety, opisy i nazwy opcji z kluczami `${…}` są tłumaczone na język żądania. Test na typach
+  predefiniowanych kalendarza (`CalendarUserEvent`) w co najmniej dwóch językach (krok 6): sprawdzone na serwerze w `pl`, `en` i `de`.
+- **NO-GO.** Test: przykład z `loadSampleByTypeCode` przechodzi walidację schematem, a `save` danych zgodnych
   ze schematem nie tworzy nowej wersji typu.
-- Zmiana typu (nowa wersja) jest widoczna w dokumentacji bez restartu, także na drugim węźle klastra.
-- Swagger UI pozwala wybrać typ sprawy i wyświetlić jego dokumentację.
-- Brak zależności od `org.mercury.data.javax` (kompilacji w runtime).
-- Opis w `docs/moduly/mercury.md`.
+- **GO.** Zmiana typu (nowa wersja) jest widoczna w dokumentacji bez restartu, także na drugim węźle klastra
+  (specyfikacja nie jest buforowana, każde żądanie czyta bazę).
+- **GO.** Swagger UI pozwala wybrać typ sprawy i wyświetlić jego dokumentację (`/swagger-ui/types.html`).
+- **GO.** Brak zależności od `org.mercury.data.javax` (kompilacji w runtime).
+- **GO.** Opis w `docs/moduly/mercury.md` (sekcja „Dokumentacja OpenAPI typu sprawy”).
 
 ## Kluczowe Pliki w Projekcie
 
@@ -571,4 +605,4 @@ schematem → `save` bez zmiany wersji typu.
 ## Słownik / Zasady
 
 - Schemat typu: schemat OpenAPI logicznego JSON-a sprawy, zbudowany z `TypeParam` ostatniej wersji typu.
-- Implementacja w `mercury` (serwer). Bez zmian w `mercury-lib`.
+- Implementacja w `mercury` (serwer). W `mercury-lib` tylko parametr `RequestContextes.CASE_AS_TYPE` (decyzja D17, wydanie 3.0.4.7).

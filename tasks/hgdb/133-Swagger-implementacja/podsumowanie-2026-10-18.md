@@ -2,6 +2,10 @@
 
 Stan na koniec dnia. Gałąź robocza: `hgdb-133`. Szczegóły decyzji są w `etap-1-openapi-statyczne.md`.
 
+> **Dokument historyczny: stan z 2026-10-18, nie zmienia statusu zadania.** Wszystkie pozycje z sekcji „Do zatwierdzenia” zostały
+> zatwierdzone w kolejnych dniach, a pozycje z „Co zostało” są zrealizowane albo prowadzone w tabeli statusu. Aktualny status
+> (GO / NO-GO): [TASK.md, „Status zadania”](TASK.md#status-zadania-stan-na-2026-10-20).
+
 ## Wykonane
 
 **Szkielet OpenAPI i Swagger UI (`mercury`)**
@@ -56,7 +60,7 @@ Stan na koniec dnia. Gałąź robocza: `hgdb-133`. Szczegóły decyzji są w `et
   (m.in. usunięty `auth-2`).
 - Obserwacje 27 do 38 w `docs/obserwacje.md`.
 
-## Do zatwierdzenia (niezatwierdzone)
+## Do zatwierdzenia (stan na 2026-10-18; od tego czasu zatwierdzone)
 
 - **`mercury-lib`:** 31 plików, wersja lokalna **3.0.4.5** (katalogi srv-api i ws-dto-api, Javadoc opakowań i klas
   bazowych, 30 opisów parametrów). Wydanie: commit, `deploy.sh`, tag `3.0.4.5`.
@@ -73,7 +77,7 @@ Stan na koniec dnia. Gałąź robocza: `hgdb-133`. Szczegóły decyzji są w `et
   `CaseDocumentRest.findAllVersionsByVersionSeries` („ostatnia wersja”, a zwraca wszystkie wersje serii).
 - Parametry bez `@WebParam` mają w REST nazwy z implementacji (`eBag`, `entry`, `arg1`), inne niż w interfejsie.
 
-## Co zostało
+## Co zostało (stan na 2026-10-18; pozycje 1, 2, 3 i 5 zrealizowane 2026-10-19, pozycja 4 (etap 2) w tabeli statusu w TASK.md)
 
 1. Luki w Javadoc klas: `CaseRemoveActionStats` (34 pola), `MrcCaseDocument` (28), `CaseHeader` (23),
    `CaseViewDefinition` i `CaseViewDefinitionDto` (po 19), `Case` i `CaseDto` (po 18), `CaseHistoryTrace(Dto)`,

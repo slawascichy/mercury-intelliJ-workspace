@@ -2,6 +2,8 @@
 
 Zadanie nadrzędne: [TASK.md](TASK.md).
 
+**Status etapu (2026-10-20): GO** (kod, testy i commit gotowe). Źródło prawdy o statusie: [TASK.md, „Status zadania”](TASK.md#status-zadania-stan-na-2026-10-20).
+
 ## Cel zadania
 Generator `mercury-ws-app-rest-generator` tworzy specyfikację OpenAPI 3 dla wszystkich usług REST
 `mercury-ws-app` wraz z opisami operacji, parametrów i pól. Serwer udostępnia specyfikację
@@ -249,21 +251,20 @@ Serwowanie:
   Z kodu `OAuthFilter` (mercury-gui-core): filtr działa tylko przy `mercury.oauth.filter.enabled=true`;
   chronione ścieżki wynikają z konfiguracji `MercurySecurityOAuthConfig` (kontekst + `servletPath`);
   token pobiera się z `accessTokenURI` (`/rest/token`, w konfiguracji klienci `GIUPortalClient` i `GIUSoapUIClient`);
-  zakresy (`scopes`) są sprawdzane względem tokenu. Do ustalenia: typ przepływu w `securitySchemes`
-  (z `/rest/token` wygląda na `password` lub `clientCredentials`, przypuszczenie do potwierdzenia w kodzie
-  `OAuthService`).
+  zakresy (`scopes`) są sprawdzane względem tokenu. Typ przepływu w `securitySchemes`: `password`
+  (potwierdzone na serwerze: `POST /rest/token` z `grant_type=password`, `client_id`, `client_secret`, `username`, `password`,
+  `scope`; zakres `mrc-user` pozwala wywołać `/rest/service/**`).
   **Decyzja:** `/rest/openapi.json` i `/swagger-ui/` są publiczne (bez uwierzytelnienia). Konfiguracja
   `mercury-db:1` nie może ich oznaczać jako chronionych, a usługi `/rest/service/**` pozostają chronione.
   Wzorzec `/rest/**` obejmował też `/rest/openapi.json`, więc w konfiguracji `mercury-db:1` zawężono go do
   `/rest/service/**` (decyzja A, bez zmiany kodu `OAuthFilter`). Wzorzec trzeba zmienić w każdej instalacji:
   `mercury-server/src/main/config/scichy`, `mercury-docker/mercury-3.0/docker-init-config` i
-  `mercury-cmd/mercury-install-package/system-config-sample/linux` (wszystkie trzy zrobione, dwa ostatnie
-  w osobnych repozytoriach, niezatwierdzone). Konfiguracja `jenkins` używa innego `configId` (`portal:32424`),
+  `mercury-cmd/mercury-install-package/system-config-sample/linux` (wszystkie trzy zrobione i zatwierdzone,
+  repozytoria `mercury-docker` i `mercury-cmd` są czyste). Konfiguracja `jenkins` używa innego `configId` (`portal:32424`),
   a `mercury-security-config-rgx-1.0.0.xml` dotyczy `mercury-gui-registry`, więc ich nie zmieniano.
   Test `OpenApiResourcesTest.testOAuthSecurityConfigKeepsDocumentationPublic` pilnuje tylko pliku z `mercury`.
-  Do sprawdzenia: wartość `mercury.oauth.filter.enabled` (w konfiguracji `scichy` nie znalazłem tego klucza,
-  więc lokalnie filtr jest prawdopodobnie wyłączony) i które ścieżki konfiguracja `mercury-db:1` oznacza jako
-  chronione, w tym `/rest/service/**`.
+  Sprawdzone na serwerze testowym (profil `scichy`, `mercury.oauth.filter.enabled=true`): `/rest/service/**` bez tokenu
+  daje 401, z tokenem 200, a `/rest/openapi.json` i `/swagger-ui/` są publiczne.
 
 ## Definicja Gotowości (DoD)
 

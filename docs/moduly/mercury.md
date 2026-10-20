@@ -121,6 +121,41 @@ Dokumentacja usług REST (zadanie 133, [etap 1](../../tasks/hgdb/133-Swagger-imp
   `org.mercury.gui.listeners.JacksonConstraintsListener` (`web.xml` obu aplikacji) znosi domyślny limit długości napisu w odczycie
   JSON-a (20 000 000 znaków od Jacksona 2.15), żeby duże wartości LOB w sprawach nadal się odczytywały.
 
+## Dokumentacja OpenAPI typu sprawy
+
+Dokumentacja struktury typu sprawy i usług na sprawach (zadanie 133, [etap 2](../../tasks/hgdb/133-Swagger-implementacja/etap-2-openapi-typy-spraw.md)).
+Status: [TASK.md](../../tasks/hgdb/133-Swagger-implementacja/TASK.md#status-zadania-stan-na-2026-10-20).
+
+- **Endpointy** (`org.mercury.rest.server.actions.CaseTypeOpenApiController`, w przeciwieństwie do `/rest/openapi.json` niepubliczne):
+  `GET /rest/openapi/types.json` (kody typów spraw), `GET /rest/openapi/types/{kod}/versions.json` (wersje typu) i
+  `GET /rest/openapi/types/{kod}.json[?v=3.1|typeId=123]` (specyfikacja OpenAPI 3.1 typu, bez parametrów ostatnia wersja). Wersja `v`
+  to `version.versionMinor` (samo `3` oznacza `3.0`), a `typeId` ma pierwszeństwo. Nieznany typ albo wersja daje 404.
+- **Dostęp.** Token OAuth (`Authorization: Bearer`) albo sesja użytkownika zalogowanego formularzem (`/mercury-ws-app/login/`),
+  więc specyfikację da się oglądać w przeglądarce. Bez jednego i drugiego 401.
+- **Schemat typu.** Budowany bezpośrednio z `TypeCase`/`TypeParam`/`ParamDefinition` (bez generowania klas Javy): logiczny JSON sprawy,
+  pierwsza właściwość `mrcCaseHeader`, sprawy zależne jako `$ref` (ochrona przed cyklami, limit `Context.maxDepthResult`).
+  Typy zależne starszej wersji głównej: wersja obowiązująca w chwili jej początku (`fromDate`/`toDate`), a bez takiej ostatnia.
+- **Usługi per typ** (`CaseTypeServicesController`): `POST /rest/service/types/{kod}/{operacja}` ustawia w kontekście parametr
+  `requestContext.caseAsType` (`ContextRequestProperties.RequestContextes.CASE_AS_TYPE`) i deleguje do usług `*ExtRest`.
+  Zapis sprawy istniejącej w innym typie jest migracją (nowa wersja sprawy w typie docelowym, stara ze statusem `Z`).
+  Operacje: `find`, `findFirst`, `loadSampleByTypeCode`, `searchByLuceneId`, `findByPKProperty`, `save`, `initModel`, `findByIdList`,
+  `findByGroupCaseIds`, `loadLastUpdatedByTypeCodes`, `loadSubCase`, `loadSubCaseList`, `searchInDB`, `searchByParams`, `searchByQuery`,
+  `search/searchByQuery`, `search/explainPlanSearchByQuery`, `search/dateMetricQuery`, `history/findByCaseId`,
+  `history/findByCaseIdAllVersions`. Dla list i wyników stronicowanych typ trafia do zapytania, dla pojedynczej sprawy jest
+  sprawdzany w odpowiedzi.
+- **Język opisów.** Teksty typu w postaci `${klucz}` (etykiety, opisy, nazwy opcji słowników) są tłumaczone przez `IResourceLogic`
+  na język z `?lang=` (`pl`, `en-GB`, `en_GB`), a bez niego z nagłówka `Accept-Language` albo języka systemu. Specyfikacja ma
+  `info.x-language`, a przetłumaczone nazwy opcji trafiają do `x-enumNames` (obok `enum` z wartościami). Klucz bez tłumaczenia jest
+  pomijany, a tytuł pola wraca do `recomendedLabel`, potem do nazwy definicji.
+- **Strona wyboru typu.** `/swagger-ui/types.html` (z wyborem języka opisów) (chroniona logowaniem w `web.xml`) pokazuje typy i ich wersje, a kliknięcie otwiera
+  Swagger UI z `index.html?spec=../rest/openapi/types/{kod}.json[?typeId=…]`. Pliki `swagger-initializer.js` i `types.html` mają
+  `Cache-Control: no-store` (osobne mapowania `mvc:resources` przed `/swagger-ui/**`). „Try it out” dla `POST /rest/service/…`
+  wymaga tokenu (przycisk Authorize, przepływ `password`).
+- **Pułapki.** `@Transactional` w klasach skanowanych w kontekście serwletu (`moduleDb-3.0-servlet.xml`) nie działa, więc
+  `CaseTypeOpenApiService` używa `TransactionTemplate` (`transactionManagerDefault`). Klucz pamięci podręcznej odpowiedzi HTTP
+  uwzględnia `caseAsType`. `save` kończy się `NullPointerException` na pustych tablicach w sprawach zależnych (obserwacje 46–49
+  w [obserwacjach](../obserwacje.md)).
+
 ## Budowanie
 
 ```bash

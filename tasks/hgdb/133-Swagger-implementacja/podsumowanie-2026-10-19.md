@@ -4,6 +4,9 @@ Gałąź robocza: `hgdb-133`. Poprzednie podsumowanie: `podsumowanie-2026-10-18.
 opisach (etap 1), opis kontrolerów `*ExtRest`, podbicie Jacksona, dokumentację w workspace i cztery pierwsze kroki
 etapu 2 (schemat typu sprawy).
 
+> **Dokument historyczny: stan z 2026-10-19, nie zmienia statusu zadania.** Wzmianki o zmianach „niezatwierdzonych” dotyczą tamtego
+> dnia: wszystkie zostały zatwierdzone. Aktualny status (GO / NO-GO): [TASK.md, „Status zadania”](TASK.md#status-zadania-stan-na-2026-10-20).
+
 ## Wynik w specyfikacji OpenAPI (etap 1)
 
 | Element | Przed (raport z 18.10) | Teraz |
@@ -52,7 +55,8 @@ Raport: `mercury/mercury-ws-app-rest-generator/target/openapi-doc-report.txt`. P
 
 ## Etap 2: kroki 1–4 (schemat typu sprawy)
 
-Kod w `mercury-ws-app`, pakiet `org.mercury.rest.server.actions`, bez zmian w `mercury-lib`. Testy jednostkowe
+Kod w `mercury-ws-app`, pakiet `org.mercury.rest.server.actions`, bez zmian w `mercury-lib` (stan z 2026-10-19; 2026-10-20 doszedł
+w `mercury-lib` 3.0.4.7 parametr `CASE_AS_TYPE`, decyzja D17). Testy jednostkowe
 (51 w pakiecie, bez bazy i serwera) przechodzą.
 
 | Krok | Zakres | Klasy |
@@ -92,20 +96,19 @@ mapowania, skrócona sprawa zależna, `SELECT`/`COMPLEX` w tabeli `AttributeType
 - Założenie „`SELECT` zawsze lista” opierało się na rzadkiej ścieżce dla długich wartości (LOB). Poprawione po
   sprawdzeniu głównej ścieżki w `CaseBusiness`.
 
-## Co zostało
+## Co zostało (stan na 2026-10-19) i jego realizacja na 2026-10-20
 
-1. **Zatwierdzić** w `mercury`: krok 4 i poprawki reguł tablic. W workspace: dokumentację i to podsumowanie.
-2. **Krok 5:** wersje typu (`v`, `?typeId=`, `GET /rest/openapi/types/{typeCode}/versions`).
-3. **Krok 6:** lokalizacja etykiet i nazw opcji (`${…}`, `?lang=`), fallback `recomendedLabel` → `definitionName`.
-4. **Krok 7:** cache, `ETag`, unieważnianie w `TypeCaseRegistryChangesReceiver`.
-5. **Krok 8:** Swagger UI: lista typów i wybór typu, przekazywanie tokenu przy pobieraniu specyfikacji typu (UI pobiera
-   spec bez nagłówka `Authorization`, więc dziś dostałby 401).
-6. **Wdrożenie i test na serwerze:** czy `find`/`searchByParams`/`save` zwracają kształty opisane w schemacie, kształt listy
-   spraw przy `save`, kod typu z kropką w adresie (Spring może uciąć `.json` lub część kodu), test w obie strony
-   (`loadSampleByTypeCode` → walidacja schematem → `save` bez zmiany wersji typu), typy kalendarza w dwóch językach.
-7. **Uzupełnić** `etap-2-openapi-typy-spraw.md` (lista wyżej) i opis w `docs/moduly/mercury.md`.
-8. **Wydać `mercury-lib` 3.0.4.7** (zmiany Javadoc `Context`/`findFirst`).
-9. Nieopisane w schemacie: pozostałe operacje `CaseBusinessExtRest` (`findByIdList`, `loadSubCase`, `searchInDB` itd.),
-   opisy pól `MrcCaseHeader` i pól informacji o stronach wyniku.
-10. Odłożone: AJP (obserwacja 31), narzędzie do kluczy licencyjnych (32), limit bufora spraw (38), `DENY` w
-    uprawnieniach pól (37), niestabilny `SrvTest.changeCaseVersionScenario`.
+| # | Pozycja z 2026-10-19 | Stan na 2026-10-20 |
+|---|---|---|
+| 1 | Zatwierdzić `mercury` (krok 4, reguły tablic) i workspace | **GO**: zatwierdzone |
+| 2 | Krok 5: wersje typu (`v`, `?typeId=`, `versions.json`) | **GO**: wykonane |
+| 3 | Krok 6: lokalizacja etykiet (`${…}`, `?lang=`), zapas `recomendedLabel` → `definitionName` | **NO-GO**: kod gotowy i sprawdzony na serwerze (stan z 2026-10-20), brakuje commitu |
+| 4 | Krok 7: cache, `ETag`, unieważnianie | poza DoD, decyzja autora |
+| 5 | Krok 8: Swagger UI z listą i wyborem typu, token | **GO**: lista, wybór i logowanie sesją wykonane. Token dla „Try it out”: poza DoD (działa Authorize) |
+| 6 | Wdrożenie i test na serwerze | **GO** dla kształtów odpowiedzi, kodu z kropką, migracji i wyszukiwania. **NO-GO**: test w obie strony (walidacja schematem) i commit kroku 6 (typy kalendarza w pl i en sprawdzone) |
+| 7 | Uzupełnić `etap-2-openapi-typy-spraw.md` i `docs/moduly/mercury.md` | **GO**: wykonane |
+| 8 | Wydać `mercury-lib` 3.0.4.7 | **GO**: wydane (tag lokalny, wypchnięcie w wierszu „Publikacja”) |
+| 9 | Nieopisane operacje `CaseBusinessExtRest`, opisy pól `MrcCaseHeader` i stron wyniku | operacje: **GO** (kategorie A, B, C), opisy pól `MrcCaseHeader` i stron wyniku: poza DoD, nie zrobione |
+| 10 | Odłożone: AJP (31), klucze licencyjne (32), limit bufora (38), `DENY` (37), `SrvTest.changeCaseVersionScenario` | bez zmian, poza DoD |
+
+Aktualny status zadania: [TASK.md, „Status zadania”](TASK.md#status-zadania-stan-na-2026-10-20).
