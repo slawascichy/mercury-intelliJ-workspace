@@ -127,6 +127,63 @@ dokumentacyjną: pozwala klientowi wysyłać wartości zgodne z typem.
   (to samo, co zwraca `CaseBusinessExtRest.loadSampleByTypeCode`).
 - Do sprawdzenia: czy `findLastVersionByTypeCode` dociąga `typeParams` (relacja LAZY).
 
+### Usługi per typ i parametr `CASE_AS_TYPE`
+
+Pomysł autora (2026-10-20): usługi dokumentowane w specyfikacji typu mogą być wspierane przez parametr kontekstu, który
+wskazuje typ sprawy, dzięki czemu implementacja ogólnych usług `CaseBusinessExtRest` jest wykorzystana ponownie.
+
+**Decyzje:**
+
+- `SaveRequestContext.SAVE_CASE_AS_TYPE` (`saveRequestContext.saveCaseAsType`) w `ContextRequestProperties`
+  (`mercury-lib`) jest zastąpiony przez `RequestContextes.CASE_AS_TYPE` (`requestContext.caseAsType`). Zmieniono nazwę
+  i Javadoc. Nic wcześniej nie czytało parametru (`mercury`: brak odwołań). Konstanta trafiła do nowego enuma
+  `ContextRequestProperties.RequestContextes` (ogólne parametry żądania, prefiks `requestContext.`), a `SaveRequestContext`
+  zostaje przy parametrach zapisu. Opisy parametru w docusaurus
+  (`004_API/001_Context`, wersje `en` i `pl`) nadal mówią o starej nazwie, a zdanie „Wykorzystywane w” jest urwane.
+- **Zapis (`save`, `saveList`, `initModel`):** parametr wskazuje docelową definicję typu zamiast wykrywania jej z pól.
+  Sprawa z `caseId` innego typu jest **migracją**: powstaje nowa wersja w podanym typie, stara dostaje status `Z`. To zwykły
+  mechanizm zmiany wersji (artykuł `003_Architecture/002_Cases_Versioning`). Sprawa bez `caseId` to nowa sprawa tego typu.
+- **Odczyt (`find`, `searchBy*`):** typ wynika ze ścieżki, a nie z parametru kontekstu. Usługa dokłada filtr po typie
+  (`find` po `caseId` zwraca 404 przy niezgodnym typie). `Context.viewDefinition` nie jest do tego przydatne: to lista pól
+  indeksu do zwrócenia w wyniku.
+- **Decyzja autora (przyjęta rekomendacja), wydanie w `mercury-lib` 3.0.4.7 razem ze zmianą nazwy parametru:** jeden kontroler z wzorcem ścieżki `/rest/service/types/{typeCode}/{operation}`
+  (bez klasy per typ i bez wpisu w `/restServices`). Kontroler ustawia `CASE_AS_TYPE` w `Context` i deleguje do logiki
+  `CaseBusiness`. Specyfikacja typu wskazuje te ścieżki, a schematy kopert zostają.
+
+**Wyniki analizy kodu zapisu** (`mercury-srv`, stan z 2026-10-20):
+
+| Miejsce | Co robi dziś | Wniosek dla `CASE_AS_TYPE` |
+|---|---|---|
+| `CaseBusinessSupport.step1TryReadCaseHeader` (:364) | Typ bierze z nagłówka (`typeCode`, `typeId`, `className`). Parametr kontekstu `LocalTypeId.<typeCode>` ma pierwszeństwo przed `typeId` z nagłówka | Jest precedens nadpisywania typu z kontekstu. Ten krok jest też używany dla spraw zależnych (`CaseBusiness:2609`), więc parametr musi dotyczyć tylko sprawy głównej (pierwsza iteracja) |
+| `step2TryIdentifyType` (:516) | Próby po kolei: typy świeżo dodane w paczce, `typeId`, nazwa klasy + suma pól, kod + suma pól, suma pól, kod. Gdy zidentyfikowany typ ma inny kod niż żądany, **kopiuje definicję do nowego typu** (:753-767) | Samo podmienienie `typeCode` nie wystarczy: próby po nazwie klasy i `typeId` znajdą stary typ, a różnica kodu utworzy kopię jego definicji. Przy ustawionym parametrze trzeba pominąć próby 1-5 i pobrać ostatnią wersję typu `A` (`findLastVersionByTypeCode`, próba 6). Brak typu `A` powinien dać błąd, a nie nowy typ |
+| `step3TryIdentifyCaseId` (:892) | Gdy nagłówek ma `caseId`, zostaje on bez zmian. Sprawę z bazy ładuje później `transform2Cases` (:1841) | Zapis z `caseId` sprawy typu `B` i typem `A` w `root.getType()` trafia do logiki jako zmiana typu |
+| `step4PrepareTypeObject` (:1230) i `transform2Cases` (:1896) | Przy `forceChangeType=false` pomija zmiany typu (`setParams`), przy `true` dodaje pola do typu (`addParams`) | Dla migracji do istniejącego typu `A` zachowanie jest takie samo jak dla każdego zapisu. Pola spoza `A` dodałyby nową wersję typu `A` tylko przy `forceChangeType=true` |
+| `CaseLogicHelperService.updateCaseWithHistory` (:620-912) | `typeHasChanged` (inne `TypeCase.id` niż w bazie) tworzy nową wersję: stara sprawa dostaje `Z`, nowa `previousVersionId`. Dwie gałęzie: zmieniły się też pola (zapis „jak stoi”) albo tylko typ (przepisanie wartości według wspólnych definicji parametrów, `simpleName`) | **Migracja już istnieje w warstwie logicznej.** Brakuje tylko sposobu na wskazanie docelowego typu z poziomu żądania |
+| `updateCaseWithHistory` (:629-695) | Gdy zmiana typu pochodzi z warstwy biznesowej (`PROP_CHANGE_FROM_BUSINESS`) i wszystkie parametry nowego typu są w starym (po nazwie definicji i wersji), sprawa jest zapisywana w **starym** typie (`typeHasChanged = false`). Kod porównuje parametry, a nie kody typów | **Ryzyko:** migracja do typu `A`, którego pola są podzbiorem pól `B`, zostałaby po cichu zapisana jako `B`. Przy `CASE_AS_TYPE` trzeba ten krok pominąć |
+| `updateCaseWithHistory` (:719-781) | Zmiana typu wymaga powiązania magazynu z kodem typu (`Store2Type`). Przy zmianie samego typu, bez powiązania, bierze pierwszy magazyn typu. Przy zmianie typu i pól rzuca `LC005TypeChangeRelationshipWithStoreNotExsistsException` | Dokumentacja migracji musi o tym wspomnieć. Przy `CASE_AS_TYPE` należy podać `forceAddStore2Type` albo magazyn |
+
+**Do sprawdzenia przed implementacją:**
+
+- `typeId`, `groupId` i `storeId` w nagłówku sprawy `B` przy migracji (nadpisać czy zostawić).
+- Identyfikator sprawy: `CaseHelper.createCaseId(seq, typeCode)` wbudowuje kod typu w `caseId`. Sprawdzić, czy `initNewVersionCase` tworzy identyfikator z kodem nowego typu.
+- Klucz główny (`uniqueConstraintParamName`) kodu `A` względem sprawy z `B`: czy wyszukiwanie po PK nie znajdzie sprawy o tej samej wartości klucza w `A` (kolizja).
+- Czy wszystkie ścieżki zapisu (`save`, `saveList`, `initModel`) przechodzą przez `transform2Cases`/`step2TryIdentifyType`.
+
+**Stan implementacji (2026-10-20, niezbudowane, niezatwierdzone):** w `mercury-srv` metoda `CaseBusinessSupport.step2IdentifyTargetType`
+(ostatnia wersja typu ze wskazanego kodu, `className` nadpisane nazwą typu, brak typu to błąd), jej użycie w
+`CaseBusiness.transform2CasesInSameThread` tylko dla pierwszej iteracji (sprawa główna) oraz pominięcie przywracania starego
+typu w `CaseLogicHelperService.updateCaseWithHistory`, gdy nowy typ ma kod z parametru. W `mercury-ws-app`
+`CaseTypeServicesController` (`/rest/service/types/{typeCode}/{operation}`: `save`, `initModel`, `find`, `findFirst`,
+`loadSampleByTypeCode`, `searchByParams`, `searchByQuery`) i ścieżki w `CaseTypeOperations`. Kod wymaga `mercury-lib` 3.0.4.7
+(`RequestContextes`), więc budowanie możliwe po wydaniu biblioteki i podbiciu `mercury.static.version`. Do sprawdzenia na
+serwerze: ograniczenie `searchByParams` kluczem `LUCENE_TYPE_CODE_VALUE` w `paramsMap` i zapytania `searchByQuery` z
+klauzulą po tym polu (nie zweryfikowane, że pole przyjmuje taki zapis), migracja sprawy między typami z różnym zestawem pól.
+
+**Skutek dla planu:** nowy krok między krokami 4 i 5 „usługi per typ”: odczyt parametru w `step1`/`step2` (tylko sprawa główna),
+pominięcie przywracania starego typu, kontroler `/rest/service/types/{typeCode}/{operation}`, zmiana ścieżek w
+`CaseTypeOperations` i opis migracji w operacji `save`. Zmiana dotyka `mercury-lib` (nazwa enuma, wydanie biblioteki) i
+`mercury-srv`.
+
 ### Generator klas `org.mercury.data.javax` – wnioski
 
 Pakiet `mercury-srv/src/main/java/org/mercury/data/javax` to próba generowania klas Javy z typu sprawy:
