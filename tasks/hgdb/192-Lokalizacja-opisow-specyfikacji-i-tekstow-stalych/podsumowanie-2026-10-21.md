@@ -82,7 +82,23 @@ W `openapi_en/de/fr/ko.json` zostają tylko teksty spoza katalogów operacji (w 
 - Decyzja autora: język domyślny (`OpenApiTexts.DEFAULT_LANGUAGE = "pl"`) dla specyfikacji bez języka, do czasu Q2 (tłumaczenie
   `@WSDLDocumentation`). `openapi.json` jest spójnie polski; od `openapi_pl.json` różni się tylko 60 tekstami: poprawione literówki w
   katalogu `pl`, których adnotacje jeszcze nie mają. Testy 115/115.
-- Pozostaje w specyfikacjach: opisy schematów (261 wystąpień, 216 unikalnych) i pól (1840, 606 unikalnych) z `schema-docs.json`.
+- (stan sprzed kroku 3, nieaktualny) Pozostawały w specyfikacjach: opisy schematów (261 wystąpień, 216 unikalnych) i pól (1840, 606 unikalnych) z `schema-docs.json`.
+
+## Krok 3: opisy schematów i pól (Javadoc encji) w katalogach
+
+- Klucze `schema.<Schemat>` i `schema.<Schemat>.<pole>` (2615 na język, 1017 unikalnych tekstów) wyciągnięte z wygenerowanej
+  `openapi_pl.json` (skrypt w scratchpadzie), przetłumaczone `localizer.py` (pl→en, en→de, es, fr, ko; `glossary_constants.json`),
+  `validate` bez błędów. Scalone z katalogami tekstów stałych w module generatora: 2659 kluczy na język
+  (`mercury-ws-app-rest-generator/src/main/resources/META-INF/mercury/openapi-docs_<lang>.properties`).
+- `OpenApiSpecBuilder.schemaText`: opis z katalogu języka, a gdy brak klucza, Javadoc (`schema-docs.json`) i wpis w raporcie braków.
+  Nowy test w `SchemaDocsCatalogTest`. Testy 115/115 (wąski filtr, bez bazy).
+- Regresja: `openapi.json` i `openapi_pl.json` bez zmian po regeneracji (katalog `pl` odtwarza Javadoc). W en, de, es, fr, ko zmieniły się
+  same opisy (0 polskich znaków w tekstach, 4 różnice struktury: obecność `description` operacji zależy od liczby zdań tłumaczenia).
+  Raport generatora: brakujące tłumaczenia 0 we wszystkich językach.
+- Źródło prawdy dla polskich opisów schematów nadal Javadoc encji (`schema-docs.json`); po zmianie Javadoc katalog `pl` trzeba
+  odświeżyć tym samym skryptem (do zrobienia jako narzędzie, jeśli zmiany będą częste).
+- **Obserwacja:** generator bywa niedeterministyczny: w 1 z 5 przebiegów w schemacie `TypeParamPK` pojawia się dodatkowy
+  `$ref` do `TypeCase` (wszystkie siedem plików). Nie związane z zadaniem 192, wymaga osobnego rozpoznania (kolejność rozwiązywania typów).
 
 ## Czego nie sprawdzono
 
