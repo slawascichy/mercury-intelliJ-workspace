@@ -26,6 +26,17 @@ specyfikacji. Wszystkie zmiany z tego dnia są zatwierdzone przez autora (stan n
   języków, zapas na `openapi.json`, `?l=en`). Wąski filtr `CaseType*Test`, `ExtRestOpenApiTest`, `OpenApiResourcesTest`,
   `OpenApiLanguageTest`: **112 testów, 0 błędów** (`-pl mercury-ws-app -am`, bez testów z bazą).
 
+## Tłumaczenia es, fr, ko i przegląd de (po południu)
+
+- Narzędzie `D:\workspace\git\localization-project` (`localizer.py`) przerobione do wywołań z linii poleceń (dowolne ścieżki,
+  pamięć podręczna, kontrola zmiennych, ponowienia). Naprawione: certyfikaty SSL (`truststore`), model (`gemini-3.8-flash`, bo
+  `gemini-2.5-flash` jest niedostępny dla nowych użytkowników). Limit API (429) zatrzymał przebieg raz, wznowiony z pamięci podręcznej.
+- Do obu repozytoriów dodane pliki `openapi-docs_es/fr/ko.properties` (3325 kluczy w `mercury-lib`, 118 w `mercury`), `validate`
+  bez błędów i ostrzeżeń. `de` zastąpiony wersją po przeglądzie (402 klucze w `mercury-lib`, 39 w `mercury`). **Niezatwierdzone.**
+- Odrzucone przy przeglądzie `de`: „beliebig” → „verfügbar” (oryginał: „dowolny”) i niespójne „Behandlung” → „Verwaltung”/„Verarbeitung”.
+- Ograniczenie: es, fr i ko to tłumaczenie automatyczne bez przeglądu native speakera.
+- Reguła uprawnień dla narzędzia (`.claude/settings.local.json` w workspace) dodana przez autora, poza gitem.
+
 ## Czego nie sprawdzono
 
 - Nie ma testu z prawdziwym plikiem `openapi_<lang>.json`, bo generator nie ma jeszcze katalogów z wydanego `mercury-lib`.

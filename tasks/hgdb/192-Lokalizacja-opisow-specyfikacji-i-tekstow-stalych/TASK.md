@@ -60,11 +60,19 @@ webjara używanej w projekcie. Dwa warianty:
 | Etap 3 | Własne strony `swagger-ui-config` | ⬜ nie rozpoczęto |
 | Etap 4 | Interfejs Swagger UI | ⬜ nie rozpoczęto |
 
+## Tłumaczenia: sposób pracy (od 2026-10-21)
+
+Tłumaczy projekt autora `D:\workspace\git\localization-project` (`localizer.py`, Gemini, klucz w `.env`), a nie asystent.
+Asystent zarządza plikami `openapi-docs_<lang>.properties` i przekazuje je do narzędzia. Polecenia: `translate` (nowe języki z `en`),
+`review` (przegląd istniejącego tłumaczenia, raport zmian), `validate` (klucze, zmienne, polskie znaki, hangul). Narzędzie tłumaczy
+unikalne wartości (714 na 3443 klucze), ma pamięć podręczną (wznowienie po przerwie, np. po wyczerpaniu limitu API) i słownik
+`glossary.json` (`Case`, `TypeCase` bez tłumaczenia, terminologia `de`). Opis użycia: README projektu tłumacza.
+
 ## Do rozstrzygnięcia
 
 | # | Pytanie | Uwagi |
 |---|---|---|
-| Q1 | Które języki obejmuje pierwsze wydanie tłumaczeń? | Zrobione pl, en, de (2026-10-20). Poza nimi są jeszcze es, fr, ko (zasoby `resources_*` już istnieją) |
+| Q1 | Które języki obejmuje pierwsze wydanie tłumaczeń? | Zrobione pl, en, de (2026-10-20) oraz es, fr, ko (2026-10-21, tłumaczenie automatyczne z `en` przez narzędzie `D:\workspace\git\localization-project`, kontrola techniczna `validate` bez błędów; **bez przeglądu native speakera**). `de` przejrzane tym samym narzędziem (57 unikalnych poprawek w `mercury-lib`, 22 w `mercury`; odrzucone: „beliebig” → „verfügbar” i niespójne „Behandlung” → „Verwaltung”/„Verarbeitung”) |
 | Q2 | Czy tłumaczymy opisy w WSDL (zmiana tekstów adnotacji)? | Wynika z D22, wymaga uzgodnienia z wydaniem |
 | Q3 | Wariant dla interfejsu Swagger UI (plugin czy warstwa DOM)? | Rozstrzygnąć po sprawdzeniu wersji webjara |
 

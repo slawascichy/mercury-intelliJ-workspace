@@ -1,0 +1,7 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(/d/workspace/git/localization-project/.venv/Scripts/python.exe /d/workspace/git/localization-project/*)"
+    ]
+  }
+}
