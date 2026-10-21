@@ -20,7 +20,7 @@ Zasoby `META-INF/mercury/openapi-docs_<lang>.properties`, UTF-8 (surowe znaki), 
   Knoten, Beziehung, Einhängepunkt, Umschlag). Zakres Q1: na razie `pl`, `en`, `de`. Zostają `es`, `fr`, `ko`.
 - Poprawiono 35 linii polskich (literówki, spacje po kropce, urwane odnośniki `{@link}`, uzupełnione `forceAddStore2Type` i
   opis `page`), a poprawki przeniesiono do `en` i `de`. Adnotacje w kodzie nadal mają stary tekst.
-- `OpenApiDocsExtractor` (`mercury-lib/mercury-core`, `pro.ibpm.mercury.docs`) nie nadpisuje istniejącego pliku bez
+- `OpenApiDocsExtractor` (`mercury-lib/mercury-core`, `org.mercury.docs`) nie nadpisuje istniejącego pliku bez
   `--overwrite`, a przy nadpisaniu zostawia kopię `plik.bak-<czas>`.
 
 ## Generator (`mercury-ws-app-rest-generator`): zmiany niezatwierdzone
@@ -52,8 +52,9 @@ Zasoby `META-INF/mercury/openapi-docs_<lang>.properties`, UTF-8 (surowe znaki), 
 - `/rest/openapi.json?l=` to parametr główny, `lang=` jest aliasem (jak na stronie głównej i liście usług REST). Ta sama
   zasada ma objąć endpoint specyfikacji typu (dziś tylko `lang`). Kolejność: `l`, `lang`, `Accept-Language`, język systemu;
   niewłaściwa wartość jest ignorowana.
-- Nowe klasy idą do `org.mercury`. Wyjątek zrobiłem przez przeoczenie: `OpenApiDocsExtractor` leży w
-  `pro.ibpm.mercury.docs` obok `SchemaDocsGenerator` (do decyzji: przenieść do `org.mercury.docs`).
+- Nowe klasy idą do `org.mercury`. `OpenApiDocsExtractor` trafił najpierw do `pro.ibpm.mercury.docs` (przeoczenie), a
+  2026-10-21 został przeniesiony do `org.mercury.docs` (`git mv`, zmiana niezatwierdzona w `mercury-lib`).
+  `SchemaDocsGenerator` zostaje w `pro.ibpm.mercury.docs`.
 - Budowanie generatora z `-am` uruchamia sam generator i przepisuje `openapi.json`. Do sprawdzenia kodu użyto tylko filtra
   `-Dtest` na trzy klasy generatora (bez testów z bazą).
 
