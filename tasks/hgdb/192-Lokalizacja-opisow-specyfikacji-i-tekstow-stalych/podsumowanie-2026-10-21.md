@@ -37,6 +37,32 @@ specyfikacji. Wszystkie zmiany z tego dnia są zatwierdzone przez autora (stan n
 - Ograniczenie: es, fr i ko to tłumaczenie automatyczne bez przeglądu native speakera.
 - Reguła uprawnień dla narzędzia (`.claude/settings.local.json` w workspace) dodana przez autora, poza gitem.
 
+## Wydanie `mercury-lib` 3.0.4.8 i generator (wieczór)
+
+- `mercury-lib`: `minor_version.txt` 3.0.4.8, `install` i `deploy` wykonał autor, tag lekki `3.0.4.8` na `e3fe077` założony lokalnie
+  (niewypchnięty). `mercury/pom.xml`: `mercury.static.version` 3.0.4.8. Wersja projektu `mercury` zostaje 3.0.4.7.
+- Build generatora offline wymagał skopiowania z `mercury-lib/repo` do `.m2` artefaktów `mercury-entities:POSTGRESQL-3.0.4.8` i
+  `mercury-lib:3.0.4.8` (Maven nie łączy się z Nexusem: błąd PKIX, JVM nie ufa certyfikatowi).
+- Generator zapisał `openapi_<lang>.json` dla pl, en, de, es, fr, ko (niezatwierdzone). Raport braków: 57 brakujących tłumaczeń
+  w każdym języku, wszystkie z `ICaseIndexerFieldsManagerAction` (`mercury-lucene-indexes-api`, nieobjęty wcześniejszą ekstrakcją).
+- Dla tego interfejsu wyciągnięto 57 kluczy (`OpenApiDocsExtractor`), przetłumaczono `pl`→`en`, potem `en`→de, es, fr, ko
+  i wpisano do `mercury-lucene-indexes-api/src/main/resources/META-INF/mercury/` (6 plików, niezatwierdzone). Po przebudowie raport:
+  brakujące tłumaczenia 0.
+- Do narzędzia tłumacza dodano `style` i `style_by_lang` w `glossary.json` (opisy operacji po angielsku jako rzeczowniki: „Retrieval of …”).
+
+## Polskie teksty pozostałe w specyfikacjach (stan po przebudowie)
+
+W `openapi_en/de/fr/ko.json` zostają tylko teksty spoza katalogów operacji (w `es` liczby zawyża litera „ó”, w `pl` to oczekiwane):
+
+1. Stałe generatora (`OpenApiSpecBuilder`): `info.description`, opis schematu `mercuryOAuth`, zakresy `mrc-user` i `mrc-useradmin`,
+   opis zastępczego schematu typu.
+2. Opisy schematów i pól z `schema-docs.json` (Javadoc encji): 216 unikalnych opisów schematów i 606 unikalnych opisów pól
+   (ok. 82 tys. znaków; w specyfikacji 261 i 1840 wystąpień).
+3. Teksty tworzone po stronie serwera: `OpenApiController` (`servers.description`: „Aplikacja mercury-ws-app”), `ExtRestOpenApi`
+   (opisy koperty `errorCode`, `errorMessage`), `CaseHeaderSchema`, `CaseTypeFieldSchema` (formaty dat, sprawa skrócona),
+   `CaseTypeOperations` (23 literały, specyfikacje per typ).
+4. Poza specyfikacjami: strony `swagger-ui-config` i interfejs Swagger UI (etapy 3 i 4).
+
 ## Czego nie sprawdzono
 
 - Nie ma testu z prawdziwym plikiem `openapi_<lang>.json`, bo generator nie ma jeszcze katalogów z wydanego `mercury-lib`.
