@@ -64,7 +64,7 @@ webjara używanej w projekcie. Dwa warianty:
 |---|---|---|
 | Etap 1 | Opisy specyfikacji statycznej | 🟡 w toku: katalogi pl, en, de, generator i serwer (wybór języka `l`/`lang`) zatwierdzone, testy 112/112. Zostaje wydanie `mercury-lib`, regeneracja plików `openapi_<lang>.json` i sprawdzenie na serwerze. [Podsumowanie 2026-10-20](podsumowanie-2026-10-20.md), [2026-10-21](podsumowanie-2026-10-21.md) |
 | Etap 2 | Teksty stałe specyfikacji per typ | 🟡 kod gotowy 2026-10-21 (`OpenApiTexts`, 44 klucze `openapi.*` w 6 językach, teksty generatora i serwera), testy 114/114, niezatwierdzone i niesprawdzone na serwerze. Opisy schematów i pól z Javadoc też w katalogach (klucze `schema.*`, 2659 kluczy na język, krok 3 z 2026-10-21). Zostaje sprawdzenie na serwerze, wydanie i decyzja Q2 (adnotacje) |
-| Etap 3 | Własne strony `swagger-ui-config` | ⬜ nie rozpoczęto |
+| Etap 3 | Własne strony `swagger-ui-config` | 🟡 kod gotowy 2026-10-21: `types.html` bierze teksty z `/rest/openapi/ui/types.json` (klucze `ui.types.*` w katalogach, 6 języków), `index.html` przyjmuje `?l=`/`?lang=` oraz `?spec=..%2Frest%2Fopenapi.json%3Fl%3Dde`. Do sprawdzenia w przeglądarce po wdrożeniu. Zostaje `index.html` poza Swagger UI (etap 4) |
 | Etap 4 | Interfejs Swagger UI | ⬜ nie rozpoczęto |
 
 ## Tłumaczenia: sposób pracy (od 2026-10-21)

@@ -100,6 +100,18 @@ W `openapi_en/de/fr/ko.json` zostają tylko teksty spoza katalogów operacji (w 
 - **Obserwacja:** generator bywa niedeterministyczny: w 1 z 5 przebiegów w schemacie `TypeParamPK` pojawia się dodatkowy
   `$ref` do `TypeCase` (wszystkie siedem plików). Nie związane z zadaniem 192, wymaga osobnego rozpoznania (kolejność rozwiązywania typów).
 
+## Sprawdzenie na serwerze i etap 3 (strony)
+
+- Autor sprawdził na serwerze testowym: `/rest/openapi.json?l=pl|en|de|ko` działa, Swagger UI ładuje specyfikację z `?l=`/`?lang=`
+  wpisanym w polu „Explore”.
+- `swagger-initializer.js`: `index.html?l=de` (alias `lang`) dopisuje język do adresu specyfikacji; `?spec=..%2Frest%2Fopenapi.json%3Fl%3Dde`
+  (też `lang`) jest dozwolone obok adresów specyfikacji typu; obcy adres albo dodatkowe parametry są odrzucane (domyślna specyfikacja).
+  14 przypadków sprawdzonych w Node.
+- `types.html`: etykiety strony z nowego publicznego endpointu `OpenApiUiTextsController` (`/rest/openapi/ui/types.json`, wybór języka
+  jak w specyfikacjach), klucze `ui.types.*` (17) w katalogach modułu generatora (2676 kluczy na język), polski tekst zapasowy w HTML
+  i w kodzie. Linki do specyfikacji typu używają `l=` (główny parametr). Test `OpenApiUiTextsControllerTest`; testy 119/119.
+- Do sprawdzenia w przeglądarce po przebudowie i wdrożeniu WAR: `types.html?l=de|ko|en` (nagłówek, filtr, przyciski, komunikaty).
+
 ## Czego nie sprawdzono
 
 - Nie ma testu z prawdziwym plikiem `openapi_<lang>.json`, bo generator nie ma jeszcze katalogów z wydanego `mercury-lib`.
