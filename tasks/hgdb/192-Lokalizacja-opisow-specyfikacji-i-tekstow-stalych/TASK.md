@@ -34,7 +34,7 @@ Tekstem domyślnym jest angielski, pierwszym katalogiem tłumaczeń polski.
 ### Wybór języka (stan po zadaniu 133, krok 6)
 - API specyfikacji: dziś `?lang=` (pl, en-GB, en_GB; wartość błędna jest ignorowana), potem `Accept-Language`,
   potem język systemu. **Ustalenie z 2026-10-20:** w `/rest/openapi.json` i w specyfikacji typu parametrem głównym ma być
-  `?l=`, a `?lang=` jego aliasem (jak na stronach). Kolejność bez zmian. Do zrobienia w etapie 1 (strona serwerowa).
+  `?l=`, a `?lang=` jego aliasem (jak na stronach). Kolejność bez zmian. **Zrobione 2026-10-21** (`OpenApiLanguage`, `OpenApiController`, `CaseTypeOpenApiController`), nie sprawdzone na serwerze.
 - Strony `types.html` i `index.html`: parametr `?l=` (jak na stronie głównej i liście usług REST), alias `?lang=`.
   Wartość trafia do adresu specyfikacji typu. Pełna specyfikacja statyczna na razie ignoruje język.
 - Aktualne języki zasobów: pl, en, de, es, fr, ko.
@@ -55,7 +55,7 @@ webjara używanej w projekcie. Dwa warianty:
 
 | Obszar | Zakres | Stan |
 |---|---|---|
-| Etap 1 | Opisy specyfikacji statycznej | 🟡 w toku: katalogi pl, en, de zatwierdzone, generator gotowy (niezatwierdzony), serwer (wybór języka) do zrobienia. [Podsumowanie 2026-10-20](podsumowanie-2026-10-20.md) |
+| Etap 1 | Opisy specyfikacji statycznej | 🟡 w toku: katalogi pl, en, de, generator i serwer (wybór języka `l`/`lang`) zatwierdzone, testy 112/112. Zostaje wydanie `mercury-lib`, regeneracja plików `openapi_<lang>.json` i sprawdzenie na serwerze. [Podsumowanie 2026-10-20](podsumowanie-2026-10-20.md), [2026-10-21](podsumowanie-2026-10-21.md) |
 | Etap 2 | Teksty stałe specyfikacji per typ | ⬜ nie rozpoczęto |
 | Etap 3 | Własne strony `swagger-ui-config` | ⬜ nie rozpoczęto |
 | Etap 4 | Interfejs Swagger UI | ⬜ nie rozpoczęto |
