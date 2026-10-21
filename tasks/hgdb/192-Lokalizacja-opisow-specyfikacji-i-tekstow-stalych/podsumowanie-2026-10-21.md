@@ -79,6 +79,9 @@ W `openapi_en/de/fr/ko.json` zostają tylko teksty spoza katalogów operacji (w 
   Dla angielskiego opisów operacji zostaje `glossary.json` (rzeczowniki „Retrieval of …”).
 - Testy: 114 przechodzi (wąski filtr, bez bazy); nowe testy języka tytułu, wersji i nagłówka typu, uwag o typie, opisu serwera,
   tekstów stałych generatora z katalogu. Zmienione oczekiwania: opis `id` i tytuł typu w domyślnym angielskim.
+- Decyzja autora: język domyślny (`OpenApiTexts.DEFAULT_LANGUAGE = "pl"`) dla specyfikacji bez języka, do czasu Q2 (tłumaczenie
+  `@WSDLDocumentation`). `openapi.json` jest spójnie polski; od `openapi_pl.json` różni się tylko 60 tekstami: poprawione literówki w
+  katalogu `pl`, których adnotacje jeszcze nie mają. Testy 115/115.
 - Pozostaje w specyfikacjach: opisy schematów (261 wystąpień, 216 unikalnych) i pól (1840, 606 unikalnych) z `schema-docs.json`.
 
 ## Czego nie sprawdzono

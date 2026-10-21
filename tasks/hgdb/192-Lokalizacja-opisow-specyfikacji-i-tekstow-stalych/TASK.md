@@ -39,6 +39,13 @@ Tekstem domyślnym jest angielski, pierwszym katalogiem tłumaczeń polski.
   Wartość trafia do adresu specyfikacji typu. Pełna specyfikacja statyczna na razie ignoruje język.
 - Aktualne języki zasobów: pl, en, de, es, fr, ko.
 
+### Język specyfikacji domyślnej (decyzja autora 2026-10-21)
+- Do czasu przetłumaczenia opisów w `@WSDLDocumentation` (Q2, krok 6 planu) domyślny `openapi.json` (bez wyboru języka) jest **po polsku**,
+  tak jak adnotacje, a nie angielski jak zakładała D22. Teksty stałe generatora i serwera w specyfikacji domyślnej też są polskie.
+  Zapas dla brakującego klucza w danym języku zostaje angielski.
+- Jedno miejsce przełączenia: `OpenApiTexts.DEFAULT_LANGUAGE` (`mercury-ws-app-rest-generator`). Po przetłumaczeniu adnotacji
+  zmienić na `"en"` i zregenerować specyfikacje.
+
 ### Kodowanie plików `*.properties`
 - `\uXXXX` stosujemy tam, gdzie konieczne. `WebAppMsg_*` jest w `\u` (inaczej strona główna pokazuje `Ã¼`).
 - `resources_*`, `LuceneErrorMsg_*`, `LuceneFieldsLabels_*` i `ClusterErrorMsg_*` są w UTF-8 (surowe znaki).
