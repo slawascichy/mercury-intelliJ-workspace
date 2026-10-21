@@ -63,6 +63,24 @@ W `openapi_en/de/fr/ko.json` zostają tylko teksty spoza katalogów operacji (w 
    `CaseTypeOperations` (23 literały, specyfikacje per typ).
 4. Poza specyfikacjami: strony `swagger-ui-config` i interfejs Swagger UI (etapy 3 i 4).
 
+## Teksty stałe generatora i serwera (etap 2 zadania, grupy 1 i 3)
+
+- Nowa klasa `OpenApiTexts` (`mercury-ws-app-rest-generator`, `org.mercury.rest.server.generator`): tekst stały w języku katalogu,
+  zapas angielski, argumenty `{0}`, `{1}`; `forLanguage(lang)` z pamięcią na język. Klucze `openapi.*` leżą w katalogach
+  `META-INF/mercury/openapi-docs_<lang>.properties` modułu generatora (nowy `src/main/resources`, 44 klucze w pl, en, de, es, fr, ko).
+  Jar generatora jest na classpath serwera, więc te same katalogi czyta generator i serwer. Katalogi `mercury-ws-app` (extractor) bez zmian.
+- Generator (`OpenApiSpecBuilder`): `info.description`, opis schematu OAuth, zakresy `mrc-*`, opis pola `id`, opis schematu zastępczego.
+  Specyfikacja domyślna (`openapi.json`, bez języka) ma teraz te teksty po angielsku (decyzja D22), `openapi_pl.json` bez zmian.
+- Serwer: `CaseTypeLocalizer.texts()` (metoda domyślna, lambdy w testach działają) niesie teksty do `CaseTypeOpenApi` (tytuł
+  „Case type …”, wersja typu, tak/nie), `CaseHeaderSchema`, `CaseTypeFieldSchema` (formaty dat, sprawa skrócona); `CaseTypeOperations.apply`
+  ma przeciążenie z `OpenApiTexts` (uwagi o typie, wynik stronicowany, listy); `ExtRestOpenApi` (koperta); `OpenApiController`
+  (`servers.description`). Język specyfikacji typu: `CaseTypeOpenApiService.languageOf(context)`.
+- Tłumaczenie katalogu: `localizer.py` z `glossary_constants.json` (zdania zostają zdaniami, `mercury-ws-app` bez tłumaczenia).
+  Dla angielskiego opisów operacji zostaje `glossary.json` (rzeczowniki „Retrieval of …”).
+- Testy: 114 przechodzi (wąski filtr, bez bazy); nowe testy języka tytułu, wersji i nagłówka typu, uwag o typie, opisu serwera,
+  tekstów stałych generatora z katalogu. Zmienione oczekiwania: opis `id` i tytuł typu w domyślnym angielskim.
+- Pozostaje w specyfikacjach: opisy schematów (261 wystąpień, 216 unikalnych) i pól (1840, 606 unikalnych) z `schema-docs.json`.
+
 ## Czego nie sprawdzono
 
 - Nie ma testu z prawdziwym plikiem `openapi_<lang>.json`, bo generator nie ma jeszcze katalogów z wydanego `mercury-lib`.
