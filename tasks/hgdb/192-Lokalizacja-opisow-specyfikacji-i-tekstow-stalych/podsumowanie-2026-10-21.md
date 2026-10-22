@@ -1,135 +1,76 @@
 # Zadanie 192: podsumowanie prac z 2026-10-21
 
-Gałąź robocza: `hgdb-192` (`mercury-lib` i `mercury`). Dzień obejmuje etap 1, stronę serwerową: wybór języka w kontrolerach
-specyfikacji. Wszystkie zmiany z tego dnia są zatwierdzone przez autora (stan na koniec dnia).
+Gałąź robocza: `hgdb-192` (`mercury-lib` i `mercury`). Status zadania: [TASK.md](TASK.md#status-zadania). Poprzedni dzień:
+[podsumowanie-2026-10-20.md](podsumowanie-2026-10-20.md).
 
-## Zrobione
+## Wynik dnia
 
-- `OpenApiDocsExtractor` (`mercury-lib/mercury-core`) przeniesiony z `pro.ibpm.mercury.docs` do `org.mercury.docs`
-  (zasada D16: nowe komponenty w `org.mercury`). `SchemaDocsGenerator` zostaje w `pro.ibpm.mercury.docs`.
-- `OpenApiLanguage` (nowa klasa, `mercury-ws-app`, `org.mercury.rest.server.actions`): wspólny wybór języka. Kolejność:
-  parametr `l`, alias `lang`, `Accept-Language`, język systemu. Niepoprawna wartość jest pomijana, a wybór przechodzi do
-  następnego źródła. Wynik `jezyk_KRAJ` (`resolveLocale`) albo sam język (`language`).
-- `OpenApiController` (`/rest/openapi.json`):
-  - język wybiera `OpenApiLanguage`, a gdy nic nie pasuje, `MercuryConfig.getSystemLang()`;
-  - język musi być na liście `OpenApiDocsCatalog.LANGUAGES` (pl, en, de, es, fr, ko), inaczej wersja domyślna. To ogranicza
-    pamięć podręczną do 7 wpisów i nazwę zasobu do znanych wartości;
-  - plik `openapi_<lang>.json`, gdy istnieje, a w przeciwnym razie `openapi.json`;
-  - pamięć podręczna per język (`specifications`), klucz wariantu `język|serverUrl`;
-  - katalog `OpenApiDocsCatalog.load` w runtime przekazany do `ExtRestOpenApi.apply`, więc opisy `*ExtRest` też są
-    w wybranym języku. Brakujące tłumaczenia trafiają do logu (`info`);
-  - publiczne `specification(request)` ma tę samą sygnaturę, więc specyfikacja typu dostaje operacje `*ExtRest` w języku
-    żądania bez zmian po swojej stronie.
-- `CaseTypeOpenApiController` (specyfikacja typu): parametr `l` (główny) obok `lang` (alias), wybór przez `OpenApiLanguage`.
-  Statyczne `resolveLocale(lang, header, territory)` zostało jako delegacja (używa go `CaseTypeLocalizationTest`).
-- Testy: nowy `OpenApiLanguageTest` (6), `ExtRestOpenApiTest` (+1: katalog nadpisuje opisy), `OpenApiResourcesTest` (+3: kolejność
-  języków, zapas na `openapi.json`, `?l=en`). Wąski filtr `CaseType*Test`, `ExtRestOpenApiTest`, `OpenApiResourcesTest`,
-  `OpenApiLanguageTest`: **112 testów, 0 błędów** (`-pl mercury-ws-app -am`, bez testów z bazą).
+Etap 1 (opisy operacji) jest kompletny w kodzie i w katalogach: sześć języków (pl, en, de, es, fr, ko), wybór języka `l` / `lang` /
+`Accept-Language` / język systemu, pliki `openapi_<lang>.json`, wydana biblioteka `mercury-lib` 3.0.4.8. Etap 2 (teksty stałe) i etap 3
+(własne strony) mają gotowy kod, zatwierdzony przez autora. Autor sprawdził na serwerze testowym `/rest/openapi.json?l=pl|en|de|ko` oraz
+Swagger UI z `?l=` w polu „Explore”. Nowe strony (`index.html?l=`, `types.html?l=`) czekają na wdrożenie WAR i sprawdzenie w przeglądarce.
 
-## Tłumaczenia es, fr, ko i przegląd de (po południu)
+## Co zrobiono
 
-- Narzędzie `D:\workspace\git\localization-project` (`localizer.py`) przerobione do wywołań z linii poleceń (dowolne ścieżki,
-  pamięć podręczna, kontrola zmiennych, ponowienia). Naprawione: certyfikaty SSL (`truststore`), model (`gemini-3.8-flash`, bo
-  `gemini-2.5-flash` jest niedostępny dla nowych użytkowników). Limit API (429) zatrzymał przebieg raz, wznowiony z pamięci podręcznej.
-- Do obu repozytoriów dodane pliki `openapi-docs_es/fr/ko.properties` (3325 kluczy w `mercury-lib`, 118 w `mercury`), `validate`
-  bez błędów i ostrzeżeń. `de` zastąpiony wersją po przeglądzie (402 klucze w `mercury-lib`, 39 w `mercury`). **Niezatwierdzone.**
-- Odrzucone przy przeglądzie `de`: „beliebig” → „verfügbar” (oryginał: „dowolny”) i niespójne „Behandlung” → „Verwaltung”/„Verarbeitung”.
-- Ograniczenie: es, fr i ko to tłumaczenie automatyczne bez przeglądu native speakera.
-- Reguła uprawnień dla narzędzia (`.claude/settings.local.json` w workspace) dodana przez autora, poza gitem.
+1. **Wybór języka na serwerze (etap 1).** `OpenApiLanguage` (kolejność `l`, alias `lang`, `Accept-Language`, system; wartość niepoprawna
+   jest pomijana). `OpenApiController` serwuje `openapi_<lang>.json` (zapas `openapi.json`), pamięć podręczna per język, katalog dla `*ExtRest`
+   ładowany w runtime. `CaseTypeOpenApiController` ma `l` obok `lang`. `OpenApiDocsExtractor` przeniesiony do `org.mercury.docs`.
+2. **Narzędzie tłumacza** (`D:\workspace\git\localization-project`, `localizer.py`, Gemini): CLI na dowolnych ścieżkach (`translate`, `review`,
+   `validate`, `ping`, `models`), tłumaczy unikalne wartości, pamięć podręczna z wznawianiem, kontrola zmiennych, słowniki `glossary.json`
+   i `glossary_constants.json` (styl, terminy, `de`: wielkie litery rzeczowników). Naprawione: certyfikaty SSL (`truststore`), model
+   `gemini-3.8-flash`. Reguła uprawnień dla narzędzia dodana przez autora. Zasada pracy: tłumaczy narzędzie, Claude zarządza plikami.
+3. **Katalogi tłumaczeń:** es, fr, ko (nowe) i przegląd `de` w `mercury-lib` (3325 kluczy) i `mercury` (118, `I*ExtRest`); odrzucone przy
+   przeglądzie `de`: „beliebig” → „verfügbar” i niespójne „Behandlung”. Interfejs `ICaseIndexerFieldsManagerAction` (`mercury-lucene-indexes-api`,
+   57 kluczy) znaleziony dzięki raportowi generatora, wyciągnięty, przetłumaczony i dodany.
+4. **Wydanie `mercury-lib` 3.0.4.8:** `minor_version.txt`, `install` i `deploy` wykonał autor, tag lekki `3.0.4.8` założony lokalnie. `mercury.static.version`
+   w `mercury/pom.xml` podbity do 3.0.4.8 (wersja projektu `mercury` zostaje 3.0.4.7). Generator zapisuje sześć `openapi_<lang>.json`; raport braków: 0.
+5. **Teksty stałe (etap 2):** `OpenApiTexts` (język katalogu, zapas angielski, argumenty `{0}`), klucze `openapi.*` w katalogach modułu generatora
+   (jar generatora jest na classpath serwera). Generator (`info`, OAuth, zakresy, opis `id`) i serwer (`CaseTypeOpenApi`, `CaseHeaderSchema`,
+   `CaseTypeFieldSchema`, `CaseTypeOperations`, `ExtRestOpenApi`, `servers.description`) biorą teksty z katalogów.
+6. **Opisy schematów i pól z Javadoc (krok 3):** klucze `schema.<Schemat>` i `schema.<Schemat>.<pole>` (2615 na język), przetłumaczone i scalone z katalogami
+   modułu generatora (razem 2676 kluczy na język). `OpenApiSpecBuilder.schemaText`: katalog języka, zapas Javadoc z wpisem w raporcie braków.
+   Regresja: `openapi.json` i `openapi_pl.json` bez zmian; w en, de, es, fr, ko 0 polskich znaków w tekstach.
+7. **Własne strony (etap 3):** `index.html?l=de` (alias `lang`) i `?spec=..%2Frest%2Fopenapi.json%3Fl%3Dde` w `swagger-initializer.js` (14 przypadków w Node);
+   `types.html` pobiera teksty (17 kluczy `ui.types.*`) z nowego publicznego endpointu `/rest/openapi/ui/types.json` (`OpenApiUiTextsController`),
+   polski tekst zapasowy w HTML; linki do specyfikacji typu używają `l=`.
+8. **Nagłówki `@author`:** cztery klasy utworzone w zadaniu (`OpenApiLanguage`, `OpenApiDocsCatalog`, `OpenApiTexts`, `OpenApiDocsExtractor`) mają
+   `slawas@scisoftware.pl`; pozostałe pliki bez zmian (w `mercury` 359 plików, w `mercury-lib` 155 plików z `ibpm.pro`).
 
-## Wydanie `mercury-lib` 3.0.4.8 i generator (wieczór)
+## Decyzje autora z dnia
 
-- `mercury-lib`: `minor_version.txt` 3.0.4.8, `install` i `deploy` wykonał autor, tag lekki `3.0.4.8` na `e3fe077` założony lokalnie
-  (niewypchnięty). `mercury/pom.xml`: `mercury.static.version` 3.0.4.8. Wersja projektu `mercury` zostaje 3.0.4.7.
-- Build generatora offline wymagał skopiowania z `mercury-lib/repo` do `.m2` artefaktów `mercury-entities:POSTGRESQL-3.0.4.8` i
-  `mercury-lib:3.0.4.8` (Maven nie łączy się z Nexusem: błąd PKIX, JVM nie ufa certyfikatowi).
-- Generator zapisał `openapi_<lang>.json` dla pl, en, de, es, fr, ko (niezatwierdzone). Raport braków: 57 brakujących tłumaczeń
-  w każdym języku, wszystkie z `ICaseIndexerFieldsManagerAction` (`mercury-lucene-indexes-api`, nieobjęty wcześniejszą ekstrakcją).
-- Dla tego interfejsu wyciągnięto 57 kluczy (`OpenApiDocsExtractor`), przetłumaczono `pl`→`en`, potem `en`→de, es, fr, ko
-  i wpisano do `mercury-lucene-indexes-api/src/main/resources/META-INF/mercury/` (6 plików, niezatwierdzone). Po przebudowie raport:
-  brakujące tłumaczenia 0.
-- Do narzędzia tłumacza dodano `style` i `style_by_lang` w `glossary.json` (opisy operacji po angielsku jako rzeczowniki: „Retrieval of …”).
+- **Język domyślny specyfikacji = polski** (`OpenApiTexts.DEFAULT_LANGUAGE = "pl"`) do czasu przetłumaczenia `@WSDLDocumentation` (Q2). Jedno miejsce
+  przełączenia, po Q2 zmienić na `"en"` i zregenerować.
+- Katalog stałych tekstów i opisów schematów leży w module generatora (`mercury`), a nie w `mercury-lib`, więc nie wymaga kolejnego wydania biblioteki.
+- Tłumaczenia wykonuje narzędzie autora, nie Claude (zapisane w pamięci asystenta).
 
-## Polskie teksty pozostałe w specyfikacjach (stan po przebudowie)
+## Testy
 
-W `openapi_en/de/fr/ko.json` zostają tylko teksty spoza katalogów operacji (w `es` liczby zawyża litera „ó”, w `pl` to oczekiwane):
-
-1. Stałe generatora (`OpenApiSpecBuilder`): `info.description`, opis schematu `mercuryOAuth`, zakresy `mrc-user` i `mrc-useradmin`,
-   opis zastępczego schematu typu.
-2. Opisy schematów i pól z `schema-docs.json` (Javadoc encji): 216 unikalnych opisów schematów i 606 unikalnych opisów pól
-   (ok. 82 tys. znaków; w specyfikacji 261 i 1840 wystąpień).
-3. Teksty tworzone po stronie serwera: `OpenApiController` (`servers.description`: „Aplikacja mercury-ws-app”), `ExtRestOpenApi`
-   (opisy koperty `errorCode`, `errorMessage`), `CaseHeaderSchema`, `CaseTypeFieldSchema` (formaty dat, sprawa skrócona),
-   `CaseTypeOperations` (23 literały, specyfikacje per typ).
-4. Poza specyfikacjami: strony `swagger-ui-config` i interfejs Swagger UI (etapy 3 i 4).
-
-## Teksty stałe generatora i serwera (etap 2 zadania, grupy 1 i 3)
-
-- Nowa klasa `OpenApiTexts` (`mercury-ws-app-rest-generator`, `org.mercury.rest.server.generator`): tekst stały w języku katalogu,
-  zapas angielski, argumenty `{0}`, `{1}`; `forLanguage(lang)` z pamięcią na język. Klucze `openapi.*` leżą w katalogach
-  `META-INF/mercury/openapi-docs_<lang>.properties` modułu generatora (nowy `src/main/resources`, 44 klucze w pl, en, de, es, fr, ko).
-  Jar generatora jest na classpath serwera, więc te same katalogi czyta generator i serwer. Katalogi `mercury-ws-app` (extractor) bez zmian.
-- Generator (`OpenApiSpecBuilder`): `info.description`, opis schematu OAuth, zakresy `mrc-*`, opis pola `id`, opis schematu zastępczego.
-  Specyfikacja domyślna (`openapi.json`, bez języka) ma teraz te teksty po angielsku (decyzja D22), `openapi_pl.json` bez zmian.
-- Serwer: `CaseTypeLocalizer.texts()` (metoda domyślna, lambdy w testach działają) niesie teksty do `CaseTypeOpenApi` (tytuł
-  „Case type …”, wersja typu, tak/nie), `CaseHeaderSchema`, `CaseTypeFieldSchema` (formaty dat, sprawa skrócona); `CaseTypeOperations.apply`
-  ma przeciążenie z `OpenApiTexts` (uwagi o typie, wynik stronicowany, listy); `ExtRestOpenApi` (koperta); `OpenApiController`
-  (`servers.description`). Język specyfikacji typu: `CaseTypeOpenApiService.languageOf(context)`.
-- Tłumaczenie katalogu: `localizer.py` z `glossary_constants.json` (zdania zostają zdaniami, `mercury-ws-app` bez tłumaczenia).
-  Dla angielskiego opisów operacji zostaje `glossary.json` (rzeczowniki „Retrieval of …”).
-- Testy: 114 przechodzi (wąski filtr, bez bazy); nowe testy języka tytułu, wersji i nagłówka typu, uwag o typie, opisu serwera,
-  tekstów stałych generatora z katalogu. Zmienione oczekiwania: opis `id` i tytuł typu w domyślnym angielskim.
-- Decyzja autora: język domyślny (`OpenApiTexts.DEFAULT_LANGUAGE = "pl"`) dla specyfikacji bez języka, do czasu Q2 (tłumaczenie
-  `@WSDLDocumentation`). `openapi.json` jest spójnie polski; od `openapi_pl.json` różni się tylko 60 tekstami: poprawione literówki w
-  katalogu `pl`, których adnotacje jeszcze nie mają. Testy 115/115.
-- (stan sprzed kroku 3, nieaktualny) Pozostawały w specyfikacjach: opisy schematów (261 wystąpień, 216 unikalnych) i pól (1840, 606 unikalnych) z `schema-docs.json`.
-
-## Krok 3: opisy schematów i pól (Javadoc encji) w katalogach
-
-- Klucze `schema.<Schemat>` i `schema.<Schemat>.<pole>` (2615 na język, 1017 unikalnych tekstów) wyciągnięte z wygenerowanej
-  `openapi_pl.json` (skrypt w scratchpadzie), przetłumaczone `localizer.py` (pl→en, en→de, es, fr, ko; `glossary_constants.json`),
-  `validate` bez błędów. Scalone z katalogami tekstów stałych w module generatora: 2659 kluczy na język
-  (`mercury-ws-app-rest-generator/src/main/resources/META-INF/mercury/openapi-docs_<lang>.properties`).
-- `OpenApiSpecBuilder.schemaText`: opis z katalogu języka, a gdy brak klucza, Javadoc (`schema-docs.json`) i wpis w raporcie braków.
-  Nowy test w `SchemaDocsCatalogTest`. Testy 115/115 (wąski filtr, bez bazy).
-- Regresja: `openapi.json` i `openapi_pl.json` bez zmian po regeneracji (katalog `pl` odtwarza Javadoc). W en, de, es, fr, ko zmieniły się
-  same opisy (0 polskich znaków w tekstach, 4 różnice struktury: obecność `description` operacji zależy od liczby zdań tłumaczenia).
-  Raport generatora: brakujące tłumaczenia 0 we wszystkich językach.
-- Źródło prawdy dla polskich opisów schematów nadal Javadoc encji (`schema-docs.json`); po zmianie Javadoc katalog `pl` trzeba
-  odświeżyć tym samym skryptem (do zrobienia jako narzędzie, jeśli zmiany będą częste).
-- **Obserwacja:** generator bywa niedeterministyczny: w 1 z 5 przebiegów w schemacie `TypeParamPK` pojawia się dodatkowy
-  `$ref` do `TypeCase` (wszystkie siedem plików). Nie związane z zadaniem 192, wymaga osobnego rozpoznania (kolejność rozwiązywania typów).
-
-## Sprawdzenie na serwerze i etap 3 (strony)
-
-- Autor sprawdził na serwerze testowym: `/rest/openapi.json?l=pl|en|de|ko` działa, Swagger UI ładuje specyfikację z `?l=`/`?lang=`
-  wpisanym w polu „Explore”.
-- `swagger-initializer.js`: `index.html?l=de` (alias `lang`) dopisuje język do adresu specyfikacji; `?spec=..%2Frest%2Fopenapi.json%3Fl%3Dde`
-  (też `lang`) jest dozwolone obok adresów specyfikacji typu; obcy adres albo dodatkowe parametry są odrzucane (domyślna specyfikacja).
-  14 przypadków sprawdzonych w Node.
-- `types.html`: etykiety strony z nowego publicznego endpointu `OpenApiUiTextsController` (`/rest/openapi/ui/types.json`, wybór języka
-  jak w specyfikacjach), klucze `ui.types.*` (17) w katalogach modułu generatora (2676 kluczy na język), polski tekst zapasowy w HTML
-  i w kodzie. Linki do specyfikacji typu używają `l=` (główny parametr). Test `OpenApiUiTextsControllerTest`; testy 119/119.
-- Do sprawdzenia w przeglądarce po przebudowie i wdrożeniu WAR: `types.html?l=de|ko|en` (nagłówek, filtr, przyciski, komunikaty).
-
-## Czego nie sprawdzono
-
-- Nie ma testu z prawdziwym plikiem `openapi_<lang>.json`, bo generator nie ma jeszcze katalogów z wydanego `mercury-lib`.
-  Do tego czasu serwer wybiera język poprawnie, ale zawsze zwraca `openapi.json`.
-- Nie sprawdzano na działającym serwerze (Tomcat, `?l=en`, `?lang=de`, `Accept-Language`).
-- Przy buildzie z `-am` `openapi.json` nie zmienił się (`git status` czysty poza plikami testów).
-
-## Co dalej (kolejność)
-
-1. Wydanie `mercury-lib` z katalogami `openapi-docs_*`, podbicie zależności w `mercury`, regeneracja `openapi.json`
-   i `openapi_<lang>.json`, sprawdzenie raportu braków. Wymaga decyzji autora (wydanie biblioteki).
-2. Sprawdzenie na serwerze: `?l=`, `?lang=`, `Accept-Language` w `/rest/openapi.json` i w specyfikacji typu, w `pl`, `en`, `de`.
-3. Teksty stałe generatora (`info`, schemat OAuth, zakresy, opis `id`, „OK”) i opisy pól z `schema-docs.json` do katalogu.
-4. Zmiana adnotacji na angielskie (zmieni WSDL, Q2), dopiero po sprawdzeniu mechanizmu.
-5. `es`, `fr`, `ko` (Q1), przegląd `de` przez native speakera.
+Wąski filtr bez bazy (`mvn -o -pl mercury-ws-app -am test -Dtest='CaseType*Test,ExtRestOpenApiTest,OpenApiResourcesTest,OpenApiLanguageTest,OpenApiUiTextsControllerTest,
+OpenApiDocsCatalogTest,SchemaDocsCatalogTest,WsdlDocumentationTextTest'`): **119 testów, 0 błędów**. Testy `mercury` z bazą nie były uruchamiane (czyszczą bazę).
 
 ## Stan repozytoriów na koniec dnia
 
-- `mercury-lib` (`hgdb-192`): przeniesienie `OpenApiDocsExtractor` zatwierdzone.
-- `mercury` (`hgdb-192`): generator, `ExtRestOpenApi`, `OpenApiLanguage`, kontrolery i testy zatwierdzone.
-- Workspace: ten plik i aktualizacja `TASK.md` czekają na commit.
+- `mercury-lib` i `mercury` (`hgdb-192`): wszystkie zmiany z dnia zatwierdzone przez autora. Tag `3.0.4.8` w `mercury-lib` jest lokalny, niewypchnięty.
+- Workspace: ten plik i `TASK.md` do zatwierdzenia.
+- Projekt tłumacza (`localization-project`): zmiany lokalne (`localizer.py`, słowniki, README), poza zakresem gitów `mercury*`.
+- Lokalne repozytorium Maven (`.m2`): do builda offline skopiowano z `mercury-lib/repo` artefakty `mercury-entities:POSTGRESQL-3.0.4.8` i `mercury-lib:3.0.4.8`
+  (Maven nie łączy się z Nexusem, błąd PKIX).
+
+## Ograniczenia i ryzyka
+
+- **Generator bywa niedeterministyczny:** w 1 z 5 przebiegów w schemacie `TypeParamPK` pojawia się dodatkowy `$ref` do `TypeCase` (siedem plików). Przed commitem
+  `openapi_*.json` sprawdzić `git diff`. Wymaga osobnego rozpoznania (kolejność rozwiązywania typów w swagger-core), niezwiązane z zadaniem 192.
+- es, fr i ko to tłumaczenie automatyczne bez przeglądu native speakera; `de` przejrzane tym samym narzędziem.
+- Źródłem polskich opisów schematów jest nadal Javadoc encji; po jego zmianie trzeba odświeżyć katalog `pl` (skrypt wyciągający klucze jest w scratchpadzie sesji,
+  nie w repozytorium).
+- Wersja `info.version` specyfikacji to nadal wersja projektu `mercury` (3.0.4.7).
+
+## Na jutro (kolejność)
+
+1. Przebudować i wdrożyć WAR na serwer testowy, sprawdzić w przeglądarce: `index.html?l=de`, `index.html?spec=..%2Frest%2Fopenapi.json%3Fl%3Dde`,
+   `types.html?l=de|ko|en`, specyfikację typu w pl, en, de (`CalendarUserEvent`), operacje i opisy schematów w sześciu językach.
+2. Decyzja Q2: czy i kiedy tłumaczymy `@WSDLDocumentation` (zmiana wydania `mercury-lib`, tylko `wsdl:documentation`); po niej `DEFAULT_LANGUAGE = "en"`.
+3. Etap 4: interfejs Swagger UI (przyciski „Explore”, „Authorize”, „Try it out”); wcześniej sprawdzić, czy webjar (wersja 5.x) ma wsparcie języków (Q3).
+4. Osobne zadanie: niedeterminizm generatora (`TypeParamPK` → `TypeCase`).
+5. Narzędzie do odświeżania katalogu `pl` z Javadoc (przenieść skrypt do repozytorium) oraz przegląd natywny es, fr, ko.
+6. Wypchnięcie tagu `3.0.4.8` i commitów (decyzja autora); dokumentacja workspace (`docs/moduly/mercury.md`, `docs/moduly/mercury-lib.md`) zgodnie z DoD zadania.
