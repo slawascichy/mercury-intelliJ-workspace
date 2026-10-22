@@ -91,6 +91,8 @@ Zadania wydzielone:
   (opisy operacji, kopert i parametrów usług per typ) trzeba przenieść do tego samego mechanizmu. Dotychczasowe polskie opisy
   w adnotacjach trzeba przetłumaczyć na angielski, a polskie wersje przenieść do katalogu `pl`. Zmieni to opisy w WSDL.
 
+- [195 – Lokalizacja tekstów interfejsu Swagger UI](../195-Lokalizacja-interfejsu-Swagger-UI/TASK.md): etap 4 zadania 192 (napisy samego
+  Swagger UI, webjar 5.32.0 bez i18n) wydzielony i odłożony (decyzja autora, 2026-10-22).
 - [194 – Tłumaczenie opisów w `@WSDLDocumentation` na angielski](../194-Tlumaczenie-opisow-WSDL-na-angielski/TASK.md): dawne założenie D22
   (tekst domyślny adnotacji po angielsku, polski w katalogu `pl`) wydzielone z zadania 192 i odłożone na później (decyzja autora, 2026-10-22).
 - [193 – Analiza typu sprawy z porównaniem wektorowym](../193-Analiza-typu-porownanie-wektorowe/TASK.md): ograniczenie
