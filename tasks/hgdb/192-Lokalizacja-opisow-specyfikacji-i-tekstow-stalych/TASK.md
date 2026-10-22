@@ -29,7 +29,8 @@ Tekstem domyślnym jest angielski, pierwszym katalogiem tłumaczeń polski.
 - Etap 2 (specyfikacje per typ) zostaje przy kluczach `${…}` rozwiązywanych przez `IResourceLogic.getMessage`.
   Teksty stałe z kodu przenosi się do tego samego mechanizmu.
 - Dotychczasowe polskie opisy w adnotacjach trzeba przetłumaczyć na angielski, a polskie wersje przenieść do katalogu `pl`.
-  **Zmieni to opisy w WSDL.**
+  **Zmieni to opisy w WSDL.** **Decyzja autora z 2026-10-22: ta część (dawne pytanie Q2) jest wydzielona do zadania
+  [194](../194-Tlumaczenie-opisow-WSDL-na-angielski/TASK.md) i odłożona na później; zadanie 192 jej nie wymaga.**
 
 ### Wybór języka (stan po zadaniu 133, krok 6)
 - API specyfikacji: dziś `?lang=` (pl, en-GB, en_GB; wartość błędna jest ignorowana), potem `Accept-Language`,
@@ -40,7 +41,7 @@ Tekstem domyślnym jest angielski, pierwszym katalogiem tłumaczeń polski.
 - Aktualne języki zasobów: pl, en, de, es, fr, ko.
 
 ### Język specyfikacji domyślnej (decyzja autora 2026-10-21)
-- Do czasu przetłumaczenia opisów w `@WSDLDocumentation` (Q2, krok 6 planu) domyślny `openapi.json` (bez wyboru języka) jest **po polsku**,
+- Do czasu przetłumaczenia opisów w `@WSDLDocumentation` (zadanie 194, odłożone) domyślny `openapi.json` (bez wyboru języka) jest **po polsku**,
   tak jak adnotacje, a nie angielski jak zakładała D22. Teksty stałe generatora i serwera w specyfikacji domyślnej też są polskie.
   Zapas dla brakującego klucza w danym języku zostaje angielski.
 - Jedno miejsce przełączenia: `OpenApiTexts.DEFAULT_LANGUAGE` (`mercury-ws-app-rest-generator`). Po przetłumaczeniu adnotacji
@@ -62,9 +63,9 @@ webjara używanej w projekcie. Dwa warianty:
 
 | Obszar | Zakres | Stan |
 |---|---|---|
-| Etap 1 | Opisy specyfikacji statycznej | 🟡 w toku: katalogi pl, en, de, generator i serwer (wybór języka `l`/`lang`) zatwierdzone, testy 112/112. Zostaje wydanie `mercury-lib`, regeneracja plików `openapi_<lang>.json` i sprawdzenie na serwerze. [Podsumowanie 2026-10-20](podsumowanie-2026-10-20.md), [2026-10-21](podsumowanie-2026-10-21.md) |
-| Etap 2 | Teksty stałe specyfikacji per typ | 🟡 kod gotowy 2026-10-21 (`OpenApiTexts`, 44 klucze `openapi.*` w 6 językach, teksty generatora i serwera), testy 114/114, niezatwierdzone i niesprawdzone na serwerze. Opisy schematów i pól z Javadoc też w katalogach (klucze `schema.*`, 2659 kluczy na język, krok 3 z 2026-10-21). Zostaje sprawdzenie na serwerze, wydanie i decyzja Q2 (adnotacje) |
-| Etap 3 | Własne strony `swagger-ui-config` | 🟡 kod gotowy 2026-10-21: `types.html` bierze teksty z `/rest/openapi/ui/types.json` (klucze `ui.types.*` w katalogach, 6 języków), `index.html` przyjmuje `?l=`/`?lang=` oraz `?spec=..%2Frest%2Fopenapi.json%3Fl%3Dde`. Do sprawdzenia w przeglądarce po wdrożeniu. Zostaje `index.html` poza Swagger UI (etap 4) |
+| Etap 1 | Opisy specyfikacji statycznej | ✅ 2026-10-22: katalogi w 6 językach (pl, en, de, es, fr, ko), wydanie `mercury-lib` 3.0.4.8, pliki `openapi_<lang>.json`, wybór języka `l`/`lang`/`Accept-Language`, sprawdzone na serwerze. [2026-10-20](podsumowanie-2026-10-20.md), [2026-10-21](podsumowanie-2026-10-21.md) |
+| Etap 2 | Teksty stałe specyfikacji per typ | ✅ 2026-10-22: `OpenApiTexts` (teksty stałe generatora i serwera, klucze `openapi.*`), opisy schematów i pól z Javadoc (`schema.*`), opisy usług tylko dla REST (`rest.*`); 2683 klucze na język w module generatora, raport braków 0, sprawdzone na serwerze. Specyfikacja domyślna po polsku do czasu Q2 |
+| Etap 3 | Własne strony `swagger-ui-config` | ✅ 2026-10-22, sprawdzone w przeglądarce: `types.html` bierze teksty z `/rest/openapi/ui/types.json` (klucze `ui.types.*`, 6 języków), `index.html` przyjmuje `?l=`/`?lang=` oraz `?spec=..%2Frest%2Fopenapi.json%3Fl%3Dde`. Teksty samego Swagger UI to etap 4 |
 | Etap 4 | Interfejs Swagger UI | ⬜ nie rozpoczęto |
 
 ## Tłumaczenia: sposób pracy (od 2026-10-21)
@@ -75,12 +76,22 @@ Asystent zarządza plikami `openapi-docs_<lang>.properties` i przekazuje je do n
 unikalne wartości (714 na 3443 klucze), ma pamięć podręczną (wznowienie po przerwie, np. po wyczerpaniu limitu API) i słownik
 `glossary.json` (`Case`, `TypeCase` bez tłumaczenia, terminologia `de`). Opis użycia: README projektu tłumacza.
 
+## Ustalenia z realizacji
+
+- Język domyślny specyfikacji (`openapi.json`) to polski (`OpenApiTexts.DEFAULT_LANGUAGE`), do czasu Q2; zapas brakującego klucza to angielski.
+- Klucze katalogu: `Interfejs[.metoda[.param.<nazwa>|.returns]]` (operacje), `openapi.*`, `schema.<Schemat>[.<pole>]`, `ui.types.*`, `rest.<Interfejs>`.
+- Teksty stałe, opisy schematów i strony leżą w module generatora (`mercury`), opisy operacji w `mercury-lib` (`mercury-ws-server-api`),
+  `mercury-ws-app` i `mercury-lucene-indexes-api`. Opis w `docs/moduly/mercury.md` i `docs/moduly/mercury-lib.md`.
+- Wersja projektu `mercury` podbita do 3.0.4.8 (równa `mercury.static.version`), więc `info.version` specyfikacji to 3.0.4.8.
+- Obserwacje 56–59 w `docs/obserwacje.md` (niedeterminizm generatora, opisy XML, budowanie offline, koszt sprawdzania typu spraw).
+- Uzupełnienie zadania 133: usługi zapisu i usuwania per typ (D23), zob. [TASK.md zadania 133](../133-Swagger-implementacja/TASK.md).
+
 ## Do rozstrzygnięcia
 
 | # | Pytanie | Uwagi |
 |---|---|---|
-| Q1 | Które języki obejmuje pierwsze wydanie tłumaczeń? | Zrobione pl, en, de (2026-10-20) oraz es, fr, ko (2026-10-21, tłumaczenie automatyczne z `en` przez narzędzie `D:\workspace\git\localization-project`, kontrola techniczna `validate` bez błędów; **bez przeglądu native speakera**). `de` przejrzane tym samym narzędziem (57 unikalnych poprawek w `mercury-lib`, 22 w `mercury`; odrzucone: „beliebig” → „verfügbar” i niespójne „Behandlung” → „Verwaltung”/„Verarbeitung”) |
-| Q2 | Czy tłumaczymy opisy w WSDL (zmiana tekstów adnotacji)? | Wynika z D22, wymaga uzgodnienia z wydaniem |
+| Q1 | Które języki obejmuje pierwsze wydanie tłumaczeń? | ✅ Rozstrzygnięte 2026-10-22 (decyzja autora): pierwsze wydanie obejmuje języki, które są zrobione, czyli **pl, en, de, es, fr, ko**. Stan: zrobione pl, en, de (2026-10-20) oraz es, fr, ko (2026-10-21, tłumaczenie automatyczne z `en` przez narzędzie `D:\workspace\git\localization-project`, kontrola techniczna `validate` bez błędów; **bez przeglądu native speakera**). `de` przejrzane tym samym narzędziem (57 unikalnych poprawek w `mercury-lib`, 22 w `mercury`; odrzucone: „beliebig” → „verfügbar” i niespójne „Behandlung” → „Verwaltung”/„Verarbeitung”) |
+| Q2 | Czy tłumaczymy opisy w WSDL (zmiana tekstów adnotacji)? | ✅ Rozstrzygnięte 2026-10-22: wydzielone do zadania [194](../194-Tlumaczenie-opisow-WSDL-na-angielski/TASK.md) i odłożone. Dopóki trwa obecny stan, `OpenApiTexts.DEFAULT_LANGUAGE` zostaje `pl` |
 | Q3 | Wariant dla interfejsu Swagger UI (plugin czy warstwa DOM)? | Rozstrzygnąć po sprawdzeniu wersji webjara |
 
 ## Definicja Gotowości (DoD)

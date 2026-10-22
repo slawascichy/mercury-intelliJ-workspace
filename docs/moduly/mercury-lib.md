@@ -41,6 +41,19 @@ flowchart LR
     remoting[mercury-spring-remoting]
 ```
 
+## Katalogi tłumaczeń opisów OpenAPI
+
+Zadanie 192 ([TASK.md](../../tasks/hgdb/192-Lokalizacja-opisow-specyfikacji-i-tekstow-stalych/TASK.md)):
+
+- `mercury-ws-server-api/src/main/resources/META-INF/mercury/openapi-docs_<lang>.properties` (pl, en, de, es, fr, ko; po 3325 kluczy) to
+  tłumaczenia opisów z `@WSDLDocumentation` interfejsów `I*Action`. Klucze: `Interfejs`, `Interfejs.metoda`,
+  `Interfejs.metoda.param.<nazwa z @WebParam>`, `Interfejs.metoda.returns`. Adnotacje zostają źródłem tekstu domyślnego (dziś polskiego),
+  więc WSDL się nie zmienia. Pliki są w UTF-8 (surowe znaki), a serwer i generator łączą wszystkie zasoby języka z classpath.
+- `mercury-core` (`org.mercury.docs.OpenApiDocsExtractor`) to narzędzie jednorazowej migracji: JavaParser wyciąga opisy z adnotacji do
+  pliku `.properties`; bez `--overwrite` nie nadpisuje istniejącego pliku, a przy nadpisaniu zostawia kopię `.bak-<czas>`.
+- `SchemaDocsGenerator` (`pro.ibpm.mercury.docs`, `mercury-core`) zapisuje podczas budowy Javadoc klas do `META-INF/mercury/schema-docs.json`.
+- Wydanie 3.0.4.8 (2026-10-21) zawiera katalogi; kolejne zmiany tekstów wymagają wydania biblioteki (`minor_version.txt`, tag lekki z numerem wydania).
+
 ## Budowanie
 
 ```bash

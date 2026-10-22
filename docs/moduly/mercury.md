@@ -3,13 +3,14 @@
 | | |
 |---|---|
 | Lokalizacja | `D:\workspace\git\mercury` |
-| GAV | `io.hgdb:mercury:3.0.4.6` (pom) |
+| GAV | `io.hgdb:mercury:3.0.4.8` (pom) |
 | Java | 1.8 |
 | Opis z POM | System uniwersalnego źródła danych. |
 
 Implementacja serwera Mercury DB: dostęp do danych, indeksowanie Lucene, logika biznesowa,
 usługi SOAP/REST/RMI, GUI administracyjne i aplikacje WAR uruchamiane w Apache Tomcat.
-Moduły mają GAV `io.hgdb.mercury:<moduł>:3.0.4.6`, chyba że w tabeli podano inaczej.
+Moduły mają GAV `io.hgdb.mercury:<moduł>:3.0.4.8`, chyba że w tabeli podano inaczej. Wersja projektu jest równa wersji
+biblioteki `mercury-lib` (`mercury.static.version`) i trafia do `info.version` specyfikacji OpenAPI.
 
 Wersja 3.0.4.2 zmienia format XML modelu obiektu MRC (przestrzenie nazw) i dodaje kontrolę wersji węzłów klastra.
 Opis zmian i kolejność wdrożenia: [wydanie 3.0.4.2](../wydanie-3.0.4.2.md).
@@ -103,7 +104,9 @@ Dokumentacja usług REST (zadanie 133, [etap 1](../../tasks/hgdb/133-Swagger-imp
 
 - **Specyfikacja.** OpenAPI 3.1 powstaje przy budowie w `mercury-ws-app-rest-generator` (`exec-maven-plugin`, faza `compile`)
   razem z kontrolerami `XxxRest`. Wynik jest zapisywany w repozytorium: `mercury-ws-app/src/main/resources/openapi/openapi.json`
-  (kontrolery w `src/main/generated`). Zapis jest deterministyczny. Raport braków opisów: `mercury-ws-app-rest-generator/target/openapi-doc-report.txt`.
+  (specyfikacja domyślna, w języku adnotacji) i `openapi_<lang>.json` dla każdego języka z katalogiem tłumaczeń (pl, en, de, es, fr, ko);
+  kontrolery są w `src/main/generated`. Zapis ma być deterministyczny, ale zaobserwowano rzadkie odstępstwo (obserwacja 56), więc przed
+  commitem warto sprawdzić `git diff`. Raport braków opisów i tłumaczeń: `mercury-ws-app-rest-generator/target/openapi-doc-report.txt`.
 - **Źródła opisów.** Opisy operacji i parametrów to `@WSDLDocumentation` na interfejsach `I*Action` w `mercury-lib`
   (`mercury-ws-server-api`) w stałym formacie: opis, blok `Parametry:`, blok `Zwraca:`. Opisy klas i pól schematów to Javadoc,
   zapisywany podczas budowy modułów `mercury-lib` i `mercury-lucene-indexes-api` do `META-INF/mercury/schema-docs.json` w jarach
@@ -120,6 +123,21 @@ Dokumentacja usług REST (zadanie 133, [etap 1](../../tasks/hgdb/133-Swagger-imp
 - **Jackson.** Serwer używa Jacksona 2.18.2 (`jackson.version` i `jackson.databind.version` w `mercury/pom.xml`; wcześniej 2.13.2).
   `org.mercury.gui.listeners.JacksonConstraintsListener` (`web.xml` obu aplikacji) znosi domyślny limit długości napisu w odczycie
   JSON-a (20 000 000 znaków od Jacksona 2.15), żeby duże wartości LOB w sprawach nadal się odczytywały.
+- **Języki** (zadanie 192, [TASK.md](../../tasks/hgdb/192-Lokalizacja-opisow-specyfikacji-i-tekstow-stalych/TASK.md)).
+  `OpenApiController` wybiera język specyfikacji: parametr `l` (alias `lang`), `Accept-Language`, język systemu (klasa
+  `org.mercury.rest.server.actions.OpenApiLanguage`); język spoza listy daje `openapi.json`. Pamięć podręczna jest per język.
+  - Katalogi tłumaczeń `META-INF/mercury/openapi-docs_<lang>.properties` (UTF-8, surowe znaki) leżą w czterech modułach:
+    `mercury-lib/mercury-ws-server-api` (opisy operacji `I*Action`), `mercury-ws-app` (opisy `I*ExtRest`), `mercury-lucene-indexes-api`
+    (`ICaseIndexerFieldsManagerAction`) oraz `mercury-ws-app-rest-generator` (teksty stałe i opisy schematów). Wszystkie zasoby języka są łączone.
+  - Klucze: `Interfejs`, `Interfejs.metoda`, `Interfejs.metoda.param.<nazwa>`, `Interfejs.metoda.returns` (operacje), `openapi.*` (teksty
+    stałe generatora i serwera z argumentami `{0}`), `schema.<Schemat>[.<pole>]` (opisy z Javadoc), `ui.types.*` (strona wyboru typu)
+    i `rest.<Interfejs>` (opis usługi tylko dla REST, np. bez wariantów XML, których REST nie ma). Brakujący klucz ma zapas angielski
+    (`OpenApiTexts`), a jego nazwa trafia do raportu generatora.
+  - Język domyślny `OpenApiTexts.DEFAULT_LANGUAGE = "pl"` to język opisów w `@WSDLDocumentation`; po ich przetłumaczeniu (pytanie Q2
+    zadania 192) zmienić na `en` i zregenerować specyfikacje.
+  - Narzędzia: `OpenApiDocsExtractor` (`mercury-lib/mercury-core`, `org.mercury.docs`) wyciąga opisy z adnotacji, a odświeżanie kluczy
+    `schema.*` po zmianie Javadoc opisuje `tasks/hgdb/192-.../narzedzia/README.md`. Tłumaczy projekt `D:\workspace\git\localization-project`
+    (`localizer.py`, Gemini), nie asystent; es, fr i ko to tłumaczenie automatyczne bez przeglądu native speakera.
 
 ## Dokumentacja OpenAPI typu sprawy
 
@@ -143,11 +161,17 @@ Status: [TASK.md](../../tasks/hgdb/133-Swagger-implementacja/TASK.md#status-zada
   `search/searchByQuery`, `search/explainPlanSearchByQuery`, `search/dateMetricQuery`, `history/findByCaseId`,
   `history/findByCaseIdAllVersions`. Dla list i wyników stronicowanych typ trafia do zapytania, dla pojedynczej sprawy jest
   sprawdzany w odpowiedzi.
+- **Usługi zapisu i usuwania** (zadanie 133, D23; kształt DTO jak w `CaseBusinessRest`): `remove`, `removeList`, `removeSubCase`,
+  `removeSubCasesList`, `removeSubCasesAll`, `updateCaseParamsByParams`, `updateCasesParamsByParams`. Sprawy w żądaniu muszą być typu ze
+  ścieżki albo typu zależnego od niego (bezpośrednio i pośrednio, np. `BpmTask` dla `BpmBPDInstance`; zbiór wyznacza
+  `CaseTypeOpenApiService.typeCodesInTree`). Operacje zbiorcze (`removeList`, `updateCasesParamsByParams`) odrzucają całość przy
+  jakiejkolwiek sprawie innego typu. Typy ustala jedno zapytanie `findByIdList`, a przy błędzie odczytu operacja się nie wykonuje.
+  Operacje `removeSubCase*` usuwają referencje do spraw zależnych (nie same sprawy) i są w specyfikacji tylko dla typów ze sprawami zależnymi.
 - **Język opisów.** Teksty typu w postaci `${klucz}` (etykiety, opisy, nazwy opcji słowników) są tłumaczone przez `IResourceLogic`
-  na język z `?lang=` (`pl`, `en-GB`, `en_GB`; na stronach Swagger UI parametr `?l=`, jak na stronie głównej, z aliasem `?lang=`), a bez niego z nagłówka `Accept-Language` albo języka systemu. Specyfikacja ma
+  na język z parametru `l` (alias `lang`; `pl`, `en-GB`, `en_GB`), a bez niego z nagłówka `Accept-Language` albo języka systemu. Teksty stałe typu (tytuł, wersja, opisy kopert i stronicowania, uwagi o typie, formaty dat) są w katalogach (`OpenApiTexts`, klucze `openapi.*`), a nie w kodzie. Specyfikacja ma
   `info.x-language`, a przetłumaczone nazwy opcji trafiają do `x-enumNames` (obok `enum` z wartościami). Klucz bez tłumaczenia jest
   pomijany, a tytuł pola wraca do `recomendedLabel`, potem do nazwy definicji.
-- **Strona wyboru typu.** `/swagger-ui/types.html` (z wyborem języka opisów; `types.html?l=de` ustawia język, a `index.html?spec=…&l=de` dopisuje `lang` do adresu specyfikacji typu) (chroniona logowaniem w `web.xml`) pokazuje typy i ich wersje, a kliknięcie otwiera
+- **Strona wyboru typu.** `/swagger-ui/types.html` (chroniona logowaniem w `web.xml`; `types.html?l=de` ustawia język opisów i etykiet strony, które pobiera z publicznego `GET /rest/openapi/ui/types.json`, klucze `ui.types.*`, `OpenApiUiTextsController`; `index.html?l=de` i `index.html?spec=..%2Frest%2Fopenapi.json%3Fl%3Dde` dopisują język do adresu specyfikacji) pokazuje typy i ich wersje, a kliknięcie otwiera
   Swagger UI z `index.html?spec=../rest/openapi/types/{kod}.json[?typeId=…]`. Pliki `swagger-initializer.js` i `types.html` mają
   `Cache-Control: no-store` (osobne mapowania `mvc:resources` przed `/swagger-ui/**`). „Try it out” dla `POST /rest/service/…`
   wymaga tokenu (przycisk Authorize, przepływ `password`).
@@ -180,7 +204,9 @@ Uwagi do budowania serwera testowego (`mercury-server`):
   `webapps/mercury-ws-app` i `webapps/mercury-gui-registry`, żeby Tomcat rozpakował nowe WAR-y.
 - Biblioteki zewnętrzne w `apache-tomcat/mercury/lib` (np. Jackson) nie są aktualizowane przez instalację. Przy zmianie ich wersji
   podmień jary ręcznie, biorąc je z `mercury-server/target/dependency`.
-- Maven pracuje w trybie offline (`MAVEN_ARGS=-o`). Nowe artefakty ściąga się osobno poleceniem `mvn dependency:get`.
+- Maven pracuje w trybie offline (`MAVEN_ARGS=-o`). Nowe artefakty ściąga się osobno poleceniem `mvn dependency:get`. Po `install.sh` w
+  `mercury-lib` artefakty `mercury-entities:<dostawca>-<wersja>` i `mercury-lib:<wersja>` (pom nadrzędny) mogą leżeć tylko w `mercury-lib/repo`,
+  a nie w `~/.m2`: do budowy `mercury` offline trzeba je tam skopiować (obserwacja 58).
 
 ## Pozostałe katalogi
 

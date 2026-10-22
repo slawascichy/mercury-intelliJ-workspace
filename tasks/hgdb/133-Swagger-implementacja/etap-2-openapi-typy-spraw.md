@@ -403,6 +403,13 @@ i `?typeId=` ostatniej mają `TstSubItem` 2.0 (`ilosc`, `produkt`, `uwagi`), a `
    `CaseTypeOperations` i kontrolerze); (3) `loadSubCase*` i `searchInDB` z enumami z typu; (4) metryki; (5) D tylko jako opis
    „operacja ogólna, nie przypisana do typu”.
 
+**Uzupełnienie 2026-10-22 (decyzja D23, na prośbę autora): usługi zapisu i usuwania z `CaseBusinessRest` per typ.** Do operacji
+typu doszły `remove`, `removeList`, `removeSubCase`, `removeSubCasesList`, `removeSubCasesAll`, `updateCaseParamsByParams` i
+`updateCasesParamsByParams` (kształt DTO, nie logiczny JSON). Sprawa w żądaniu może być typu ze ścieżki albo typu zależnego od niego
+(bezpośrednio i pośrednio, np. `BpmTask` dla `BpmBPDInstance`); operacje zbiorcze odrzucają całość przy jakiejkolwiek sprawie innego typu.
+Kod: `CaseTypeServicesController`, `CaseTypeOpenApiService.typeCodesInTree`, `CaseTypeOperations`. Sprawdzone testami jednostkowymi;
+sprawdzenie na serwerze na danych testowych jeszcze przed nami. Koszt sprawdzania typu przy dużych listach: obserwacja 59.
+
 ### Generator klas `org.mercury.data.javax` – wnioski
 
 Pakiet `mercury-srv/src/main/java/org/mercury/data/javax` to próba generowania klas Javy z typu sprawy:
