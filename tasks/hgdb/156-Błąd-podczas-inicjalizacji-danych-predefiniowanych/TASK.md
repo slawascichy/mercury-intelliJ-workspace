@@ -1,5 +1,6 @@
 # [156] Błąd podczas inicjalizacji danych predefiniowanych
 
+https://github.com/slawascichy/hgdb/issues/156
 
 Podczas startu serwera w logach można znaleźć błąd:
 
@@ -25,3 +26,10 @@ Szczegóły: Klucz (username)=(sysmercury) już istnieje.  Call getNextException
 ```
 
 Błąd nie wnosi żadnych konsekwencji na działanie systemu, ale jest denerwujący (zaśmieca logi). Trzeba to poprawić.
+
+## Kontekst z zadania 172: Problem z działaniem wątku UserInfoUpdateSecretary
+
+Task-Url: https://github.com/slawascichy/hgdb/issues/172
+
+Od dłuższego czasu obserwujemy problemy z MRC. W logach pojawiają się błędu dotyczące wątku UserInfoUpdateSecretary. Ma to wpływ na działanie biznesowe produktu. Usługi zapisu sprawy wykonują się w nieskończoność. Wątki są zablokowane po stronie MRC.
+
