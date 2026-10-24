@@ -1,4 +1,6 @@
-# [194] Tłumaczenie opisów w `@WSDLDocumentation` na angielski (tekst domyślny dokumentacji i WSDL)
+# [198] Tłumaczenie opisów w `@WSDLDocumentation` na angielski (tekst domyślny dokumentacji i WSDL)
+
+https://github.com/slawascichy/hgdb/issues/198
 
 > Zadanie wydzielone z [192 – Lokalizacja opisów specyfikacji](../192-Lokalizacja-opisow-specyfikacji-i-tekstow-stalych/TASK.md)
 > (pytanie Q2 i decyzja D22 z zadania [133](../133-Swagger-implementacja/TASK.md)); decyzja autora z 2026-10-22: **odłożone na później**.

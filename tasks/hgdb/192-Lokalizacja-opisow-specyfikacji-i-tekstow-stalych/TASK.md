@@ -30,7 +30,7 @@ Tekstem domyślnym jest angielski, pierwszym katalogiem tłumaczeń polski.
   Teksty stałe z kodu przenosi się do tego samego mechanizmu.
 - Dotychczasowe polskie opisy w adnotacjach trzeba przetłumaczyć na angielski, a polskie wersje przenieść do katalogu `pl`.
   **Zmieni to opisy w WSDL.** **Decyzja autora z 2026-10-22: ta część (dawne pytanie Q2) jest wydzielona do zadania
-  [194](../194-Tlumaczenie-opisow-WSDL-na-angielski/TASK.md) i odłożona na później; zadanie 192 jej nie wymaga.**
+  [194](../198-Tlumaczenie-opisow-WSDL-na-angielski/TASK.md) i odłożona na później; zadanie 192 jej nie wymaga.**
 
 ### Wybór języka (stan po zadaniu 133, krok 6)
 - API specyfikacji: dziś `?lang=` (pl, en-GB, en_GB; wartość błędna jest ignorowana), potem `Accept-Language`,
@@ -91,7 +91,7 @@ unikalne wartości (714 na 3443 klucze), ma pamięć podręczną (wznowienie po 
 | # | Pytanie | Uwagi |
 |---|---|---|
 | Q1 | Które języki obejmuje pierwsze wydanie tłumaczeń? | ✅ Rozstrzygnięte 2026-10-22 (decyzja autora): pierwsze wydanie obejmuje języki, które są zrobione, czyli **pl, en, de, es, fr, ko**. Stan: zrobione pl, en, de (2026-10-20) oraz es, fr, ko (2026-10-21, tłumaczenie automatyczne z `en` przez narzędzie `D:\workspace\git\localization-project`, kontrola techniczna `validate` bez błędów; **bez przeglądu native speakera**). `de` przejrzane tym samym narzędziem (57 unikalnych poprawek w `mercury-lib`, 22 w `mercury`; odrzucone: „beliebig” → „verfügbar” i niespójne „Behandlung” → „Verwaltung”/„Verarbeitung”) |
-| Q2 | Czy tłumaczymy opisy w WSDL (zmiana tekstów adnotacji)? | ✅ Rozstrzygnięte 2026-10-22: wydzielone do zadania [194](../194-Tlumaczenie-opisow-WSDL-na-angielski/TASK.md) i odłożone. Dopóki trwa obecny stan, `OpenApiTexts.DEFAULT_LANGUAGE` zostaje `pl` |
+| Q2 | Czy tłumaczymy opisy w WSDL (zmiana tekstów adnotacji)? | ✅ Rozstrzygnięte 2026-10-22: wydzielone do zadania [194](../198-Tlumaczenie-opisow-WSDL-na-angielski/TASK.md) i odłożone. Dopóki trwa obecny stan, `OpenApiTexts.DEFAULT_LANGUAGE` zostaje `pl` |
 | Q3 | Wariant dla interfejsu Swagger UI (plugin czy warstwa DOM)? | ➡️ Przeniesione do zadania [195](../195-Lokalizacja-interfejsu-Swagger-UI/TASK.md) (webjar 5.32.0 bez i18n; rekomendacja: warstwa DOM) |
 
 ## Definicja Gotowości (DoD)

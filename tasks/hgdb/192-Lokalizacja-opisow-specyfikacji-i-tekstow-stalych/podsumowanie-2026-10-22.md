@@ -31,7 +31,7 @@ testowym oraz w przeglądarce w 6 językach (pl, en, de, es, fr, ko). Etap 4 (na
 7. **Porządki dokumentacji.** `docs/moduly/mercury.md` (GAV 3.0.4.8, języki, usługi zapisu i usuwania, `types.html`), `docs/moduly/mercury-lib.md` (katalogi),
    `docs/obserwacje.md` (nowa sekcja, pozycje 56–59), `TASK.md` zadań 133 i 192, skrypty `narzedzia/` (`extract_schema_keys.py`, `merge_catalogs.py`, README).
 8. **Nowe zadania wydzielone z 192:**
-   - [194](../194-Tlumaczenie-opisow-WSDL-na-angielski/TASK.md): tłumaczenie `@WSDLDocumentation` na angielski (dawne Q2). Do tego czasu `OpenApiTexts.DEFAULT_LANGUAGE = "pl"`.
+   - [194](../198-Tlumaczenie-opisow-WSDL-na-angielski/TASK.md): tłumaczenie `@WSDLDocumentation` na angielski (dawne Q2). Do tego czasu `OpenApiTexts.DEFAULT_LANGUAGE = "pl"`.
    - [195](../195-Lokalizacja-interfejsu-Swagger-UI/TASK.md): lokalizacja napisów Swagger UI (etap 4, dawne Q3). Rozpoznanie: webjar `swagger-ui` 5.32.0 nie ma obsługi
      wielu języków (brak `i18n`, napisy wpisane na stałe). Rekomendacja asystenta: warstwa DOM (niezatwierdzona).
 9. **Tag.** `mercury-lib`: tag `3.0.4.8` jest już na zdalnym repozytorium (wypchnięty przez autora). `mercury`: założony lokalnie tag adnotowany `3.0.4.8` na ostatnim
