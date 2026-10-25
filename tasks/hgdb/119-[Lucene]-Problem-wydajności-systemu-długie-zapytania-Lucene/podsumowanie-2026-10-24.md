@@ -431,3 +431,14 @@ jednostkowe (0,26 do 0,34 ms na trafienie dziecka w pętli kontra 0,02 do 0,04 m
 dają próg opłacalności ok. 0,06 do 0,12, a nie ok. 0,4 do 0,6 jak w regule. Trafne decyzje: Mts (korzeń), Lead i `PARENT`
 (dziecko), serie Poznań z Vrf, Abs, Clb, Lty (dziecko, żal 1,0 do 1,1). To potwierdza kierunek zmian W3 (jawny model kosztu z
 kalibrowanymi stałymi, sondy liczności).
+
+
+### Uwagi operacyjne (2026-10-25, W1)
+
+- **Wielkość liter kodu typu w testach:** domyślnie jak dawniej (zapytanie zmniejsza litery; pasuje do indeksów INEA, więc
+   nie jest już potrzebne). Dla indeksu wygenerowanego testem  (zachowuje wielkość
+  liter, np. ) trzeba dodać ****.
+- **Nie uruchamiać  bez :** zbiera testy modułów nadrzędnych, które czyszczą bazę
+  (widziano  w testach ). Do testów modułu  używać
+  . Baza  miała w tym
+  momencie nadal 200 000 wierszy (przebieg przerwany po wykryciu).

@@ -162,3 +162,17 @@ W0 2, W1 3, W2 4 (spike 1, wdrożenie 3), W3 6, W4 5, W5 4, W6 1, W7 5, W8 1, W9
 3. Czy mogę zacząć od W0 i W1 (poprawność), a spike W2 (Lucene 8.11.x) wykonać zaraz po nich?
 4. G4: czy do testów podziału między węzłami będzie dostępny klaster (kilka węzłów), czy zostajemy przy projekcie i wątkach
    lokalnych?
+
+
+## 9. Postęp (aktualizowane na bieżąco)
+
+| Krok | Stan | Commit |
+|---|---|---|
+| Gałęzie  w  i  | gotowe (G1: ) | — |
+| W0 baza pomiarowa (41 zapytań, CSV, test różnicowy, żal) | **gotowe**, 28/41 spełnia kryterium |  (mercury) |
+| W1  i  w , ,  (wygenerowane DTO dziedziczą pola; nowe elementy wysyłane tylko przy obcięciu) | **gotowe** |  (mercury-lib) |
+| W1 śledzenie obcięć w kolektorach (), ostrzeżenie w logu, opcja  (domyślnie wyłączona), test regresji  | **gotowe**, na INEA oznacza dokładnie 2 znane zapytania (Mts 79 158 z 219 238; 365 dni 160 170 z 244 970), bez fałszywych alarmów |  |
+| W1  (),  w ,  | **gotowe** |  |
+| W1 wczesne wyjście przy pustym wyniku | **przeniesione do W3** (to sonda liczności korzenia w planie dziecko-najpierw) | — |
+| W1 OpenAPI i tłumaczenia dla ,  (klucze  w , wymagane tłumaczenia de/es/fr/ko) | **do zrobienia w W10** | — |
+| W2 spike Lucene 8.11 | następny krok | — |
