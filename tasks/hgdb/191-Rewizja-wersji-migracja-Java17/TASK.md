@@ -80,3 +80,22 @@ artefaktu lib (Eclipse Transformer) i własnego remotingu, bo Spring 6 usunął 
 - Wymagania JDK bibliotek (CXF 3.6, ActiveMQ 5.17, jakarta API 3.1) pochodzą z wiedzy ogólnej.
   Przed decyzją trzeba je potwierdzić w release notes albo w POM-ach na Maven Central.
 - Kod ma wyższy priorytet niż dokumentacja.
+
+## Uzupełnienie z zadania 119 (2026-10-25): Lucene 9 należy do tego zadania
+
+Decyzja autora: **podniesienie Lucene do wersji 9 robimy w 191**, razem z Javą 17 (w 119 zostaje Lucene 7.5.0).
+Powody i dane (szczegóły: `tasks/hgdb/119-*/spike-lucene-8-2026-10-25.md`):
+
+- Lucene 8.11.x działa na Javie 8, a **Lucene 9.0 wymaga Javy 11** (ogłoszenie wydania 9.0). Lucene 9 nie czyta indeksów 7.x,
+  więc po przejściu potrzebna jest przebudowa indeksów (i tak wymagana przy upgrade u klienta).
+- Spike 7.5.0 do 8.11.2 (gałąź `hgdb-119-spike-lucene8` w `mercury`, commit `80217dbf2`, nie kompiluje się) wykazał ok. 65 błędów
+  kompilacji w 20 plikach `mercury-lucene-indexes`. Dotyczą m.in. konstruktorów `TopDocs` i `TopFieldDocs` (`TotalHits`),
+  `Collector.needsScores()` na `scoreMode()` i `Scorer` na `Scorable` (6 klas kolektorów), `TopDocsCollector.pq` (`final`),
+  klasy `FieldCollectorTopDocs` w pakiecie Lucene (największe ryzyko), `createWeight` na `ScoreMode`, `IndexWriter.maxDoc()`.
+  Port 7 do 9 w jednym kroku jest tańszy niż dwa porty (7 do 8, 8 do 9).
+- Dodatkowe zmiany w 9 (z wiedzy ogólnej, do potwierdzenia): usunięcie `MultiFields`, przeniesienie `lucene-analyzers-common` do
+  `lucene-analysis-common`, usunięcie `CustomScoreQuery` (w kodzie to tylko stałe w `CaseCustomScoreProvider`), `RAMDirectory`.
+- Punkt odniesienia dla pomiarów po porcie: baza z `tasks/hgdb/119-*/baseline-2026-10-25.csv` (41 zapytań na indeksie INEA 3.0,
+  wyniki zgodne we wszystkich trybach) oraz testy `LuceneNestedQueryOccurTest`, `LuceneTruncationTest`, `CostOptimizerTest`.
+- Zakres kolektorów po stronie 119 (W3, W4, W5) powinien być pisany tak, by nie utrudniał portu (bez klas w pakiecie
+  `org.apache.lucene.*`, bez przypisywania `pq`, bez zależności od `TopDocs.maxScore`).

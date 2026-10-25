@@ -51,6 +51,8 @@ domyślnego `StandardAnalyzer` (brak stop-słów od 8.0), zachowanie `BooleanQue
 - **Alternatywa:** jeśli zależy na 8.11 teraz, wystarczy dokończyć spike (ok. 2 dni do kompilacji i pomiaru z INEA), a decyzję
   podjąć na liczbach. Decyzja należy do autora (G2).
 
+**Decyzja G2 (autor, 2026-10-25): Lucene 9 w zadaniu 191.** W 119 zostaje Lucene 7.5.0. Katalog zmian i gałąź spike’u przekazane do 191 (TASK.md).
+
 ## Uwagi operacyjne
 
 - Lokalny artefakt `mercury-core-3.0.4.14.jar` w `D:\workspace\.m2` jest podmieniony na wersję z polami `truncated`, `totalHits`
