@@ -436,9 +436,9 @@ kalibrowanymi stałymi, sondy liczności).
 ### Uwagi operacyjne (2026-10-25, W1)
 
 - **Wielkość liter kodu typu w testach:** domyślnie jak dawniej (zapytanie zmniejsza litery; pasuje do indeksów INEA, więc
-   nie jest już potrzebne). Dla indeksu wygenerowanego testem  (zachowuje wielkość
-  liter, np. ) trzeba dodać ****.
-- **Nie uruchamiać  bez :** zbiera testy modułów nadrzędnych, które czyszczą bazę
-  (widziano  w testach ). Do testów modułu  używać
-  . Baza  miała w tym
-  momencie nadal 200 000 wierszy (przebieg przerwany po wykryciu).
+  `-Dperf.typeCodeLower` nie jest już potrzebne). Dla indeksu wygenerowanego testem `LuceneVolumeTest` (zachowuje wielkość
+  liter, np. `SlmAddress`) trzeba dodać **`-Dperf.typeCodeCaseSensitive=true`**.
+- **Nie uruchamiać `mvn test -pl <moduł> -am` bez `-Dtest`:** zbiera testy modułów nadrzędnych, które czyszczą bazę
+  (widziano `delete from IGO_DA_CASES` w testach `mock`). Do testów modułu `mercury-lucene-indexes` używać
+  `-Dtest=org/mercury/lucene/**/*Test,pro/ibpm/mercury/lucene/**/*Test -DfailIfNoTests=false`. Baza `mercury-db` miała w tym
+  momencie nadal 200 000 wierszy (przebieg przerwany po wykryciu, pozostały fork surefire zabity).
