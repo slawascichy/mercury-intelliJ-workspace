@@ -353,7 +353,38 @@ Z poprawką przechodzi. Po cofnięciu poprawki (`arg.queryOccur = rootOccur`) pa
 rootFirst) expected:<2> but was:<1>`, więc rzeczywiście wykrywa błąd. Nie wymaga dużego indeksu, uruchamia się z
 `-Duser=scichy` jak inne testy modułu.
 
-## Plan na jutro
+### Rozbieżność wyników benchmarku Mts: przyczyna (2026-10-25)
+
+**Objaw:** zapytanie `SlmAddress AND city:Poznań AND appMobileDetails.(SlmAppMobileDetails, status:SlmAppMts, status A)`
+na indeksie INEA 3.0 zwracało 79 158 (`cost`, `rootFirst`) i 81 238 (`none`). Test z 2019 roku oczekiwał 89 896.
+
+**Prawda odniesienia** (czysty Lucene, połączenie rodzic-dziecko policzone poza silnikiem Mercury): 140 131 adresów w
+Poznaniu, 219 238 dzieci `SlmAppMts` ze statusem A, **89 896 adresów z takim dzieckiem** (po jednym dziecku na adres, więc
+liczba par też wynosi 89 896). Oczekiwana wartość z 2019 roku była więc poprawna, a dziś żaden plan jej nie zwraca.
+
+**Przyczyna: ciche obcięcie do `lucene.query.maxHits`.** W konfiguracji pomiarów `lucene.query.maxHits=200000`, a dzieci
+jest 219 238. W logu planu `cost` i `rootFirst`: `collectSubResultsByCollection: childCellsResult.size=200000` (powinno
+być 219 238), czyli 19 238 dzieci i ich 10 738 adresów zniknęło. Plan `none` (dziecko najpierw) zbiera do `numHits`
+dzieci i gubi 8 658 adresów. Plany różnią się tylko tym, **które** trafienia wypadają, więc wyniki są różne, a oba
+błędne.
+
+**Dowód:** po podniesieniu `lucene.query.maxHits` do 1 000 000 (plik `test-lucene-inea-maxhits1m.properties`) wszystkie
+trzy tryby zwracają **89 896** (`cost` 4,3 s, `rootFirst` 3,8 s, `none` 62,7 s), a w logu `childCellsResult.size=219238`.
+
+**Skutki:**
+- Błąd poprawności, nie wydajności: wynik jest po cichu niepełny, bez ostrzeżenia, flagi i błędu. Dotyczy też `groupBy`
+  (agregaty z obciętych trafień) i `count`.
+- Domyślne limity produkcyjne są niższe niż w moich pomiarach: `lucene.query.maxHits=100000` w konfiguracjach serwera
+  (`mercury-server/.../lucene.properties`), 10 000 w `mercury-srv/src/main/resources/lucene.properties`. Zapytanie z
+  więcej niż 100 tys. trafień dziecka daje tam niepełny wynik.
+- To ten sam mechanizm, który autor opisał jako „`maxResults` spędzający sen z oczu”. Podział zapytania na przedziały
+  (wątki, węzły) pozwoliłby go ominąć, ale **najpierw trzeba sygnalizować obcięcie** (patrz plan).
+- Wcześniejsze wnioski: różnica `none` kontra `cost` nie wynikała z modelu 2.0 ani 3.0, tylko z limitu.
+
+## Plan z 2026-10-24 (zastąpiony)
+
+Aktualny plan i decyzje: `plan-i-decyzje-2026-10-25.md`.
+
 
 1. Poprawka znaleziska 1 (`Long` na `String`) i powtórzenie pomiarów w trybach `cost`, `none`, a potem porównanie z `rootFirst`.
 2. Potwierdzić (lub obalić) znalezisko 2 na dokumencie z indeksu i naprawić grupowanie, albo opisać przyczynę.
