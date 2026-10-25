@@ -2,6 +2,7 @@
 <project version="4">
   <component name="VcsDirectoryMappings">
     <mapping directory="$PROJECT_DIR$/../hgdb-client-open" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/../hgdb-grafana-datasource" vcs="Git" />
     <mapping directory="$PROJECT_DIR$/../mercury" vcs="Git" />
     <mapping directory="$PROJECT_DIR$/../mercury-client" vcs="Git" />
     <mapping directory="$PROJECT_DIR$/../mercury-cmd" vcs="Git" />
