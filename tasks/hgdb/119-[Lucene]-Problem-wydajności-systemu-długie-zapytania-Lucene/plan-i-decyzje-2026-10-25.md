@@ -175,4 +175,4 @@ W0 2, W1 3, W2 4 (spike 1, wdrożenie 3), W3 6, W4 5, W5 4, W6 1, W7 5, W8 1, W9
 | W1 `calculateCost` (`max`), `null` w `costOptimization`, `CostOptimizerTest` | **gotowe** | `fdbb0e9a9` |
 | W1 wczesne wyjście przy pustym wyniku | **przeniesione do W3** (to sonda liczności korzenia w planie dziecko-najpierw) | |
 | W1 OpenAPI i tłumaczenia dla `truncated` i `totalHits` (klucze `schema.*PagedResult.*` w `openapi-docs_*.properties`, tłumaczenia de, es, fr, ko) | **do zrobienia w W10** | |
-| W2 spike Lucene 8.11 | następny krok | |
+| W2 spike Lucene 8.11.2 | **przerwany po katalogu błędów** (ok. 65 błędów w 20 plikach, brak nierozwiązywalnych); gałąź `hgdb-119-spike-lucene8` (`80217dbf2`, nie kompiluje się). Szczegóły i rekomendacja: `spike-lucene-8-2026-10-25.md`. **Czeka na decyzję G2** (rekomendacja: Lucene 9 razem z Javą 17 w 191, a w 119 najpierw W3, W4, W5) | `80217dbf2` (gałąź spike) |
