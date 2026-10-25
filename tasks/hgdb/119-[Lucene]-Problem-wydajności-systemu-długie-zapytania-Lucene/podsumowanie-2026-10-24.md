@@ -274,8 +274,9 @@ Wnioski:
 2. **`none` kontra reszta (benchmark Mts):** 81 238 kontra 79 158. Rozbieżność nie jest wynikiem różnicy modeli (to ten
    sam indeks 3.0). `cost` i `rootFirst` zgadzają się ze sobą. Oczekiwane 89 896 pochodziło z innego (starszego)
    indeksu, więc nie jest kryterium poprawności.
-3. **Optymalizator kosztowy wybiera czasem gorszy plan:** wildcard `name:*...*` (2,3 s kontra 0,5 s), a przy zapytaniach
-   z dzieckiem `rootFirst` jest 5-6 razy wolniejszy (Lead, PARENT). To potwierdza, że żaden jeden tryb nie jest dobry
+3. **Żaden tryb nie jest dobry dla wszystkich zapytań:** przy zapytaniach z dzieckiem `rootFirst` jest 5-8 razy wolniejszy
+   (Lead, PARENT), a `none` 14 razy wolniejszy dla Mts. Wcześniejszy wynik „wildcard 2,3 s w `cost`” był efektem zimnej
+   pamięci podręcznej (pierwsze wykonanie w klasie); po trzech przebiegach `cost` i `rootFirst` mają 0,56 do 0,64 s. To potwierdza, że żaden jeden tryb nie jest dobry
    dla wszystkich zapytań (sprawa 171).
 4. Przy zimnej pamięci podręcznej systemu pierwsze zapytanie trwa 8-56 s (dysk). Powtórzenia są wielokrotnie szybsze.
 
@@ -345,8 +346,12 @@ Wpisy miały też tę samą nazwę (`R:S.BbQ.0001.root`), ale mapowanie po nazwi
 
 **Weryfikacja** (INEA 3.0, `cost` i `rootFirst`): `AND -area` 3 / 3 (było `rootFirst`=1). Pozostałe zapytania bez zmiany:
 simple 4, base+Otwarta 4, AND 1, OR 4, NOT IN 3, SUB 595, CHILD 4, CHILD OR 4, PARENT 25, adres+Lead 136, adres+Mts 79 158.
-**Brak testu regresji w repozytorium:** testy tego modułu wymagają dużego indeksu. Do rozważenia mały test na indeksie
-w pamięci (kilka dokumentów: korzeń + 2 dzieci w polach `a`, `b`, zapytanie z `-b.x:1` w trybie `rootFirst`).
+**Test regresji:** `LuceneNestedQueryOccurTest` (`mercury-lucene-indexes`, testy). Buduje mały indeks w pamięci
+(`RAMDirectory`: 5 zleceń `FsmServiceOrder`, dzieci `detailsUnavailability` i `businessNetworkAreaList`) i sprawdza w
+trzech trybach (`cost`, `rootFirst`, `none`) pięć zapytań, m.in. wykluczenie obszaru 6931 (oczekiwane 2) i `NOT IN`.
+Z poprawką przechodzi. Po cofnięciu poprawki (`arg.queryOccur = rootOccur`) pada na `wykluczenie obszaru 6931 (tryb
+rootFirst) expected:<2> but was:<1>`, więc rzeczywiście wykrywa błąd. Nie wymaga dużego indeksu, uruchamia się z
+`-Duser=scichy` jak inne testy modułu.
 
 ## Plan na jutro
 
