@@ -77,6 +77,31 @@ Przy tej skali (100 tys. adresów) czasy są małe, więc różnic między tryba
 4. Uwaga o analizatorze: `FakeCaseMapper` używa `KeywordAnalyzer` dla `StringField`, a serwer dla pól niewrażliwych
    na wielkość liter `StandardAnalyzer`. `LuceneVolumeQueryTest` koryguje to dla pola statusu.
 
+## Aktualizacja 2026-10-25: poprawka znaleziska 1
+
+Indeks zapisuje identyfikator sprawy zależnej (`<pole>_id`) jako `StringField` (`CaseMapper.indexSubCases`), a
+`DataCollectorSubTopDocsManagerSupport` szukał go przez `LongPoint`. Takie zapytanie nie znalazłoby dopasowania
+nawet dla identyfikatorów liczbowych (przypuszczenie: pozostałość po starym formacie). Zmiana w gałęzi `hgdb-119`
+(`mercury`, niezacommitowana):
+
+- `collectSubResults`: bez `Long.parseLong`, identyfikator przekazywany jako `String`;
+- `buildNestedLoopQuery(String childField, String subCaseId, ...)`: `TermQuery` zamiast `LongPoint`;
+- `QueryExplainPlan` (linia 1496): `"-1"` zamiast `-1L`.
+
+Nie zmieniałem `CaseCustomScoreProvider` (ta sama konstrukcja `LongPoint` i `Long.parseLong`, linie 118 i 170). Do decyzji.
+
+Wyniki po poprawce (9 testów przeszło, te same liczby trafień co w `rootFirst`):
+
+| Zapytanie | Wynik | cost | rootFirst | none |
+|---|---|---|---|---|
+| adres + dziecko (Mts, A) | 7 264 | 0,70 s | 0,76–0,81 s | 0,66–0,68 s |
+| adres + dziecko (Lead, Z) | 1 224 | 0,26–0,42 s | 0,62–0,69 s | 0,17–0,24 s |
+| data ≥ -3 lata + dziecko (Mts) | 11 132 | 0,80–1,0 s | 0,96–1,1 s | 0,79 s |
+
+Przy 100 tys. adresów plany "najpierw dziecko" są nie wolniejsze od `rootFirst`, a dla rzadkiego dziecka (Lead, Z)
+szybsze (2,5–3,5 raza). Różnice dla częstego dziecka są w granicach szumu. Znalezisko 2 (grupowanie po `city`/`street`)
+bez zmian: `groupBy(street)` nadal daje 1 grupę, `groupBy(city, miesiąc)` 92.
+
 ## Plan na jutro
 
 1. Poprawka znaleziska 1 (`Long` na `String`) i powtórzenie pomiarów w trybach `cost`, `none`, a potem porównanie z `rootFirst`.
