@@ -406,3 +406,28 @@ Aktualny plan i decyzje: `plan-i-decyzje-2026-10-25.md`.
 - Workspace (`main`): `analiza-2026-10-24.md`, to podsumowanie, uzupełnienie `TASK.md` i `156/podsumowanie` (niezacommitowane).
 - Baza `mercury-db` zawiera 200 tys. wierszy testowych (adresy i dzieci). Dane Swaggera zostały wyczyszczone (zgoda autora).
 - Procesy Maven nie działają. Tomcat lokalny nie jest uruchomiony.
+
+### Baza pomiarowa W0 (2026-10-25, plik `baseline-2026-10-25.csv`)
+
+Przebieg 41 zapytań na indeksie INEA 3.0 (22 mln dokumentów, kopia `F:`), `lucene.query.maxHits=1000000` (bez obcięcia), 3 tryby,
+2 przebiegi, najlepszy czas. Kolumna „żal” = czas `cost` / czas najlepszego z planów stałych (`rootFirst`, `none`). Czas
+całego przebiegu 26,6 min (tryb `none` trwa 60 do 290 s dla zapytań z 219 tys. dzieci).
+
+**Poprawność:** `0` zapytań z różnymi wynikami w trzech trybach (przy wyłączonym obcięciu). Wcześniejsze różnice wynikały wyłącznie z `maxHits`.
+
+**Żal optymalizatora:** mediana 1,10; 90. percentyl 2,36; maksimum 4,90. Powyżej 1,25: 16 zapytań, powyżej 2: 11 (z 41).
+Większość dużych żali dotyczy zapytań szybkich (poniżej 0,3 s, różnice setek milisekund). Istotne bezwzględnie (różnica > 0,5 s):
+
+| Zapytanie | `cost` | `rootFirst` | Różnica | Żal |
+|---|---|---|---|---|
+| Poznań (140 tys.) + dziecko Rfs (39,6 tys.), stosunek 0,28 | 13,7 s | 2,9 s | +10,7 s | 4,66 |
+| Leszno (12,8 tys.) + dziecko Vrf (7,6 tys.), stosunek 0,6 | 2,2 s | 0,46 s | +1,8 s | 4,90 |
+| Leszno + dziecko Abs (5,1 tys.), stosunek 0,4 | 1,5 s | 0,35 s | +1,1 s | 4,20 |
+
+Wniosek: **optymalizator wybiera plan „dziecko najpierw” także wtedy, gdy dziecko ma tylko 28 do 60% trafień korzenia**, a
+plan „korzeń najpierw” jest wtedy 4 do 5 razy szybszy. Przyczyna: reguła porównuje `int(ln(docFreq))`, więc przekroczenie
+granicy kubełka (np. ln 7 610 = 8,9 kontra ln 12 786 = 9,5) wystarcza do wyboru dziecka najpierw. Zmierzone koszty
+jednostkowe (0,26 do 0,34 ms na trafienie dziecka w pętli kontra 0,02 do 0,04 ms na trafienie korzenia w łączeniu zbiorczym)
+dają próg opłacalności ok. 0,06 do 0,12, a nie ok. 0,4 do 0,6 jak w regule. Trafne decyzje: Mts (korzeń), Lead i `PARENT`
+(dziecko), serie Poznań z Vrf, Abs, Clb, Lty (dziecko, żal 1,0 do 1,1). To potwierdza kierunek zmian W3 (jawny model kosztu z
+kalibrowanymi stałymi, sondy liczności).
