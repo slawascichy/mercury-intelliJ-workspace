@@ -73,8 +73,14 @@ Wnioski z `analiza` sekcja 1 wprost zamieniamy na zmiany. Cel to **decyzja blisk
 **Metryka jakości decyzji:** *żal* (regret) = czas wybranego planu / czas najlepszego z planów (korzeń najpierw, dziecko
 najpierw). Stan obecny na 3 rozstrzygających zapytaniach: 1,0 do 1,1 (trafne), ale tylko na 3 przypadkach. Zbudujemy zestaw
 **co najmniej 20 zapytań** z pokryciem trudnych przypadków (stosunek trafień dziecko/korzeń 0,05 do 0,5, wąskie zakresy dat
-przy rzadkim dziecku, wiele podzapytań, negacje, OR) na indeksach INEA 3.0 i generowanym. **Cel: żal ≤ 1,25 dla 90%
-zapytań i ≤ 2 dla wszystkich**, przy każdym planie dającym identyczny wynik.
+przy rzadkim dziecku, wiele podzapytań, negacje, OR) na indeksach INEA 3.0 i generowanym.
+
+**Kryterium (zatwierdzone przez autora 2026-10-25):** zapytanie spełnia cel, gdy **żal ≤ 1,25 albo różnica bezwzględna
+między planem wybranym a najlepszym ≤ 100 ms** (sam iloraz przecenia zapytania krótkie). Poziom zadania: kryterium
+spełnia co najmniej 90% zapytań zestawu, a pozostałe mają żal ≤ 2 lub różnicę ≤ 500 ms. Każdy plan musi dawać identyczny
+wynik. **Stan bazowy (W0, 41 zapytań):** kryterium spełnia 28 zapytań (68%); nie spełnia 13, z czego 3 z różnicą powyżej
+0,5 s (Poznań + Rfs +10,7 s, Leszno + Vrf +1,8 s, Leszno + Abs +1,1 s), 4 z różnicą 0,2 do 0,4 s (serie Leszno i Oborniki)
+i 6 z różnicą 110 do 150 ms (zapytania z wieloma dziećmi na `FsmServiceOrder`: tu `rootFirst` jest ok. 2 razy szybszy).
 
 ## 3. Cel i kryteria akceptacji zadania (do zatwierdzenia przez autora)
 
