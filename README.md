@@ -150,9 +150,11 @@ Poza workspace, w `H:\mercury`, leżą gotowe indeksy Lucene (stan na 2026-10-25
 | Ścieżka | Model wyszukiwania | Rozmiar | Uwagi |
 |---|---|---|---|
 | `H:\mercury\20190705_Case_3.0` | **3.0** (najważniejszy dla bieżących zadań) | 6,8 GB | Katalog `Case`; archiwum `.tar.gz` obok |
-| `H:\mercury\20190405_Case.2.0` | 2.0 | 408 MB | Archiwum `.tar.gz` obok |
+| `H:\mercury\20190405_Case.2.0.tar.gz` | 2.0 | archiwum 4,5 GB (rozpakowany 6,9 GB) | Rozpakowany: `F:\mercury-indexes\20190405_Case.2.0`. Powiązania w starym formacie `subCaseIds`, zapytania z dziećmi nie działają (zadanie 75) |
 | `H:\mercury\lucene-INEA\index`, `lucene-test-mercury-3.0-2.1` | nie sprawdzono | | |
 | `H:\mercury\INEA_createDate.json` / `.txt` | | 25 MB (txt) | Statystyka liczby spraw na dzień (`statisticsPerDay`, od 2016-06-01) |
+
+Kopie robocze (szybszy dysk): `F:\mercury-indexes` (`20190705_Case_3.0`, `20190405_Case.2.0` z archiwum, `INEA_createDate.json`). Oryginały na `H:` nie są modyfikowane.
 
 Używaj ich do pomiarów (zadanie 119), obok indeksu wygenerowanego testem `LuceneVolumeTest`
 (`mercury/integrations/lucene/perf-100k`). Pochodzenie indeksów i dokładny model pól to przypuszczenie, do sprawdzenia.

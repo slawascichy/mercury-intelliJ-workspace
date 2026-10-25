@@ -97,11 +97,11 @@ Pułapki:
 
 Gotowe indeksy leżą poza workspace, w `H:\mercury` (opis w `README.md`). Najważniejsze:
 
-1. Model wyszukiwania 2.0: `H:\mercury\20190405_Case.2.0`.
+1. Model wyszukiwania 2.0: archiwum `H:\mercury\20190405_Case.2.0.tar.gz`, rozpakowane: `F:\mercury-indexes\20190405_Case.2.0` (powiązania w starym formacie `subCaseIds`).
 2. Model wyszukiwania 3.0 (najbardziej istotny dla bieżących zadań, np. 119): `H:\mercury\20190705_Case_3.0`.
 
 Obok indeksu wygenerowanego testem (`mercury/integrations/lucene/perf-100k`) mają dużą wartość dla pomiarów.
-Nie modyfikuj ich. Pracuj na kopii albo wskaż je tylko do odczytu.
+Kopie robocze są na `F:\mercury-indexes` (szybszy dysk niż `H:`). Nie modyfikuj ich. Pracuj na kopii albo wskaż je tylko do odczytu.
 
 ## Kontekst
 
