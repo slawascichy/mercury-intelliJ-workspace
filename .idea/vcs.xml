@@ -9,5 +9,6 @@
     <mapping directory="$PROJECT_DIR$/../mercury-docker" vcs="Git" />
     <mapping directory="$PROJECT_DIR$" vcs="Git" />
     <mapping directory="$PROJECT_DIR$/../mercury-lib" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/../poi-toolkit" vcs="Git" />
   </component>
 </project>

@@ -67,6 +67,11 @@
       <option name="url" value="https://repository.jboss.org/nexus/content/repositories/public/" />
     </remote-repository>
     <remote-repository>
+      <option name="id" value="poi-toolkit.local" />
+      <option name="name" value="poi-toolkit" />
+      <option name="url" value="https://nexusrepo.scisoftware.pl/repository/maven-public/" />
+    </remote-repository>
+    <remote-repository>
       <option name="id" value="github" />
       <option name="name" value="GitHub slawascichy Apache Maven Packages" />
       <option name="url" value="https://nexusrepo.scisoftware.pl/repository/maven-public/" />

@@ -34,9 +34,15 @@
 # Obsługa zadań
 ####################
 
+git tag -a 3.0.4.16 -m "Wersja 3.0.4.16"
+git push origin hgdb-119
+git checkout master
+git pull
+git branch -d hgdb-119
+
+
 Dołożyłem zadania:
-049-[CMIS]-Implementacja-API-CMIS
-058-Logger-dynamiczne-zmiana-poziomów-logowania
+016-Widoki
 
 Strumień:
   D039-[Lucene]-Optymalizacja-dostępu-do-IndexReader-a

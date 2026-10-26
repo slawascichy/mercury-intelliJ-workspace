@@ -32,6 +32,7 @@
         <module name="mercury-gui-core" />
         <module name="mercury-entities-dto-generator" />
         <module name="mercury-srv-api" />
+        <module name="poi-toolkit" />
         <module name="mercury-lucene-indexes" />
         <module name="mercury-mock" />
         <module name="license-registry" />

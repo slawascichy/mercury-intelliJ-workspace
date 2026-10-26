@@ -118,5 +118,13 @@
     <file url="file://$PROJECT_DIR$/../mercury/mercury-ws-server/src/main/resources-filtered" charset="UTF-8" />
     <file url="file://$PROJECT_DIR$/../mercury/src/main/java" charset="UTF-8" />
     <file url="file://$PROJECT_DIR$/../mercury/src/main/resources" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/../poi-toolkit/src/main/bin" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/../poi-toolkit/src/main/conf" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/../poi-toolkit/src/main/data" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/../poi-toolkit/src/main/html" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/../poi-toolkit/src/main/java" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/../poi-toolkit/src/main/resources" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/../poi-toolkit/src/main/sample" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/../poi-toolkit/src/main/ssl" charset="UTF-8" />
   </component>
 </project>

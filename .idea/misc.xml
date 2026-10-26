@@ -11,6 +11,7 @@
         <option value="$PROJECT_DIR$/../hgdb-client-open/pom.xml" />
         <option value="$PROJECT_DIR$/../mercury-client/mercury-client-cmd/pom.xml" />
         <option value="$PROJECT_DIR$/../mercury-cmd/mercury-install-package/pom.xml" />
+        <option value="$PROJECT_DIR$/../poi-toolkit/pom.xml" />
       </list>
     </option>
   </component>
