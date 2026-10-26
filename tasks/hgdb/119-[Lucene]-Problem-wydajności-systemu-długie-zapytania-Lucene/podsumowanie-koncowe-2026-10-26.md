@@ -17,6 +17,7 @@ Porównanie z OpenSearch: `poc-opensearch-2026-10-26.md`. Wszystkie liczby pocho
 | W8 | Pomiary współbieżności (pulpit 6 paneli, 1/4/8 klientów) | p95 odświeżenia: 2,0 / 2,9 / 4,5 s |
 | W9 | PoC OpenSearch 2.19.1 | Wartość docelowa; migracji nie rekomenduję |
 | W11 | Walidacja sortowania (zadanie 121): błędy `L0009.7`, `L0009.8` | Czytelny błąd zamiast `M0001` |
+| W12 | Pula czytników indeksu (zadanie 39): wspólny `DirectoryReader` zamiast otwierania na każde żądanie | Zapytania lekkie 105 → 15 ms; suma trybu `cost` 11,0 → 6,4 s; pulpit p95 2,0 / 2,9 / 4,5 s → 1,2 / 1,6 / 2,0 s |
 
 Wynik końcowy (przebieg 2026-10-26, wyniki identyczne we wszystkich trybach i takie same jak w W0):
 
@@ -27,7 +28,7 @@ Wynik końcowy (przebieg 2026-10-26, wyniki identyczne we wszystkich trybach i t
 Znane ograniczenia:
 
 - „adres 30 dni + Mts” ma żal 3,9 (stosunek dziecko/korzeń ok. 50). Próg tego nie naprawia. Wymaga modelu kosztu z osobnymi stałymi (W3 część 2);
-- degradacja pulpitu przy 8 klientach: 2,2× (cel ≤ 2× niespełniony w przebiegu końcowym; w W8 po W5 było 1,74×). Pomiar do powtórzenia.
+- degradacja pulpitu przy 8 klientach: 2,2× w przebiegu końcowym; po W12 (pula czytników) **1,69×** (cel ≤ 2× spełniony).
 
 ## 2. Konfiguracja
 
@@ -43,6 +44,8 @@ właściwości systemowe JVM (`-D…`). `lucene.query.maxHits` i `lucene.query.t
 | `lucene.query.nested.batch` | włączone | `false` wyłącza zbiorcze łączenie (W4) |
 | `lucene.query.docvalues` | włączone | `false` wyłącza odczyt z DocValues (W5, W6, W7) |
 | `lucene.query.nested.loadAllFields` | wyłączone | `true` przywraca ładowanie całych dokumentów |
+| `lucene.reader.pool` | `true` | `false` przywraca otwieranie czytnika na każde żądanie (zadanie 39) |
+| `lucene.reader.refreshMs` | 1000 | Najdłuższy czas bez sprawdzenia zmian indeksu (zapisy spoza procesu); `0` = przy każdym pobraniu, ujemna = tylko po zgłoszeniu zmiany. Własne commity odświeżają czytnik od razu |
 | `lucene.query.maxHits` | z `MercuryConfig` | Limit liczby trafień; `maxResults` w kontekście ma pierwszeństwo |
 | `lucene.query.truncation.error` | wyłączone | `true`: obcięcie wyniku kończy zapytanie błędem |
 

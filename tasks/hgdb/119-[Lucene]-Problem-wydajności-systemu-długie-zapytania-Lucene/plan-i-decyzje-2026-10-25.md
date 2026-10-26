@@ -280,3 +280,45 @@ Sprawdzanie zmian przy każdym acquire (`openIfChanged`, 8 ms) serializuje wątk
 **Zakres W12 (szacunek 2 dni):** klasa puli w `org.mercury.lucene` (zgodnie z zasadą nowych komponentów), podpięcie w `LuceneConfig.getIndexReader`,
 unieważnianie przy commit/zamknięciu writera/przebudowie, testy (poprawność, współbieżność z zapisem, zamknięcie), pomiar na pulpicie (W8) i w 41 zapytaniach.
 Zadanie 39 zamykamy razem z 119 (po decyzji autora).
+
+
+### Realizacja W12 (2026-10-26)
+
+| Element | Stan |
+|---|---|
+| Klasa `org.mercury.lucene.reader.LuceneReaderPool` (`mercury-lucene-indexes-api`) | **gotowa**: wspólny `DirectoryReader` na indeks, uchwyt `FilterDirectoryReader` per wywołanie, odświeżanie po `markChanged` i co `lucene.reader.refreshMs` (domyślnie 1000 ms) |
+| Podpięcie w `LuceneConfig.getIndexReader` | **gotowe**; pula pomijana, gdy `lucene.reader.pool=false` albo trwa operacja blokująca zapis (przebudowa, kopia, optymalizacja) |
+| Unieważnianie | **gotowe**: `markChanged` po 8 commitach w `MLuceneIndexerSupport`, po 1 w `CaseIndexerBusinessSupport` i w `LuceneConfig.optimize`; `closeIndexWriterSoftly` zamyka pulę dla indeksu |
+| Testy `LuceneReaderPoolTest` (6) | **zielone**: współdzielenie, migawka po odświeżeniu, podwójne `close`, zamknięcie puli, zmiana katalogu, odświeżanie czasowe, współbieżność z zapisem |
+| `CardinalityProbe`: `searcher.setQueryCache(null)` | **konieczne przy puli** (opis niżej) |
+
+**Odkrycie przy pomiarze.** Wspólny czytnik włącza działanie pamięci podręcznej zapytań Lucene (`LRUQueryCache`), która przy czytniku
+otwieranym od nowa nigdy nie trafiała. Sonda liczności (W3) była pierwszym użyciem klauzul, więc jednorazowe zapytanie zapisywało klauzule w pamięci
+podręcznej już przy pierwszym wykonaniu (koszt wypełnienia, np. 83 → 333 ms) bez późniejszych trafień. Pierwszy przebieg z pulą miał sumę trybu `cost`
+13,8 s (kryterium 29 z 41). Sonda bez pamięci podręcznej (`setQueryCache(null)` na jej searcherze) usuwa ten koszt, a powtarzane zapytania (pulpit)
+nadal korzystają z pamięci podręcznej. Przebieg kontrolny bez puli w tych samych warunkach: 11,0 s (zgodny z przebiegiem końcowym 10,9 s).
+
+**Wyniki** (41 zapytań INEA, model 3.0, `perf.runs=2`, wszystkie skróty zawartości wyników identyczne we wszystkich przebiegach):
+
+| Wariant | `cost` [s] | `rootFirst` [s] | `none` [s] | kryterium żalu | drugi próg |
+|---|---|---|---|---|---|
+| przebieg końcowy (godz. wcześniej) | 10,9 | 24,2 | 9,0 | 39/41 | 40/41 |
+| bez puli (kontrola) | 11,0 | 26,0 | 9,9 | 39/41 | 40/41 |
+| pula, sonda z pamięcią podręczną | 13,8 | 46,1 | 11,1 | 29/41 | 40/41 |
+| pula, bez sond (eksperyment) | 9,4 | 19,5 | 5,0 | 38/41 | 38/41 |
+| **pula, sonda bez pamięci podręcznej (wdrożone)** | **6,4** | **19,4** | **4,7** | **39/41** | **40/41** |
+
+Wdrożony wariant wobec kontroli: suma `cost` −42%, mediana przyspieszenia pojedynczego zapytania **4,35×**, żadne zapytanie wolniejsze (najmniejsza zmiana 1,07×);
+zapytania lekkie 105 → 15 ms, 127 → 19 ms, 241 → 40 ms. Zapytania ciężkie (adres 365 i 30 dni + Mts, ok. 1,8 s) zyskują 7 do 24%, bo ich koszt leży w wykonaniu zapytania, nie w otwarciu czytnika.
+
+**Pulpit (6 paneli, 3 odświeżenia na klienta), p95 odświeżenia pulpitu** (`koncowy-wspolbieznosc-2026-10-26.csv` → `w12-wspolbieznosc-pula.csv`):
+
+| Klientów | przed [ms] | z pulą [ms] |
+|---|---|---|
+| 1 | 2035 | 1176 |
+| 4 | 2886 | 1595 |
+| 8 | 4524 | 1982 |
+
+Degradacja 8 klientów wobec 1: **1,69×** (przed 2,2×; cel ≤ 2× **spełniony**).
+
+Pliki: `w12-przebieg-bez-puli.csv`, `w12-przebieg-pula.csv`, `w12-przebieg-pula-bez-sond.csv`, `w12-przebieg-pula-sonda-bez-cache.csv`, `w12-wspolbieznosc-pula.csv`, `w12-pula-czytnikow/` (prototypy `ReaderBench`, `PoolProto`, `ProbeBench`).
