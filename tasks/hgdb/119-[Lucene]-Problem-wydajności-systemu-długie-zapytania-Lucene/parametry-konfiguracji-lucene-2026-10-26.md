@@ -57,8 +57,14 @@ Wskazówki per zapytanie (nie ustawia się ich w pliku, tylko w kontekście zapy
    działają jak `childFirstRatio`: plik, potem `-D`.
 2. **`lucene.query.truncation.error`** czyta tylko `lucene.properties` (bez `-D`).
 3. **`lucene.RAMBufferSizeMB`, `lucene.maxBufferedDocs` i `lucene.index.segments`:** wartości są cache'owane przy pierwszym odczycie (`LuceneHelper`), więc zmiana wymaga restartu.
-4. **Wartości domyślne w plikach wzorcowych** (`lucene.properties` w `mercury-server/src/main/config/*`) ustawiają dziś tylko `lucene.query.maxHits` oraz katalogi i kopie zapasowe.
-   Nowe parametry nie mają tam wpisów (działają domyślne wartości z kodu). Propozycja: dopisać je jako zakomentowane przykłady z opisem.
+4. **Pliki konfiguracyjne z zakomentowanymi przykładami (2026-10-26).** Nowe parametry dopisano jako zakomentowane przykłady (z wartościami domyślnymi)
+   po wpisie `lucene.query.maxHits` w 20 plikach `*lucene.properties` repozytorium `mercury` (gałąź `hgdb-119`):
+   serwer (`mercury-server/src/main/config/{jenkins,scichy}`), `mercury-srv` i `mercury-ws-server` (`src/main/resources`), `integrations/lucene.properties`,
+   `mercury-lucene-indexes-api/src/test/resources/lucene.properties` oraz profile testowe `test-lucene.properties` (`jenkins`, `scichy`, `scichy-test`)
+   w modułach `mercury-core-server`, `mercury-lucene-indexes`, `mercury-srv`, `mercury-srv-slave`, `mercury-ws-server`.
+   **Nie zmieniano** plików w innych repozytoriach (zasada: bez zgody nie modyfikuję sąsiednich repozytoriów): `mercury-docker/mercury-3.0/docker-init-config/config/lucene.properties`,
+   `mercury-cmd/mercury-install-package/system-config-sample/linux/config/lucene.properties` (oraz wydania w `releases/`) i konfiguracje klienta w `mercury-client`.
+   Pliki `test-lucene-inea*.properties`, `test-lucene2.properties` i `test-lucene3.properties` (indeksy z `F:`) też bez zmian.
 5. **Wartości, które zależą od danych** (`childFirstRatio`, `probeLimit`, `refreshMs`, `maxHits`) kalibrowano na jednym indeksie (INEA 3.0, 22 mln dokumentów). Dla innego klienta wartości optymalne mogą się różnić.
    Stąd propozycja zadania z poleceniem `mercury-cmd`, które kalibruje parametry na lokalnym indeksie (`tasks/hgdb/XXX-Polecenie-kalibracji-parametrow-indeksu-Lucene/TASK.md`).
 
