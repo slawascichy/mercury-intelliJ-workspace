@@ -247,3 +247,36 @@ produktową decyzją autora i **nie jest** częścią W11.
 | W11.5 | **Gotowe w W10:** opis sortowania i listy pól (`CaseIndexerFieldsManagerRest`) w `podsumowanie-koncowe-2026-10-26.md`, punkt 3. Dokumentacja użytkownika w `docusaurus-hgdb` (osobne repozytorium) bez zmian. Notatka w `TASK.md` zadania 121 zaktualizowana. |
 | W9 PoC OpenSearch 2.19.1 (jeden węzeł, 4 shardy, dane INEA 22 mln dokumentów w modelu zdenormalizowanym z `nested`) | **gotowy**: wszystkie 10 zapytań z identycznymi liczbami trafień i grup jak Mercury; OpenSearch 9–212× szybszy na zapytaniach (10–17 ms), odświeżenie pulpitu p95 121/117/179 ms (Mercury 2035/2886/4524 ms). Przewaga wynika głównie z modelu danych (wąski dokument, dzieci osadzone, DocValues) i braku materializacji wierszy; migracji nie rekomenduję. Opis, ograniczenia i wnioski projektowe: `poc-opensearch-2026-10-26.md` | |
 | W10 Domknięcie | **gotowy po stronie Claude**: klucze OpenAPI pl i en (`truncated`, `totalHits`), opis sortowania (W11.5), opis kalibracji, konfiguracja, podsumowanie końcowe: `podsumowanie-koncowe-2026-10-26.md`. **Zostaje autorowi:** ponowne wygenerowanie raportu OpenAPI (generator nie startuje w sesji Claude: `MercuryException` w `generate-model`), push i PR | |
+
+
+## 11. Propozycja W12: pula czytników (zadanie 39, 2026-10-26)
+
+Zadanie 39 opisuje stos wątku z `LuceneConfig.getIndexReader` → `DirectoryReader.open` → `MMapDirectory.map` (blokada przy mapowaniu pliku).
+Kod to potwierdza: `LuceneConfig.getIndexReader(indexName)` (`mercury-lucene-indexes-api`) tworzy **nowy `FSDirectory` i nowy `DirectoryReader` przy każdym wywołaniu**,
+a wszystkie ścieżki zapytań (`MLuceneIndexerSupport`, `CaseIndexer`, `CaseSearcher`, `CaseSearchExtRest`, kolektory dat) zamykają go po użyciu.
+
+**Pomiar (INEA 3.0, 25 segmentów; `w12-pula-czytnikow/wyniki.txt`):**
+otwarcie czytnika kosztuje **99–159 ms** (mediana 159 ms, maks. 759 ms), a samo zapytanie na wspólnym czytniku 0,3 ms. To stały koszt każdego żądania,
+niezależny od zapytania. Na pulpicie (6 paneli) to ok. 0,75 s z p95 2,0 s dla jednego klienta (szacunek: 6 × ok. 125 ms, nie mierzone na pulpicie).
+Przy wielu klientach dochodzi rywalizacja o mapowanie plików (stos z zadania 39).
+
+**Czy da się bez własnej kompilacji Lucene: tak.** Obawa z zadania 39 (`IndexReader.close()` jest `final`) omija wzorzec:
+jeden wspólny `DirectoryReader` w puli (liczenie referencji `incRef`/`decRef`) i **lekki uchwyt per wywołanie** (`FilterDirectoryReader`,
+którego `doClose()` zwalnia referencję wspólnego czytnika zamiast go zamykać). Uchwyt jest `DirectoryReader`, więc istniejący kod
+(`try (IndexReader r = …)`, `new IndexSearcher(r)`) działa bez zmian. W `mercury` nie ma rzutowań na `DirectoryReader`. Prototyp
+`w12-pula-czytnikow/PoolProto.java` przeszedł testy: migawka starego uchwytu po odświeżeniu, podwójne `close()`, zamknięcie puli.
+
+**Czas po zmianie (prototyp):** acquire+count+close 0,2 ms (sprawdzanie zmian co 1 s) zamiast 125 ms; 8 wątków: p95 0,6 ms.
+Sprawdzanie zmian przy każdym acquire (`openIfChanged`, 8 ms) serializuje wątki (p95 70 ms), więc nie nadaje się jako domyślne.
+
+**Ryzyka i warunki:**
+1. **Świeżość danych.** Dziś każde zapytanie widzi ostatni commit. Pula musi unieważniać czytnik po commicie własnego writera (miejsca: 10 wystąpień w `MLuceneIndexerSupport`, 6 w `LuceneConfig`) oraz sprawdzać zmiany co N ms dla zapisów spoza procesu
+   (przypuszczenie: węzły podrzędne mogą zapisywać do tego samego katalogu; do potwierdzenia). Interwał konfigurowalny, np. `lucene.reader.refreshMs` (0 = jak dziś).
+2. **Windows i pliki.** Długo żyjący czytnik trzyma mapowania plików. Przebudowa, usuwanie i archiwizacja indeksu (`closeIndexWriterForce`, `buildNew`) muszą najpierw zamknąć pulę dla danego indeksu.
+3. **Pamięć i wersje.** Po odświeżeniu stary czytnik żyje, dopóki ktoś go używa (długie zapytania). Wymaga testu współbieżności z zapisem.
+4. **Cache zapytań Lucene** jest kluczowany rdzeniem segmentu, więc wspólny czytnik poprawia też trafienia w cache (przypuszczenie, do zmierzenia).
+5. Wyłącznik `-Dlucene.reader.pool=false` przywraca otwieranie na każde żądanie.
+
+**Zakres W12 (szacunek 2 dni):** klasa puli w `org.mercury.lucene` (zgodnie z zasadą nowych komponentów), podpięcie w `LuceneConfig.getIndexReader`,
+unieważnianie przy commit/zamknięciu writera/przebudowie, testy (poprawność, współbieżność z zapisem, zamknięcie), pomiar na pulpicie (W8) i w 41 zapytaniach.
+Zadanie 39 zamykamy razem z 119 (po decyzji autora).

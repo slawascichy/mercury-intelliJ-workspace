@@ -35,13 +35,11 @@
 ####################
 
 Dołożyłem zadania:
-039-[Lucene]-Optymalizacja-dostępu-do-IndexReader-a
 049-[CMIS]-Implementacja-API-CMIS
 058-Logger-dynamiczne-zmiana-poziomów-logowania
-121-Sortowanie-po-wybranych-parametrach-kończy-się-błędem
 
 Strumień:
-039-[Lucene]-Optymalizacja-dostępu-do-IndexReader-a
+>039-[Lucene]-Optymalizacja-dostępu-do-IndexReader-a
 049-[CMIS]-Implementacja-API-CMIS
 058-Logger-dynamiczne-zmiana-poziomów-logowania
   D062-Problem-dodawanie-klucza-głównego-po-utworzniu-typu-bez-pola
@@ -50,7 +48,7 @@ Strumień:
   D115-Usługa-updateCasesParamsByParams-nie-można-zaktualizować-parametru-do-null
   D116-Usługa-updateCasesParamsByParams-nie-działa-prawidłowo
 >119-[Lucene]-Problem-wydajności-systemu-długie-zapytania-Lucene
-121-Sortowanie-po-wybranych-parametrach-kończy-się-błędem
+>121-Sortowanie-po-wybranych-parametrach-kończy-się-błędem
   D133-Swagger-implementacja
   D156-Błąd-podczas-inicjalizacji-danych-predefiniowanych
 169-Zmiana-typu-identyfikatora-sprawy-na-String

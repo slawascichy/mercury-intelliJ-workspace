@@ -56,3 +56,9 @@ at org.mercury.cluster.node.logic.data.CaseLogic.searchIndex(CaseLogic.java:28)
 ```
 
 Nie jest dobrze. Już wcześniej próbowałem rozwiązać ten problem, utworzyć pulę połączeń, ale implementacja IndexReader ma final przy metodzie close() i nie można jej nadpisać. Hmmm... pojawił się pomysł by ściągnąć źródła indeksu Lucene, usunąć final, zrobić własną kompilację bibliotek i w końcu zrobić tę pulę połączeń.
+
+## Analiza i propozycja (2026-10-26, w ramach zadania 119)
+
+Kod potwierdza opis: `LuceneConfig.getIndexReader` otwiera nowy `DirectoryReader` przy każdym wywołaniu (99–159 ms na indeksie INEA, zapytanie na wspólnym czytniku 0,3 ms).
+Własna kompilacja Lucene nie jest potrzebna: wspólny czytnik z liczeniem referencji i lekki uchwyt `FilterDirectoryReader` per wywołanie (jego `doClose()` zwalnia referencję). Prototyp i pomiary:
+`../119-[Lucene]-Problem-wydajności-systemu-długie-zapytania-Lucene/w12-pula-czytnikow/`. Propozycja wpięcia do 119 jako W12: sekcja 11 w `plan-i-decyzje-2026-10-25.md`.

@@ -1,0 +1,14 @@
+Pomiar 2026-10-26, indeks INEA 3.0 (F:\mercury-indexes\20190705_Case_3.0\Case, 22 mln dokumentów, 25 segmentów), Lucene 7.5.0, tylko odczyt.
+
+ReaderBench (30 powtórzeń):
+  open+close (nowy FSDirectory + DirectoryReader):  min 99,3 ms, mediana 159,1 ms, max 759,2 ms
+  open+count+close (świeży czytnik):                min 114,5 ms, mediana 125,1 ms
+  count na wspólnym czytniku:                       min 0,1 ms, mediana 0,3 ms
+  openIfChanged bez zmian:                          min 5,4 ms, mediana 7,8 ms
+
+PoolProto (wspólny DirectoryReader, uchwyt FilterDirectoryReader per wywołanie, 200 powtórzeń):
+  sprawdzanie zmian przy każdym acquire:   acquire+count+close mediana 6,3 ms; 8 wątków mediana 30,4 ms, p95 70,2 ms
+  sprawdzanie co 1000 ms:                  acquire+count+close mediana 0,2 ms; 8 wątków mediana 0,1 ms, p95 0,6 ms
+  Test poprawności (interwał 0): nowy acquire widzi zatwierdzoną zmianę; stary uchwyt działa jako migawka; podwójne close()
+  jednego uchwytu nie zwalnia cudzej referencji; zamknięcie puli i uchwytów bez wyjątku.
+  Przy interwale 1000 ms test widoczności zmiany zawodzi (spodziewane): potrzebna unieważnienie puli po własnym commicie.
