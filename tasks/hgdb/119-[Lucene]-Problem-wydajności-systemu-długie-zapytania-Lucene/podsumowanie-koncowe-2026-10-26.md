@@ -4,6 +4,9 @@ Dokument zamyka zadanie 119 (wydajność zapytań Lucene w INEA) wraz z zadaniem
 Szczegóły decyzji i postępu: `plan-i-decyzje-2026-10-25.md`. Porównanie z OpenSearch: `poc-opensearch-2026-10-26.md`.
 Zestawienie parametrów konfiguracji: `parametry-konfiguracji-lucene-2026-10-26.md`. Wszystkie liczby pochodzą z plików CSV i raportów w tym katalogu.
 
+**Stan: zamknięte (2026-10-26).** Kod scalony do `master`: `mercury-lib` (PR #30, wydanie 3.0.4.16), `mercury` (PR #210), `hgdb-client-open` (PR #21, zależność
+na `mercury-lib` 3.0.4.16). Zadania 119, 39, 121 i 171 zamknięte na GitHubie. Zadanie następne wynikające z 119: 209 (polecenie kalibracji w `mercury-cmd`).
+
 ## 1. Co zmieniono
 
 | Etap | Zmiana | Efekt |
@@ -170,10 +173,12 @@ W7 (po DocValues dla dzieci i rodziców):
 
 ## 6. Do zrobienia po stronie autora
 
+Stan po zamknięciu (2026-10-26): punkt 4 wykonany (PR scalone, wydanie `mercury-lib` 3.0.4.16, zadania zamknięte). Punkty 1 do 3 i 5 do 6 pozostają jako uwagi.
+
 1. Przejrzeć tłumaczenia de, es, fr, ko (40 kluczy OpenAPI w dwóch wartościach oraz `L0009.7`, `L0009.8`), zwłaszcza koreańskie.
 2. Wygenerować ponownie raport `openapi-doc-report.txt` (generator nie wystartował w sesji Claude) i sprawdzić, że braków nie ma.
 3. Sprawdzić ręcznie przebudowę indeksu na Windows przy działającej puli czytników (pula jest pomijana na czas przebudowy, kopii i optymalizacji, ale nie ma na to dedykowanego testu).
 4. Zrobić push gałęzi `hgdb-119` (`mercury-lib`, `mercury`, ewentualnie `hgdb-client-open`, jeśli ma na niej commity) i pull request. Zadania 39 i 121 (część dotycząca walidacji) zamknąć razem z 119.
-5. Decyzje otwarte: dopisanie przykładów parametrów w `mercury-docker` i pakiecie instalacyjnym `mercury-cmd` (osobne repozytoria, nie zmieniane); numer zgłoszenia i zakres zadania
-   `XXX-Polecenie-kalibracji-parametrow-indeksu-Lucene` (6 pytań w `TASK.md`).
+5. Decyzje otwarte: dopisanie przykładów parametrów w `mercury-docker` i pakiecie instalacyjnym `mercury-cmd` (osobne repozytoria, nie zmieniane); zakres zadania
+   `209-Polecenie-kalibracji-parametrow-indeksu-Lucene` (6 pytań w `TASK.md`).
 6. Opcjonalnie: W3 część 2 (model kosztu z osobnymi stałymi dla „30 dni + Mts”) jako osobne zadanie; migracja do Lucene 9 w zadaniu 191, przy której warto dodać `DocValues` dla `*_subCaseIds` (wnioski z PoC OpenSearch).

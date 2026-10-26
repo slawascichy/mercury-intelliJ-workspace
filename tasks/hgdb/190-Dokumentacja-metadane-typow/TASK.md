@@ -71,3 +71,17 @@ konwencje.
 
 - Kod ma wyższy priorytet niż dokumentacja.
 - Opisywać tylko to, co da się zweryfikować w kodzie. Wnioski niepotwierdzone oznaczać jako przypuszczenie.
+
+## Decyzja do pozycji 7 (2026-10-26)
+
+Decyzja autora: **poprawić `HtmlControlUtils`** (`mercury-ws-app`), czyli dostosować `prepareSelectControl` i odczyt typu inputu dla STRING do konwencji
+stosowanej przez `HtmlArguments`, parser wartości, indeks Lucene (`CaseMapper`) i eksport POI (`MPoiServerSupport`). Zakres zadania rośnie o zmianę w repozytorium `mercury`
+(oprócz dokumentacji w `docusaurus-hgdb`):
+
+1. Poprawka `HtmlControlUtils.prepareSelectControl` (arg1 = wartość/nazwa, arg2 = `size`, arg3 = para `value|name`) i odczytu typu inputu dla STRING (arg1).
+2. Test jednostkowy generowania kontrolki dla SELECT/MULTI i STRING.
+3. Pozycja 7 w dokumentacji opisuje już jedną konwencję (według kodu po poprawce).
+4. Sprawdzić, czy kod wywołujący `HtmlControlUtils` (formularze w `mercury-ws-app`) nie zakłada starych znaczeń `arg2` i `arg3` (do sprawdzenia przy realizacji).
+
+Dodatkowy zakres z zadania 119 (ta sama witryna): parametry `lucene.properties` (`tasks/hgdb/119-…/parametry-konfiguracji-lucene-2026-10-26.md`),
+pola `truncated` i `totalHits` w odpowiedzi stronicowanej, błędy sortowania `L0009.7` i `L0009.8`.

@@ -66,7 +66,7 @@ Wskazówki per zapytanie (nie ustawia się ich w pliku, tylko w kontekście zapy
    `mercury-cmd/mercury-install-package/system-config-sample/linux/config/lucene.properties` (oraz wydania w `releases/`) i konfiguracje klienta w `mercury-client`.
    Pliki `test-lucene-inea*.properties`, `test-lucene2.properties` i `test-lucene3.properties` (indeksy z `F:`) też bez zmian.
 5. **Wartości, które zależą od danych** (`childFirstRatio`, `probeLimit`, `refreshMs`, `maxHits`) kalibrowano na jednym indeksie (INEA 3.0, 22 mln dokumentów). Dla innego klienta wartości optymalne mogą się różnić.
-   Stąd propozycja zadania z poleceniem `mercury-cmd`, które kalibruje parametry na lokalnym indeksie (`tasks/hgdb/XXX-Polecenie-kalibracji-parametrow-indeksu-Lucene/TASK.md`).
+   Stąd propozycja zadania z poleceniem `mercury-cmd`, które kalibruje parametry na lokalnym indeksie (`tasks/hgdb/209-Polecenie-kalibracji-parametrow-indeksu-Lucene/TASK.md`).
 
 ## 5. Przykład wpisu w `lucene.properties`
 

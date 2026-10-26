@@ -1,6 +1,8 @@
 # [209] [mercury-cmd] Polecenie linii komend kalibrujące parametry początkowe indeksu Lucene
 
-Szkic zadania (2026-10-26, propozycja z zadania 119). Numer `XXX` zastąpić numerem zgłoszenia GitHub, a katalog przemianować.
+Zgłoszenie: https://github.com/slawascichy/hgdb/issues/209
+
+Szkic zadania (2026-10-26, propozycja z zadania 119). Numer zgłoszenia (209) nadany przez autora.
 Zakres, nazwa polecenia i lista parametrów to propozycje do decyzji autora. Elementy oznaczone „przypuszczenie” nie były sprawdzane.
 
 ## Cel

@@ -39,7 +39,7 @@ Dołożyłem zadania:
 058-Logger-dynamiczne-zmiana-poziomów-logowania
 
 Strumień:
->039-[Lucene]-Optymalizacja-dostępu-do-IndexReader-a
+  D039-[Lucene]-Optymalizacja-dostępu-do-IndexReader-a
 049-[CMIS]-Implementacja-API-CMIS
 058-Logger-dynamiczne-zmiana-poziomów-logowania
   D062-Problem-dodawanie-klucza-głównego-po-utworzniu-typu-bez-pola
@@ -47,12 +47,12 @@ Strumień:
   D110-CaseLobProperty-More-than-one-row-with-the-given-identifier-was-found
   D115-Usługa-updateCasesParamsByParams-nie-można-zaktualizować-parametru-do-null
   D116-Usługa-updateCasesParamsByParams-nie-działa-prawidłowo
->119-[Lucene]-Problem-wydajności-systemu-długie-zapytania-Lucene
->121-Sortowanie-po-wybranych-parametrach-kończy-się-błędem
+  D119-[Lucene]-Problem-wydajności-systemu-długie-zapytania-Lucene
+  D121-Sortowanie-po-wybranych-parametrach-kończy-się-błędem
   D133-Swagger-implementacja
   D156-Błąd-podczas-inicjalizacji-danych-predefiniowanych
 169-Zmiana-typu-identyfikatora-sprawy-na-String
->171-Optymalizacja-optymalizatora-kosztowego
+  D171-Optymalizacja-optymalizatora-kosztowego
   D180-Problem-z-niektórymi-metodami-w-usłudze-CaseIndexerFieldsManagerAction
 190-Dokumentacja-metadane-typow
 191-Rewizja-wersji-migracja-Java17
