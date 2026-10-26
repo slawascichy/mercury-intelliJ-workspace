@@ -19,8 +19,9 @@ Lokalizacja pliku `lucene.properties`:
 - w pakiecie instalacyjnym: `IBPM/mercury/config/lucene.properties` (wzorce: `mercury-server/src/main/config/{jenkins,scichy}/IBPM/mercury/config/`);
 - narzędzie `mercury-cmd` czyta ten sam plik (`-Dmercury.lucene.config.file=$MERCURY_HOME/config/lucene.properties` w `mercury-cmd.sh`).
 
-**Pierwszeństwo:** dla parametrów oznaczonych „plik, potem `-D`” wartość z `lucene.properties` ma pierwszeństwo przed `-D`.
-Parametry oznaczone „tylko `-D`” plik `lucene.properties` ignoruje (patrz uwaga w punkcie 4).
+**Pierwszeństwo:** wszystkie parametry z punktu 2 (poza `lucene.query.truncation.error`) czyta klasa `org.mercury.lucene.config.LuceneProperty`: najpierw
+`lucene.properties`, a gdy wpisu brak, właściwość systemowa `-D`. Wpis w pliku ma więc pierwszeństwo przed `-D`.
+`lucene.query.truncation.error` i parametry z punktu 3 czytają tylko `lucene.properties`.
 
 ## 2. Parametry nowe (zadania 119, 39, 121)
 
@@ -28,11 +29,11 @@ Parametry oznaczone „tylko `-D`” plik `lucene.properties` ignoruje (patrz uw
 |---|---|---|---|---|
 | `lucene.query.truncation.error` | `false` | `true`: obcięcie wyniku limitem trafień kończy zapytanie błędem. `false`: zapytanie zwraca niepełny wynik z `truncated=true` i `totalHits` | `lucene.properties` | W1 |
 | `lucene.query.cost.probes` | `true` | Włącza sondy liczności w wyborze kolejności planu (korzeń najpierw albo dziecko najpierw). `false` przywraca starą regułę kosztową | plik, potem `-D` | W3 |
-| `lucene.query.cost.probeLimit` | `3000000` | Górny limit liczenia trafień przez sondę (zapytanie z dużą liczbą trafień nie jest liczone w całości) | tylko `lucene.properties` | W3 |
+| `lucene.query.cost.probeLimit` | `3000000` | Górny limit liczenia trafień przez sondę (zapytanie z dużą liczbą trafień nie jest liczone w całości) | plik, potem `-D` | W3 |
 | `lucene.query.cost.childFirstRatio` | `2.0` | Próg wyboru planu: dziecko najpierw, gdy trafień dziecka jest mniej niż `ratio × trafień korzenia`. Kalibracja: `podsumowanie-koncowe-2026-10-26.md`, punkt 4 | plik, potem `-D` | W3, W4, W7 |
-| `lucene.query.nested.batch` | włączone | `false` wyłącza zbiorcze łączenie rodzic–dziecko i wraca do pętli zagnieżdżonej | tylko `-D` | W4 |
-| `lucene.query.docvalues` | włączone | `false` wyłącza odczyt komórek wyniku i histogramu dat z DocValues (wraca do pól zapisanych) | tylko `-D` | W5, W6, W7 |
-| `lucene.query.nested.loadAllFields` | `false` | `true` przywraca wczytywanie całych dokumentów dzieci zamiast potrzebnych pól | tylko `-D` | W5 |
+| `lucene.query.nested.batch` | włączone | `false` wyłącza zbiorcze łączenie rodzic–dziecko i wraca do pętli zagnieżdżonej | plik, potem `-D` | W4 |
+| `lucene.query.docvalues` | włączone | `false` wyłącza odczyt komórek wyniku i histogramu dat z DocValues (wraca do pól zapisanych) | plik, potem `-D` | W5, W6, W7 |
+| `lucene.query.nested.loadAllFields` | `false` | `true` przywraca wczytywanie całych dokumentów dzieci zamiast potrzebnych pól | plik, potem `-D` | W5 |
 | `lucene.reader.pool` | `true` | `false` wyłącza wspólny czytnik indeksu i wraca do otwierania czytnika na każde żądanie | plik, potem `-D` | W12 (zadanie 39) |
 | `lucene.reader.refreshMs` | `1000` | Najdłuższy czas (ms) bez sprawdzenia zmian indeksu przez wspólny czytnik. Własne zapisy odświeżają czytnik od razu, a ten parametr obejmuje zapisy spoza procesu. `0` = sprawdzanie przy każdym pobraniu, wartość ujemna = tylko po zgłoszeniu zmiany | plik, potem `-D` | W12 |
 
@@ -51,10 +52,10 @@ Wskazówki per zapytanie (nie ustawia się ich w pliku, tylko w kontekście zapy
 
 ## 4. Uwagi i luki
 
-1. **Trzy przełączniki (`lucene.query.nested.batch`, `lucene.query.docvalues`, `lucene.query.nested.loadAllFields`) czytają wyłącznie właściwość systemową.**
-   Wpis w `lucene.properties` nie działa. Wynika to z tego, że służyły do pomiarów i awaryjnego powrotu do starego zachowania.
-   Propozycja: czytać je tak jak `childFirstRatio` (najpierw `LuceneConfig`, potem `-D`). To zmiana na kilka linii. Czekam na decyzję autora.
-2. **`lucene.query.cost.probeLimit` czyta tylko `lucene.properties`** (bez `-D`).
+1. **Odczyt ujednolicony (2026-10-26).** Trzy przełączniki (`lucene.query.nested.batch`, `lucene.query.docvalues`, `lucene.query.nested.loadAllFields`) i
+   `lucene.query.cost.probeLimit` czytały wcześniej tylko jedno źródło (pierwsze trzy wyłącznie `-D`, `probeLimit` wyłącznie plik). Teraz wszystkie
+   działają jak `childFirstRatio`: plik, potem `-D`.
+2. **`lucene.query.truncation.error`** czyta tylko `lucene.properties` (bez `-D`).
 3. **`lucene.RAMBufferSizeMB`, `lucene.maxBufferedDocs` i `lucene.index.segments`:** wartości są cache'owane przy pierwszym odczycie (`LuceneHelper`), więc zmiana wymaga restartu.
 4. **Wartości domyślne w plikach wzorcowych** (`lucene.properties` w `mercury-server/src/main/config/*`) ustawiają dziś tylko `lucene.query.maxHits` oraz katalogi i kopie zapasowe.
    Nowe parametry nie mają tam wpisów (działają domyślne wartości z kodu). Propozycja: dopisać je jako zakomentowane przykłady z opisem.
@@ -79,7 +80,7 @@ lucene.reader.pool=true
 lucene.reader.refreshMs=1000
 ```
 
-Wyłączniki awaryjne ustawia się w `bin/setenv.sh`, np.:
+Wyłączniki awaryjne można ustawić w `lucene.properties` (`lucene.query.docvalues=false`) albo w `bin/setenv.sh`, np.:
 
 ```bash
 export CATALINA_OPTS="$CATALINA_OPTS -Dlucene.query.nested.batch=false -Dlucene.query.docvalues=false"
