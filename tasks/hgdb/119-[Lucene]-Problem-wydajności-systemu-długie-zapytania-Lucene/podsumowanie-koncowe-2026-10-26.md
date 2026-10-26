@@ -1,7 +1,8 @@
-# Zadanie 119: podsumowanie końcowe (W10, 2026-10-26)
+# Zadanie 119: podsumowanie końcowe (W10 i W12, 2026-10-26)
 
-Dokument zamyka zadanie 119 (wydajność zapytań Lucene w INEA). Szczegóły decyzji i postępu: `plan-i-decyzje-2026-10-25.md`.
-Porównanie z OpenSearch: `poc-opensearch-2026-10-26.md`. Wszystkie liczby pochodzą z plików CSV i raportów w tym katalogu.
+Dokument zamyka zadanie 119 (wydajność zapytań Lucene w INEA) wraz z zadaniem 39 (pula czytników, W12) i częścią zadania 121 (walidacja sortowania, W11).
+Szczegóły decyzji i postępu: `plan-i-decyzje-2026-10-25.md`. Porównanie z OpenSearch: `poc-opensearch-2026-10-26.md`.
+Zestawienie parametrów konfiguracji: `parametry-konfiguracji-lucene-2026-10-26.md`. Wszystkie liczby pochodzą z plików CSV i raportów w tym katalogu.
 
 ## 1. Co zmieniono
 
@@ -19,11 +20,11 @@ Porównanie z OpenSearch: `poc-opensearch-2026-10-26.md`. Wszystkie liczby pocho
 | W11 | Walidacja sortowania (zadanie 121): błędy `L0009.7`, `L0009.8` | Czytelny błąd zamiast `M0001` |
 | W12 | Pula czytników indeksu (zadanie 39): wspólny `DirectoryReader` zamiast otwierania na każde żądanie | Zapytania lekkie 105 → 15 ms; suma trybu `cost` 11,0 → 6,4 s; pulpit p95 2,0 / 2,9 / 4,5 s → 1,2 / 1,6 / 2,0 s |
 
-Wynik końcowy (przebieg 2026-10-26, wyniki identyczne we wszystkich trybach i takie same jak w W0):
+Wynik końcowy (przebiegi 2026-10-26, wyniki identyczne we wszystkich trybach i takie same jak w W0):
 
 - kryterium żalu spełnia **39 z 41 zapytań (95%)**, drugi próg 40 z 41 (wobec 28 z 41 w W0);
-- mediana żalu 1,10 → 1,04, p90 2,4 → 1,33, maksimum 4,9 → 3,9;
-- suma czasów trybu `cost`: **48,6 s → 10,9 s**.
+- po W0–W11 (bez puli): mediana żalu 1,10 → 1,04, p90 2,4 → 1,33, maksimum 4,9 → 3,9, suma czasów trybu `cost` **48,6 s → 10,9 s**;
+- po W12 (pula czytników): suma czasów trybu `cost` **10,9 s → 6,4 s** (razem 48,6 s → 6,4 s, ok. 7,6×), mediana przyspieszenia pojedynczego zapytania 4,35×, żadne zapytanie wolniejsze.
 
 Znane ograniczenia:
 
@@ -32,9 +33,10 @@ Znane ograniczenia:
 
 ## 2. Konfiguracja
 
-Wyłączniki `lucene.query.nested.batch`, `lucene.query.docvalues` i `lucene.query.nested.loadAllFields` czytane są jako
-właściwości systemowe JVM (`-D…`). `lucene.query.maxHits` i `lucene.query.truncation.error` pochodzą z `LuceneConfig`.
-`lucene.query.cost.childFirstRatio` czytany jest najpierw z `LuceneConfig`, a gdy go tam brak, z właściwości systemowej.
+Pełne zestawienie (nazwa, działanie, domyślna wartość, miejsce ustawienia, luki): `parametry-konfiguracji-lucene-2026-10-26.md`.
+Wszystkie parametry z tabeli poniżej (poza `lucene.query.truncation.error` i `lucene.query.maxHits`) czyta klasa `org.mercury.lucene.config.LuceneProperty`:
+najpierw plik `lucene.properties`, a gdy wpisu brak, właściwość systemowa `-D` (np. w `bin/setenv.sh`). Zmiana wymaga restartu serwera.
+Zakomentowane przykłady są w 20 plikach `*lucene.properties` repozytorium `mercury`.
 
 | Właściwość | Domyślnie | Znaczenie |
 |---|---|---|
@@ -157,10 +159,21 @@ W7 (po DocValues dla dzieci i rodziców):
   Kolumny CSV: nazwa zapytania, model, status, żal, następnie para (czas ms, trafienia) dla `cost`, `rootFirst`, `none`
   i skrót zawartości wyniku. Skrypt `kalibracja-przelicz.py` (żal, liczba spełnionych, suma) odtwarza tabele powyżej.
 
-## 5. Do zrobienia po stronie autora
+## 5. Zmiany w repozytoriach (gałąź `hgdb-119`)
 
-1. Zatwierdzić zmiany w `mercury` (tłumaczenia: `openapi-docs_{de,es,fr,ko}.properties`, `LuceneErrorMsg_{de,es,fr,ko}.properties`) i w workspace (dokumenty z tej sesji).
-2. Przejrzeć tłumaczenia de, es, fr, ko (40 kluczy OpenAPI w dwóch wartościach + `L0009.7`, `L0009.8`) i zatwierdzić je.
-3. Zbudować `mercury-ws-app-rest-generator` i sprawdzić, że `openapi-doc-report.txt` nie ma braków.
-4. Zrobić push gałęzi `hgdb-119` (`mercury`, `mercury-lib`) i PR.
-5. Opcjonalnie: powtórzyć pomiar współbieżności (cel degradacji ≤ 2×); decyzja o W3 część 2 (osobne zadanie).
+- `mercury-lib`: `PagingInfo`, `PagingInfoTransportable`, `IPagingInfo` (pola `truncated`, `totalHits`).
+- `mercury`: moduły `mercury-lucene-indexes` i `mercury-lucene-indexes-api` (optymalizator, kolektory, `LuceneReaderPool`, `LuceneProperty`, walidacja sortowania),
+  `mercury-srv` (zgłaszanie zmian indeksu), `mercury-ws-app-rest-generator` (opisy OpenAPI w sześciu językach), pliki `*lucene.properties`.
+- Testy modułu `mercury-lucene-indexes`: **106 zielonych, 10 pominiętych** (wśród nich `LuceneReaderPoolTest` 6, `LucenePropertyTest` 2, `LuceneSortNonSortableFieldTest` 5).
+  W module API `LuceneFieldsLabelsFactoryTest` kończy się błędem tylko wtedy, gdy przekazać `-Dmercury.lucene.config.file` do wszystkich modułów (artefakt polecenia, nie kodu).
+- Zadanie 119 nie zmienia wersji Lucene (7.5.0, Java 8). Lucene 9 jest w zadaniu 191. Kod pisano bez klas w `org.apache.lucene.*`, żeby ułatwić port.
+
+## 6. Do zrobienia po stronie autora
+
+1. Przejrzeć tłumaczenia de, es, fr, ko (40 kluczy OpenAPI w dwóch wartościach oraz `L0009.7`, `L0009.8`), zwłaszcza koreańskie.
+2. Wygenerować ponownie raport `openapi-doc-report.txt` (generator nie wystartował w sesji Claude) i sprawdzić, że braków nie ma.
+3. Sprawdzić ręcznie przebudowę indeksu na Windows przy działającej puli czytników (pula jest pomijana na czas przebudowy, kopii i optymalizacji, ale nie ma na to dedykowanego testu).
+4. Zrobić push gałęzi `hgdb-119` (`mercury-lib`, `mercury`, ewentualnie `hgdb-client-open`, jeśli ma na niej commity) i pull request. Zadania 39 i 121 (część dotycząca walidacji) zamknąć razem z 119.
+5. Decyzje otwarte: dopisanie przykładów parametrów w `mercury-docker` i pakiecie instalacyjnym `mercury-cmd` (osobne repozytoria, nie zmieniane); numer zgłoszenia i zakres zadania
+   `XXX-Polecenie-kalibracji-parametrow-indeksu-Lucene` (6 pytań w `TASK.md`).
+6. Opcjonalnie: W3 część 2 (model kosztu z osobnymi stałymi dla „30 dni + Mts”) jako osobne zadanie; migracja do Lucene 9 w zadaniu 191, przy której warto dodać `DocValues` dla `*_subCaseIds` (wnioski z PoC OpenSearch).
