@@ -193,8 +193,8 @@ W0 2, W1 3, W2 4 (spike 1, wdrożenie 3), W3 6, W4 5, W5 4, W6 1, W7 5, W8 1, W9
 
 ## 10. Propozycja uzupełnienia: zadanie 121 (sortowanie po polach, które nie są sortowalne), strumień W11
 
-**Status: propozycja do zatwierdzenia przez autora.** Nie zmieniono kodu produkcyjnego. Dodano tylko test
-charakterystyki `LuceneSortNonSortableFieldTest`, który odtwarza błąd.
+**Status: zatwierdzone przez autora (2026-10-26) i zrealizowane (W11.1–W11.3, W11.4 częściowo).** Zakres poniżej opisuje
+propozycję; stan realizacji jest w podsekcji „Realizacja W11”.
 
 ### Co ustalono (źródło: zgłoszenie CMINATI-101 oraz kod)
 
@@ -235,3 +235,14 @@ produktową decyzją autora i **nie jest** częścią W11.
 - Nie wprowadza sortowania w pamięci po polach zapisanych (`store=YES`) jako rozwiązania zastępczego: dla dużych wyników
   jest kosztowne, a `status` nie jest nawet zapisany (`store=NO`). Do rozważenia przy dyskusji o strategii pól.
 - Nie zamyka zadania 121: komentarz z otwartą dyskusją o strategii sortowania pozostaje. W11 usuwa tylko mylący błąd.
+
+### Realizacja W11 (2026-10-26)
+
+| Krok | Stan |
+|---|---|
+| W11.1 | **Gotowe.** `LuceneSearcher.addSortField` zgłasza `L0009ValidationException` (klucz `L0009.7`) dla pola z `sorted=false` oraz dla pola nieistniejącego w definicjach (`L0009.2`). `prepareSort` i `addSortField` deklarują ten wyjątek; zaktualizowane wywołania w `LuceneQuery` (opakowanie w `IllegalArgumentException` jak dotąd) i test `RAMDirectoryTest`. `CaseSearcher` i `CaseSearchExtRest` kompilują się bez zmian (metody deklarują `MercuryException`). |
+| W11.2 | **Gotowe.** `LuceneSearcher.validateSortAgainstIndex(reader, sort)` sprawdza typ DocValues pól sortowania w segmentach (`SORTED_SET`/`SORTED` dla pól tekstowych, `SORTED_NUMERIC`/`NUMERIC` dla liczbowych); rozbieżność daje `L0009ValidationException` (`L0009.8`: przebuduj indeks albo użyj innego pola). Pole nieobecne w indeksie jest dozwolone. Wywołanie w `QueryExplainPlan.prepare`. |
+| W11.3 | **Gotowe.** `LuceneSortNonSortableFieldTest` (5 testów: pole sortowalne działa; `sorted=false` odrzucone; Lucene bez walidacji daje `IllegalStateException`; indeks bez DocValues odrzucony; pole z DocValues i pole nieobecne przechodzą). Moduł: 97 testów zielonych, 10 pominiętych. Baza 41 zapytań INEA wykonuje się bez błędów walidacji (sortowanie po `mrc_createDate`). |
+| W11.4 | **Częściowo.** Klucze `L0009.7` i `L0009.8` dodane w `LuceneErrorMsg_pl.properties` i `LuceneErrorMsg_en.properties`. Dla de, es, fr, ko brak kluczy: `MercuryMessageFactory.getMessage` wraca wtedy do wersji wymaganej (`REQUIRED_LANG_VERSION`), więc komunikat jest zawsze dostępny. **Do zrobienia:** tłumaczenie obu kluczy przez translator Gemini (`localization-project`). Zmiana API nie dotyczy `I*Action`/`I*ExtRest`, więc `openapi-doc-report.txt` bez zmian. |
+| W11.5 | **Do zrobienia przy W10:** dopisek w dokumentacji o liście pól sortowalnych (`CaseIndexerFieldsManagerRest`). Notatka w `TASK.md` zadania 121 zaktualizowana. |
+
