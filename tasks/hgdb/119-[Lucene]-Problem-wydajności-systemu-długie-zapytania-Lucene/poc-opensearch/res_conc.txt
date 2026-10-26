@@ -1,0 +1,8 @@
+P1 miesiąc FSO 365d       | 1kl p95     13 | 4kl p95     24 | 8kl p95     40 
+P2 dzień FSO 30d          | 1kl p95     28 | 4kl p95     21 | 8kl p95     27 
+P3 miasto adresów 365d    | 1kl p95     58 | 4kl p95     33 | 8kl p95     32 
+P4 suma ceny FSO 7d       | 1kl p95     21 | 4kl p95     19 | 8kl p95     28 
+P5 tabela Poznań+Rfs      | 1kl p95     24 | 4kl p95     33 | 8kl p95     32 
+P6 tabela Leszno+Vrf      | 1kl p95     11 | 4kl p95     23 | 8kl p95     43 
+PULPIT                    | 1kl p95    121 | 4kl p95    117 | 8kl p95    179 
+{1: 296, 4: 340, 8: 476}
