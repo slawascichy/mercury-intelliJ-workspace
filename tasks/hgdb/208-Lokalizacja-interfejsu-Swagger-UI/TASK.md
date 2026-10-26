@@ -1,4 +1,4 @@
-# [195] Lokalizacja tekstów interfejsu Swagger UI (etap 4 zadania 192)
+# [208] Lokalizacja tekstów interfejsu Swagger UI (etap 4 zadania 192)
 
 > Zadanie wydzielone z [192 – Lokalizacja opisów specyfikacji](../192-Lokalizacja-opisow-specyfikacji-i-tekstow-stalych/TASK.md)
 > (etap 4 i pytanie Q3); decyzja autora z 2026-10-22: **odłożone, niepilne**. Zadanie 192 nie zależy od tego zadania.

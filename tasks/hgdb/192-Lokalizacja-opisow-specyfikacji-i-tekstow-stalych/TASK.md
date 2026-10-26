@@ -66,7 +66,7 @@ webjara używanej w projekcie. Dwa warianty:
 | Etap 1 | Opisy specyfikacji statycznej | ✅ 2026-10-22: katalogi w 6 językach (pl, en, de, es, fr, ko), wydanie `mercury-lib` 3.0.4.8, pliki `openapi_<lang>.json`, wybór języka `l`/`lang`/`Accept-Language`, sprawdzone na serwerze. [2026-10-20](podsumowanie-2026-10-20.md), [2026-10-21](podsumowanie-2026-10-21.md) |
 | Etap 2 | Teksty stałe specyfikacji per typ | ✅ 2026-10-22: `OpenApiTexts` (teksty stałe generatora i serwera, klucze `openapi.*`), opisy schematów i pól z Javadoc (`schema.*`), opisy usług tylko dla REST (`rest.*`); 2683 klucze na język w module generatora, raport braków 0, sprawdzone na serwerze. Specyfikacja domyślna po polsku do czasu Q2 |
 | Etap 3 | Własne strony `swagger-ui-config` | ✅ 2026-10-22, sprawdzone w przeglądarce: `types.html` bierze teksty z `/rest/openapi/ui/types.json` (klucze `ui.types.*`, 6 języków), `index.html` przyjmuje `?l=`/`?lang=` oraz `?spec=..%2Frest%2Fopenapi.json%3Fl%3Dde`. Teksty samego Swagger UI to etap 4 |
-| Etap 4 | Interfejs Swagger UI | ➡️ 2026-10-22 wydzielony do zadania [195](../195-Lokalizacja-interfejsu-Swagger-UI/TASK.md) i odłożony (niepilne, decyzja autora). Rozpoznanie: webjar 5.32.0 nie ma obsługi wielu języków |
+| Etap 4 | Interfejs Swagger UI | ➡️ 2026-10-22 wydzielony do zadania [195](../208-Lokalizacja-interfejsu-Swagger-UI/TASK.md) i odłożony (niepilne, decyzja autora). Rozpoznanie: webjar 5.32.0 nie ma obsługi wielu języków |
 
 ## Tłumaczenia: sposób pracy (od 2026-10-21)
 
@@ -92,7 +92,7 @@ unikalne wartości (714 na 3443 klucze), ma pamięć podręczną (wznowienie po 
 |---|---|---|
 | Q1 | Które języki obejmuje pierwsze wydanie tłumaczeń? | ✅ Rozstrzygnięte 2026-10-22 (decyzja autora): pierwsze wydanie obejmuje języki, które są zrobione, czyli **pl, en, de, es, fr, ko**. Stan: zrobione pl, en, de (2026-10-20) oraz es, fr, ko (2026-10-21, tłumaczenie automatyczne z `en` przez narzędzie `D:\workspace\git\localization-project`, kontrola techniczna `validate` bez błędów; **bez przeglądu native speakera**). `de` przejrzane tym samym narzędziem (57 unikalnych poprawek w `mercury-lib`, 22 w `mercury`; odrzucone: „beliebig” → „verfügbar” i niespójne „Behandlung” → „Verwaltung”/„Verarbeitung”) |
 | Q2 | Czy tłumaczymy opisy w WSDL (zmiana tekstów adnotacji)? | ✅ Rozstrzygnięte 2026-10-22: wydzielone do zadania [194](../198-Tlumaczenie-opisow-WSDL-na-angielski/TASK.md) i odłożone. Dopóki trwa obecny stan, `OpenApiTexts.DEFAULT_LANGUAGE` zostaje `pl` |
-| Q3 | Wariant dla interfejsu Swagger UI (plugin czy warstwa DOM)? | ➡️ Przeniesione do zadania [195](../195-Lokalizacja-interfejsu-Swagger-UI/TASK.md) (webjar 5.32.0 bez i18n; rekomendacja: warstwa DOM) |
+| Q3 | Wariant dla interfejsu Swagger UI (plugin czy warstwa DOM)? | ➡️ Przeniesione do zadania [195](../208-Lokalizacja-interfejsu-Swagger-UI/TASK.md) (webjar 5.32.0 bez i18n; rekomendacja: warstwa DOM) |
 
 ## Definicja Gotowości (DoD)
 - Etapy 1–3 zrealizowane i sprawdzone w pl i en oraz w co najmniej jednym kolejnym języku.
