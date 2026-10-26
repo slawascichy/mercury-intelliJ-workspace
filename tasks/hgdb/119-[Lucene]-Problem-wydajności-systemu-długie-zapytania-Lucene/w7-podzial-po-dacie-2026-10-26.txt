@@ -1,0 +1,16 @@
+[adres 365 dni + Mts] korzeñ: 244970 dok. w 254 dniach; ca³e zapytanie: 5865 ms, wynik 204122
+[adres 365 dni + Mts] czêœci=2 (rzeczywiœcie 2): czas œcienny 5345 ms (najwolniejsza czêœæ 5345 ms), suma wyników 204122 wobec 204122 => ZGODNE ; przyspieszenie 1.10x
+[adres 365 dni + Mts] czêœci=4 (rzeczywiœcie 4): czas œcienny 5386 ms (najwolniejsza czêœæ 5385 ms), suma wyników 204122 wobec 204122 => ZGODNE ; przyspieszenie 1.09x
+[adres 365 dni + Mts] czêœci=8 (rzeczywiœcie 8): czas œcienny 5776 ms (najwolniejsza czêœæ 5774 ms), suma wyników 204122 wobec 204122 => ZGODNE ; przyspieszenie 1.02x
+[adres Poznañ + Mts (benchmark)] korzeñ: 140131 dok. w 275 dniach; ca³e zapytanie: 3869 ms, wynik 89896
+[adres Poznañ + Mts (benchmark)] czêœci=2 (rzeczywiœcie 2): czas œcienny 4655 ms (najwolniejsza czêœæ 4655 ms), suma wyników 89896 wobec 89896 => ZGODNE ; przyspieszenie 0.83x
+[adres Poznañ + Mts (benchmark)] czêœci=4 (rzeczywiœcie 4): czas œcienny 3704 ms (najwolniejsza czêœæ 3704 ms), suma wyników 89896 wobec 89896 => ZGODNE ; przyspieszenie 1.04x
+[adres Poznañ + Mts (benchmark)] czêœci=8 (rzeczywiœcie 8): czas œcienny 3895 ms (najwolniejsza czêœæ 3894 ms), suma wyników 89896 wobec 89896 => ZGODNE ; przyspieszenie 0.99x
+[adres Poznañ + Rfs] korzeñ: 140131 dok. w 275 dniach; ca³e zapytanie: 1005 ms, wynik 14177
+[adres Poznañ + Rfs] czêœci=2 (rzeczywiœcie 2): czas œcienny 1150 ms (najwolniejsza czêœæ 1149 ms), suma wyników 14177 wobec 14177 => ZGODNE ; przyspieszenie 0.87x
+[adres Poznañ + Rfs] czêœci=4 (rzeczywiœcie 4): czas œcienny 1496 ms (najwolniejsza czêœæ 1496 ms), suma wyników 14177 wobec 14177 => ZGODNE ; przyspieszenie 0.67x
+[adres Poznañ + Rfs] czêœci=8 (rzeczywiœcie 8): czas œcienny 1351 ms (najwolniejsza czêœæ 1351 ms), suma wyników 14177 wobec 14177 => ZGODNE ; przyspieszenie 0.74x
+[FSO 365 dni (lista)] korzeñ: 34964 dok. w 339 dniach; ca³e zapytanie: 356 ms, wynik 34964
+[FSO 365 dni (lista)] czêœci=2 (rzeczywiœcie 2): czas œcienny 456 ms (najwolniejsza czêœæ 456 ms), suma wyników 34964 wobec 34964 => ZGODNE ; przyspieszenie 0.78x
+[FSO 365 dni (lista)] czêœci=4 (rzeczywiœcie 4): czas œcienny 446 ms (najwolniejsza czêœæ 446 ms), suma wyników 34964 wobec 34964 => ZGODNE ; przyspieszenie 0.80x
+[FSO 365 dni (lista)] czêœci=8 (rzeczywiœcie 8): czas œcienny 516 ms (najwolniejsza czêœæ 515 ms), suma wyników 34964 wobec 34964 => ZGODNE ; przyspieszenie 0.69x

@@ -1,0 +1,41 @@
+"M3 adres, ostatnie 1 dni od końca danych + dziecko Mts";3;ok;1.19;213;0;179;0;937;0;31
+"M3 adres, ostatnie 30 dni od końca danych + dziecko Mts";3;ok;3.39;2297;1414;2102;1414;677;1414;1557583451
+"M3 adres, ostatnie 365 dni od końca danych + dziecko Mts";3;ok;1.23;2044;204122;4060;204122;1665;204122;-1395114812
+"M3 adres+Mts (benchmark, oczek. 89896)";3;ok;2.26;2332;89896;2286;89896;1031;89896;-478303800
+"M3 wildcard name (oczek. 19823)";3;ok;1.55;379;19823;313;19823;245;19823;-1465021974
+"M3 wildcard description (oczek. 7)";3;ok;1.88;226;7;120;7;140;7;533704826
+"M3 wildcard description_T (oczek. 7)";3;ok;1.25;126;7;108;7;101;7;533704826
+"M3 ratio: adres Poznań + dziecko SlmAppRfs";3;ok;1.00;246;14177;1718;14177;258;14177;151962419
+"M3 ratio: adres Poznań + dziecko SlmAppVrf";3;ok;1.00;153;1534;1707;1534;158;1534;-390742284
+"M3 ratio: adres Poznań + dziecko SlmAppAbs";3;ok;1.00;138;3389;1718;3389;143;3389;-148082746
+"M3 ratio: adres Poznań + dziecko SlmAppClb";3;ok;1.25;152;1374;1596;1374;122;1374;-1626782489
+"M3 ratio: adres Poznań + dziecko SlmAppLty";3;ok;1.03;114;761;1586;761;111;761;-2059723937
+"M3 ratio: adres Leszno + dziecko SlmAppVrf";3;ok;1.00;121;73;394;73;129;73;641659953
+"M3 ratio: adres Leszno + dziecko SlmAppAbs";3;ok;1.00;111;36;315;36;125;36;1717364653
+"M3 ratio: adres Leszno + dziecko SlmAppClb";3;ok;1.13;120;76;367;76;106;76;-24791
+"M3 ratio: adres Leszno + dziecko SlmAppLty";3;ok;1.04;117;234;296;234;112;234;678385196
+"M3 ratio: adres Leszno + dziecko SlmAppAgr";3;ok;1.17;119;30;294;30;102;30;-1432720874
+"M3 ratio: adres Oborniki + dziecko SlmAppAbs";3;ok;1.00;113;0;240;0;133;0;31
+"M3 ratio: adres Oborniki + dziecko SlmAppClb";3;ok;1.20;126;5;200;5;105;5;-845505653
+"M3 ratio: adres Oborniki + dziecko SlmAppLty";3;ok;1.07;103;10;186;10;96;10;-1122527759
+"M3 ratio: adres Oborniki + dziecko SlmAppAgr";3;ok;1.07;113;0;200;0;106;0;31
+"M3 ratio: adres Oborniki + dziecko SlmAppLead";3;ok;1.08;107;0;164;0;99;0;31
+"M3 adres+Lead (oczek. 136)";3;ok;1.38;160;136;1659;136;116;136;1492926378
+"M3 FsmServiceOrder, ostatnie 1 dni od końca danych";3;ok;1.07;91;1328;96;1328;85;1328;933224974
+"M3 FsmServiceOrder, ostatnie 7 dni od końca danych";3;ok;1.00;89;3426;92;3426;92;3426;1351415478
+"M3 FsmServiceOrder, ostatnie 30 dni od końca danych";3;ok;1.00;101;5713;106;5713;105;5713;13374512
+"M3 FsmServiceOrder, ostatnie 365 dni od końca danych";3;ok;1.00;299;34964;357;34964;365;34964;412359657
+"M3 SlmAddress Poznań, ostatni rok od końca danych";3;ok;1.05;258;10232;276;10232;246;10232;-1630714595
+"M3 groupBy(miesiąc) FsmServiceOrder";3;ok;1.13;419;16;373;16;372;16;-1993645993
+"M3 groupBy(city) SlmAddress";3;ok;1.00;368;105;411;105;375;105;1538091482
+"M3 groupBy(price, dzień)";3;ok;1.30;270;340;208;340;217;340;147999286
+"M3 simple (oczek. 4)";3;ok;1.05;83;4;88;4;79;4;183836195
+"M3 base+Otwarta";3;ok;1.00;92;4;98;4;107;4;183836195
+"M3 AND (oczek. ?)";3;ok;1.00;109;1;112;1;120;1;-584920895
+"M3 OR (oczek. 4)";3;ok;1.00;107;4;127;4;129;4;183836195
+"M3 NOT IN (oczek. 3)";3;ok;1.00;102;3;105;3;110;3;1410271971
+"M3 AND -area (oczek. 3)";3;ok;1.00;100;3;102;3;109;3;1410271971
+"M3 SUB (oczek. 595)";3;ok;1.00;88;595;89;595;88;595;-683252871
+"M3 CHILD extendedDetails (oczek. 4)";3;ok;1.00;92;4;100;4;96;4;1100922339
+"M3 CHILD OR detailsUnavailability (oczek. 4)";3;ok;1.00;100;4;103;4;111;4;-1389455132
+"M3 PARENT adres<-SlmLead (oczek. 25)";3;ok;1.50;190;25;1825;25;127;25;-1353402410
