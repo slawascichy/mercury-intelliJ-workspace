@@ -1,0 +1,22 @@
+PERFH: fsmserviceorder przebieg=1 stary=1489 ms, docvalues=84 ms, dni=401, dokumentów=38981, brak=0, RÓWNE=true
+PERFH: fsmserviceorder przebieg=2 stary=742 ms, docvalues=44 ms, dni=401, dokumentów=38981, brak=0, RÓWNE=true
+PERFH: slmaddress przebieg=1 stary=329 ms, docvalues=19 ms, dni=97, dokumentów=19334, brak=0, RÓWNE=true
+PERFH: slmaddress przebieg=2 stary=292 ms, docvalues=17 ms, dni=97, dokumentów=19334, brak=0, RÓWNE=true
+PERFH: ca³y indeks przebieg=1 docvalues=794 ms, dni=1029, dokumentów=22028880, brak=0
+PERFH: ca³y indeks przebieg=2 docvalues=468 ms, dni=1029, dokumentów=22028880, brak=0
+PERFH: fsmserviceorder czêœci=2 nierównowaga (max/œrednia): wed³ug licznoœci=1.0, równy czas=1.08
+PERFH: fsmserviceorder czêœci=4 nierównowaga (max/œrednia): wed³ug licznoœci=1.03, równy czas=1.36
+PERFH: fsmserviceorder czêœci=8 nierównowaga (max/œrednia): wed³ug licznoœci=1.54, równy czas=2.08
+PERFH: fsmserviceorder czêœci=16 nierównowaga (max/œrednia): wed³ug licznoœci=3.08, równy czas=3.51
+PERFH: fsmserviceorder czêœci=4 przebieg=1: jedno zapytanie 11 ms (n=38981), równolegle wed³ug licznoœci 225 ms, równolegle równy czas 74 ms
+PERFH: fsmserviceorder czêœci=4 przebieg=2: jedno zapytanie 11 ms (n=38981), równolegle wed³ug licznoœci 113 ms, równolegle równy czas 86 ms
+PERFH: fsmserviceorder czêœci=8 przebieg=1: jedno zapytanie 9 ms (n=38981), równolegle wed³ug licznoœci 29 ms, równolegle równy czas 52 ms
+PERFH: fsmserviceorder czêœci=8 przebieg=2: jedno zapytanie 7 ms (n=38981), równolegle wed³ug licznoœci 82 ms, równolegle równy czas 81 ms
+PERFH: slmaddress czêœci=2 nierównowaga (max/œrednia): wed³ug licznoœci=1.05, równy czas=1.54
+PERFH: slmaddress czêœci=4 nierównowaga (max/œrednia): wed³ug licznoœci=1.09, równy czas=1.61
+PERFH: slmaddress czêœci=8 nierównowaga (max/œrednia): wed³ug licznoœci=1.37, równy czas=2.78
+PERFH: slmaddress czêœci=16 nierównowaga (max/œrednia): wed³ug licznoœci=2.74, równy czas=4.98
+PERFH: slmaddress czêœci=4 przebieg=1: jedno zapytanie 2 ms (n=19334), równolegle wed³ug licznoœci 29 ms, równolegle równy czas 23 ms
+PERFH: slmaddress czêœci=4 przebieg=2: jedno zapytanie 1 ms (n=19334), równolegle wed³ug licznoœci 61 ms, równolegle równy czas 78 ms
+PERFH: slmaddress czêœci=8 przebieg=1: jedno zapytanie 2 ms (n=19334), równolegle wed³ug licznoœci 24 ms, równolegle równy czas 13 ms
+PERFH: slmaddress czêœci=8 przebieg=2: jedno zapytanie 1 ms (n=19334), równolegle wed³ug licznoœci 80 ms, równolegle równy czas 30 ms
