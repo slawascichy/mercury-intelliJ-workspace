@@ -188,3 +188,50 @@ W0 2, W1 3, W2 4 (spike 1, wdrożenie 3), W3 6, W4 5, W5 4, W6 1, W7 5, W8 1, W9
 | W7 podział po dacie wątkami lokalnymi (prototyp `LuceneDateSplitPerfTest`: pełne zapytanie silnika z dodanym zakresem daty na część) | **prototyp wykonany, podział nie jest opłacalny**. Sumy wyników części zgadzają się z całością (ZGODNE) dla 4 scenariuszy, ale czas ścienny nie spada (np. „365 dni + Mts”: 5,9 s całość, 5,3/5,4/5,8 s dla 2/4/8 części; reszta scenariuszy wolniej). Przyczyna: koszt nie zależy od zakresu daty korzenia, bo dominuje wczytywanie komórek 219 tys. dzieci (2,7 s) i 204 tys. rodziców (2,9 s) z pól zapisanych. Dane: `w7-podzial-po-dacie-2026-10-26.txt` | |
 | W7 zamiast podziału: odczyt komórek dzieci i rodziców z DocValues w ścieżkach dziecko-najpierw (`collectSubResultsBatch`) i kolekcji (`collectSubResultsByCollection`); `DocValuesCells.readIdValues` czyta identyfikatory dzieci z DocValues pola rodzica (`SORTED_NUMERIC` jak w indeksie INEA albo `SORTED_SET` z samych cyfr) | **gotowe**: „365 dni + Mts” 8,1 → 2,0 s, benchmark Poznań+Mts 3,8 → 2,3 s, suma czasów 41 zapytań (tryb cost) 22,3 → 12,7 s; skróty zawartości wyników identyczne (0 różnic). Podział po dacie po tej zmianie daje 0,9× (nie ma sensu). Rekomendacja do 191/75: przy przebudowie indeksu zapisywać `*_subCaseIds` także jako DocValues (nowy format zapisuje je tylko jako pola zapisane, więc odczyt kolumnowy działa dziś tylko na indeksach w starym formacie z `SORTED_NUMERIC`) | |
 | W7 ponowna kalibracja progu `childFirstRatio` po W4/W7 (dziecko-najpierw stało się tańsze) | **gotowa, nowy domyślny próg 2,0**: 0,5 → 36/41 (max żal 3,15), 1,0 → 37/41, **2,0 → 40/41 (suma 10,8 s)**, 4,0 → 39/41. Niespełnione zostaje „30 dni + Mts” (stosunek ok. 10, żal 3,2), którego nie da się poprawić progiem bez pogorszenia innych. Dane: `w7-kalibracja-*.csv` | |
+| **Przebieg końcowy** (2026-10-26, stan po W0–W7; `koncowy-przebieg-2026-10-26.csv`, `koncowy-wspolbieznosc-2026-10-26.csv`) | **41/41 zapytań z identycznymi wynikami** we wszystkich trybach i liczbami trafień jak w W0. Kryterium żalu (≤ 1,25 lub ≤ 100 ms): **39/41 (95%)** wobec 28/41 w W0; drugi próg (żal ≤ 2 lub różnica ≤ 500 ms): 40/41. Mediana żalu 1,10 → 1,04, p90 2,4 → 1,33, max 4,9 → 3,9. Suma czasów 41 zapytań w trybie `cost`: **48,6 s → 10,9 s (4,5×)**. Plan dziecko-najpierw: 680 s → 30 s (W4). Najwolniejsze dawne zapytania: Poznań+Rfs 13,7 s → 0,22 s; 365 dni + Mts 6,9 s → 1,9 s; benchmark Poznań+Mts 5,5 s → 0,9 s. Pulpit Grafany (6 paneli) p95: 1/4/8 klientów 2,0 / 2,9 / 4,5 s (W0: 16,2 / 21,3 / 32,3 s), degradacja p95 8 klientów wobec 1: **2,2× — cel ≤ 2× niespełniony w tym przebiegu** (w W8 po W5 było 1,74×; jedna seria po 24 próbki na panel, więc pomiar jest rozrzucony; wymaga powtórzenia, W3 część 2 / SearcherManager). Testy modułu 92 zielone, 10 pominiętych. Znane ograniczenia: „adres 30 dni + Mts” (żal 3,9, różnica 1,9 s) — plan dziecko-najpierw jest tu 3,5× szybszy, ale stosunek dziecko/korzeń (ok. 50) leży między tym przypadkiem a „1 dzień + Mts” (stosunek rzędu 10³, tam wygrywa korzeń); próg 12/24/48 tego nie naprawia (`w7-kalibracja-{12,24,48}.csv`), potrzebny model kosztu z osobnymi stałymi dla obu planów (W3, część 2); „groupBy(miesiąc)” 1,33 (różnica 119 ms) | |
+
+
+## 10. Propozycja uzupełnienia: zadanie 121 (sortowanie po polach, które nie są sortowalne), strumień W11
+
+**Status: propozycja do zatwierdzenia przez autora.** Nie zmieniono kodu produkcyjnego. Dodano tylko test
+charakterystyki `LuceneSortNonSortableFieldTest`, który odtwarza błąd.
+
+### Co ustalono (źródło: zgłoszenie CMINATI-101 oraz kod)
+
+1. Błąd z CMINATI-101 (`IllegalStateException` zwrócony jako ogólny `M0001`) pochodzi z Lucene. Pole bez DocValues użyte w
+   `SortedSetSortField` kończy wyszukiwanie wyjątkiem. Test odtwarza to na indeksie w pamięci: pole `status` jako
+   `StringField` bez DocValues kończy się `IllegalStateException`, a pole z DocValues sortuje się poprawnie.
+2. `LuceneSearcher.addSortField` (`mercury-lucene-indexes-api`) **nie sprawdza flagi `sorted`** definicji pola. Dla
+   `StringField` zawsze tworzy `SortedSetSortField`, więc pole zdefiniowane jako `sorted=false` (np. `status`) przechodzi
+   budowanie sortowania, a błąd pojawia się dopiero przy wyszukiwaniu. Dla `TextField` wyjątek jest zgłaszany od razu
+   (`IllegalArgumentException`), ale też jako ogólny błąd aplikacji.
+3. Drugi przypadek z zgłoszenia (`companyName`) wynikał z różnicy definicji między środowiskami: na TST pole było
+   `TextField`, `sorted=false`; na PROD `StringField`, `sorted=true`. To samo źródło: sortowanie wymaga pola z DocValues,
+   a definicja pola i zawartość indeksu mogą się rozjechać (np. indeks zbudowany przed zmianą definicji).
+4. W kodzie jest już mechanizm komunikatów dla tego rodzaju błędu: `L0009ValidationException` z komunikatem `L0009.3`
+   („Kolektor wymaga pól sortowanych. Pole nie spełnia tego wymagania.”), używany w `CollectorValidator`
+   (`sortableOnly`). Sortowanie go nie używa.
+
+### Czy to pasuje do 119
+
+Częściowo. Zadanie 121 nie dotyczy wydajności, ale leży w tej samej ścieżce zapytania (`LuceneSearcher`,
+`QueryExplainPlan`), a poprawka jest mała. Zgodnie z decyzją D1 (jedno duże zadanie, bez kolejnych wydań) proponuję włączyć
+ją do 119 jako W11 (ok. 1 do 1,5 dnia). Decyzja o **strategii pól sortowania** (czy `status` ma być sortowalny) jest osobną,
+produktową decyzją autora i **nie jest** częścią W11.
+
+### Zakres W11 (propozycja)
+
+| Krok | Opis |
+|---|---|
+| W11.1 | `addSortField`: gdy definicja pola ma `sorted=false` (także dla pól alternatywnych `_S`, `_N`), zgłosić `L0009ValidationException` z komunikatem `L0009.3` i nazwą pola. Wyjątek walidacji trafia do klienta jako błąd walidacji, a nie ogólny `M0001`. |
+| W11.2 | Weryfikacja względem indeksu przed wyszukiwaniem: dla każdego pola sortowania sprawdzić w `FieldInfos` czytnika, czy istnieje typ DocValues zgodny z `SortField` (`SORTED_SET`/`SORTED`/`SORTED_NUMERIC`). Brak oznacza walidację z komunikatem o rozbieżności definicji i indeksu („przebuduj indeks”, zadanie 75). Dotyczy przypadku `companyName` na TST. |
+| W11.3 | Testy: zmiana `testNonSortableFieldFailsOnlyAtSearchTime` na oczekiwanie `L0009ValidationException`; test pola z definicją `sorted=true`, ale bez DocValues w indeksie; test przez `QueryExplainPlan` (sortowanie przekazane przez `defaultLuceneSortClause`). |
+| W11.4 | Komunikaty w `*.properties` (pl, en; de, es, fr, ko przez translator Gemini, zgodnie z ustaleniami), w razie zmiany API sprawdzić `openapi-doc-report.txt`. |
+| W11.5 | Dokumentacja: lista pól sortowalnych dostępna przez `CaseIndexerFieldsManagerRest` (już istnieje, wskazana w zgłoszeniu), dopisek w TASK.md zadania 121. |
+
+### Czego W11 nie robi (do decyzji autora)
+
+- Nie zmienia definicji pól (`status` zostaje niesortowalny). Zmiana wymaga aktualizacji definicji i przebudowy indeksu.
+- Nie wprowadza sortowania w pamięci po polach zapisanych (`store=YES`) jako rozwiązania zastępczego: dla dużych wyników
+  jest kosztowne, a `status` nie jest nawet zapisany (`store=NO`). Do rozważenia przy dyskusji o strategii pól.
+- Nie zamyka zadania 121: komentarz z otwartą dyskusją o strategii sortowania pozostaje. W11 usuwa tylko mylący błąd.
