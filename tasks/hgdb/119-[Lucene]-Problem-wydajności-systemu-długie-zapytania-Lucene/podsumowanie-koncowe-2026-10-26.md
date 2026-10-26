@@ -54,11 +54,11 @@ Wskazówki zapytania (`ContextQueryHint`): `org.mercury.lucene.query.hint.useCos
   pojawiają się **tylko wtedy, gdy wynik jest obcięty** (`truncated=true`). Brak pola oznacza wynik pełny.
 - Opisy OpenAPI: klucze `schema.<Typ>PagedResult.totalHits` i `.truncated` dla 20 schematów, w
   `mercury-ws-app-rest-generator/src/main/resources/META-INF/mercury/openapi-docs_{pl,en}.properties` (po 40 wierszy).
-  **Brakuje de, es, fr, ko.** Raport `openapi-doc-report.txt` pokazuje 40 brakujących kluczy w każdym języku, dopóki translator
-  Gemini ich nie uzupełni. Po uzupełnieniu raport trzeba wygenerować ponownie.
+  Tłumaczenia de, es, fr, ko wykonał translator Gemini (`localization-project`, `validate`: 0 błędów, 0 ostrzeżeń).
+  Wszystkie sześć plików ma po 40 kluczy. Raport `openapi-doc-report.txt` w `target/` jest nieaktualny (z 15:22) i trzeba
+  go wygenerować ponownie; generator nie wystartował w sesji Claude (`MercuryException` w kroku `generate-model`).
 - Błędy walidacji sortowania: `L0009.7` (pole oznaczone jako niesortowalne), `L0009.8` (indeks nie ma DocValues dla pola).
-  Klucze są w `LuceneErrorMsg_pl/en.properties`. Dla de, es, fr, ko komunikat wraca do wersji wymaganej, więc jest zawsze
-  dostępny. Tłumaczenie tych dwóch kluczy też należy do translatora Gemini.
+  Klucze są we wszystkich sześciu plikach `LuceneErrorMsg_*.properties` (de, es, fr, ko przetłumaczył Gemini).
 
 ### Sortowanie (zadanie 121, W11.5)
 
@@ -156,9 +156,8 @@ W7 (po DocValues dla dzieci i rodziców):
 
 ## 5. Do zrobienia po stronie autora
 
-1. Zatwierdzić zmiany w `mercury` (dwa pliki `openapi-docs_{pl,en}.properties`) i w workspace (dokumenty z tej sesji).
-2. Przekazać translatorowi Gemini (`localization-project`): 40 kluczy `schema.*PagedResult.{totalHits,truncated}` (de, es, fr, ko)
-   oraz `L0009.7`, `L0009.8` (de, es, fr, ko).
-3. Po tłumaczeniu zbudować `mercury-ws-app-rest-generator` i sprawdzić, że `openapi-doc-report.txt` nie ma braków.
+1. Zatwierdzić zmiany w `mercury` (tłumaczenia: `openapi-docs_{de,es,fr,ko}.properties`, `LuceneErrorMsg_{de,es,fr,ko}.properties`) i w workspace (dokumenty z tej sesji).
+2. Przejrzeć tłumaczenia de, es, fr, ko (40 kluczy OpenAPI w dwóch wartościach + `L0009.7`, `L0009.8`) i zatwierdzić je.
+3. Zbudować `mercury-ws-app-rest-generator` i sprawdzić, że `openapi-doc-report.txt` nie ma braków.
 4. Zrobić push gałęzi `hgdb-119` (`mercury`, `mercury-lib`) i PR.
 5. Opcjonalnie: powtórzyć pomiar współbieżności (cel degradacji ≤ 2×); decyzja o W3 część 2 (osobne zadanie).
