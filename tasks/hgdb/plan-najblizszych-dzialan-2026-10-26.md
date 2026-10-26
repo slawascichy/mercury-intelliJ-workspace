@@ -5,14 +5,14 @@ i krótkiej lekturze kodu, a nie na pełnym rozpoznaniu.
 
 ## 1. Decyzje autora (2026-10-26)
 
-| # | Decyzja | Skutek |
-|---|---|---|
-| 1 | Kolejność faz A → B → C jest dobra | Plan poniżej; faza D (wydanie) jest ostatnia |
-| 2 | Poprawić `HtmlControlUtils` (pozycja 7 zadania 190) | Zakres 190 rośnie o zmianę w `mercury` (zapisane w `190-…/TASK.md`) |
+| # | Decyzja | Skutek                                                                                                     |
+|---|---|------------------------------------------------------------------------------------------------------------|
+| 1 | Kolejność faz A → B → C jest dobra | Plan poniżej; faza D (wydanie) jest ostatnia                                                               |
+| 2 | Poprawić `HtmlControlUtils` (pozycja 7 zadania 190) | Zakres 190 rośnie o zmianę w `mercury` (zapisane w `190-…/TASK.md`)                                        |
 | 3 | 058: tylko REST, SOAP niepotrzebny | Cele 058 zaktualizowane; usługa `I*ExtRest` w `mercury-ws-app`, bez zmian w `mercury-lib` (przypuszczenie) |
-| 4 | 049: szkic oparty o repozytorium plikowe, sprawdzić `web.xml` | Stan szkicu opisany w `049-…/TASK.md`; obserwacja 87 (endpointy CMIS w WAR) |
-| 5 | Pytania z 209 rozstrzygamy przy przejściu do 209 | Bez zmian |
-| 6 | Dodać zadanie obrazów Docker, zwieńczające pakiet zmian i wydanie | Zadanie `XXX-Aktualizacja-obrazow-Docker-i-wydanie` (faza D) |
+| 4 | 049: szkic oparty o repozytorium plikowe, sprawdzić `web.xml` | Stan szkicu opisany w `049-…/TASK.md`; obserwacja 87 (endpointy CMIS w WAR)                                |
+| 5 | Pytania z 209 rozstrzygamy przy przejściu do 209 | Bez zmian                                                                                                  |
+| 6 | Dodać zadanie obrazów Docker, zwieńczające pakiet zmian i wydanie | Zadanie `211-Aktualizacja-obrazow-Docker-i-wydanie` (faza D)                                               |
 
 ## 2. Stan kolejki
 
@@ -25,7 +25,7 @@ i krótkiej lekturze kodu, a nie na pełnym rozpoznaniu.
 | 209 Polecenie kalibracji (`mercury-cmd`) | szkic (faza B) | średnie | Pytania rozstrzygamy przy starcie |
 | 191 Rewizja wersji i Java 17 | w kolejce (faza C) | etap 1: kilka dni; etap 2: duże | Zawiera Lucene 9 |
 | 049 CMIS | **nowe** (faza C) | duże | Szkic wpięty w `web.xml`; patrz niżej |
-| XXX Obrazy Docker i wydanie | **nowe** (faza D) | 3–5 d (przypuszczenie) | Zwieńczenie pakietu; zależy od wydań `mercury`, `hgdb-client-open`, `mercury-cmd` |
+| 211 Obrazy Docker i wydanie | **nowe** (faza D) | 3–5 d (przypuszczenie) | Zwieńczenie pakietu; zależy od wydań `mercury`, `hgdb-client-open`, `mercury-cmd` |
 | 193, 198, 208 (Swagger UI; autor pisał „195”) | **not now** | – | Bez działań |
 
 ## 3. Kolejność
@@ -51,9 +51,9 @@ i krótkiej lekturze kodu, a nie na pełnym rozpoznaniu.
 
 ### Faza D: wydanie (po fazach A–C, zadanie obrazów Docker)
 
-7. **XXX, obrazy Docker i wydanie.** Łańcuch: wydanie `mercury` i `hgdb-client-open` → podbicie wersji w `mercury-cmd` i budowa pakietu instalacyjnego → wgranie pakietu na `hgdb.org/mercury-docker-packages`
+7. **211, obrazy Docker i wydanie.** Łańcuch: wydanie `mercury` i `hgdb-client-open` → podbicie wersji w `mercury-cmd` i budowa pakietu instalacyjnego → wgranie pakietu na `hgdb.org/mercury-docker-packages`
    → aktualizacja `mercury-docker` (Dockerfile, kompozycje, Helm, README, konfiguracje) → test dymny → publikacja obrazów → artykuły o Docker i Kubernetes.
-   Szczegóły i ryzyka: `XXX-Aktualizacja-obrazow-Docker-i-wydanie/TASK.md`.
+   Szczegóły i ryzyka: `211-Aktualizacja-obrazow-Docker-i-wydanie/TASK.md`.
 
 ## 4. Ocena ryzyk dla wydania (z nierozwiązanych obserwacji)
 
