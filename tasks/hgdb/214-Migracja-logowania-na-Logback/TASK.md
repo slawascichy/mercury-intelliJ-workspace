@@ -140,3 +140,59 @@ Gałąź `hgdb-058` w `mercury-client`, `mercury-cmd` i `mercury-docker` (zmiany
 4. Oznaczyć ✅ obserwacje 98–100 w `docs/obserwacje.md` po teście dymnym i wydaniu; instrukcja aktualizacji dla klientów z własnym `log4j.properties`.
 
 **Weryfikacja `mercury-client` i `mercury-cmd` (2026-10-27):** biblioteki IBM są w `D:\workspace\lib` (`local-lib-path` z `settings.xml`), ale `mvn -o test-compile` w `mercury-client` nie przechodzi już na `master` (przed moimi zmianami): w POM-ach nie ma definicji właściwości `hgdb-client.version`, `httpclient.version` i `servlet-api.version`. Zamiast pełnego buildu sprawdzono samodzielnie oba `LoggerConfigurator`y: kompilują się z Logbackiem 1.2.13, a wersja klienta załadowała `mercury-client-cmd/src/main/conf/logback.xml` (komunikat „Logging initialized.” i wpis testowy w formacie z pliku). W `mercury-srv-cmd` kompilacja `LoggerConfigurator` nie ma błędów, ale nie dało się skompilować jego zależności `CommandLineHelper` (brakuje jarów serwera).
+
+## Zgodność z SecurityProviderem w IBM BPM (2026-10-27)
+
+`mercury-client` (przez `hgdb-client-open`) i SecurityProvider (`D:\workspace\git\bpm-security-provider`) działają w jednym środowisku IBM BPM, w którym współdzielą katalog bibliotek i classloader. Poniższe ustalenia pochodzą z POM-ów, kodu i katalogów `D:\workspace\lib\TeamWorks-*`.
+
+**1. Logowanie w BPM dostarcza BPM.**
+- Katalogi `TeamWorks-*` zawierają tylko biblioteki IBM (biblioteki autora zostały z nich usunięte, stan z 2026-10-27). Logowanie: `TeamWorks-8.6.3` ma `log4j.jar`, `slf4j-api-1.7.25` i `slf4j-log4j12-1.7.25`; `TeamWorks-8.6.8` ma `slf4j-api` (w tym 2.0.1) i `slf4j-jdk14` bez `log4j.jar`; `TeamWorks-8.6.9` ma `log4j.jar`, `log4j-core.jar`, `slf4j-api` (w tym 2.0.1) i `slf4j-jdk14`.
+- Skutek: biblioteki po stronie BPM (`mercury-client`, SecurityProvider, `tw4j`, `sccommon-*`) mogą używać tylko API SLF4J i nie mogą wnosić Logbacka ani `log4j-over-slf4j` (ten drugi zderzyłby się z `log4j.jar` BPM-a). Logback i mostek są tylko dla serwera Mercury (Tomcat). Listy instalowanych artefaktów (`artifactIdsMaps` w `mercury-client-cmd`, `includeArtifactIds` w `bpm-security-installer`) nie mogą ich zawierać; obecnie nie zawierają.
+- Wyjątek to `LoggerConfigurator` w `mercury-client-cmd` (Joran/Logback): to narzędzie linii poleceń uruchamiane poza BPM.
+
+**2. Wspólne biblioteki w katalogu BPM.** Oba produkty instalują do katalogu BPM te same artefakty pod tymi samymi nazwami (z prefiksem `0_`): `sccommon-utils`, `sccommon-cache`, `ehcache`. Instalator usuwa wcześniej pliki o tym prefiksie, więc ostatnia instalacja wygrywa. W BPM może być tylko jedna wersja tych klas.
+
+**3. Niezgodność API `sccommon-cache`.**
+
+| | SecurityProvider (stan obecny) | `hgdb-client-open` po zmianie |
+|---|---|---|
+| `sccommon-utils` | 1.0.8.4-jdk1.7 | 2.0.0.1 |
+| `sccommon-cache` | `pl.slawas:sccommon-cache` 0.0.3-20180724 | `pl.slawas.sccommon:sccommon-cache` 2.0.0.1 |
+| ehcache | `net.sf.ehcache:ehcache` 2.10.1 | `org.ehcache:ehcache` 3.6.1 (plus `ehcache-clustered`, `hibernate-core`, `hibernate-ehcache` jako zależności `sccommon-cache` 2.0.0.1) |
+| interfejsy cache | `_IObjectCache`, `_IObjectCacheProvider`, `_IObjectCacheStatistics`, `...cache.config.CacheConstants` | `IObjectCache`, `IObjectCacheProvider`, `IObjectCacheStatistics`, `...cache.CacheConstants` |
+| czyszczenie | `getEhCache().getCacheManager().clearAll()` | `getEhCache().clear()` |
+
+Nazwy pakietów (`pl.slawas.common.cache.*`) są te same, a API niezgodne, więc dwie wersje w jednym BPM-ie dają `NoClassDefFoundError`/`NoSuchMethodError` zależnie od kolejności ładowania. Pakiety samego ehcache różnią się (`net.sf.ehcache` i `org.ehcache`), więc nie kolidują ze sobą, ale `sccommon-cache` 2.0.0.1 wymaga wersji 3.x i `javax.cache`.
+
+**4. Wynik próbnej kompilacji SecurityProvidera na `sccommon` 2.0.0.1 i ehcache 3.6.1** (kopia źródeł poza repozytorium, nadpisanie właściwości wersji z linii poleceń): moduł `security-provider` (Core) **nie kompiluje się**. Błędy dotyczą siedmiu klas: `ProviderOptions`, `_LdapConfigOptions`, `LdapSecurityCore`, `CacheNotAllowed`, `UserSynchronizationCache`, `UserSynchronizationCacheNotAllowed`, `IUserSynchronizationCache` (zmiana nazw interfejsów cache i pakietu `CacheConstants`); moduły zależne (`security-wsjmx-client`, `security-integrations`, `plugin-*`) nie były kompilowane. Moduły `tw4j`, `security-mq-client` i `ibm-teamworks-ext` kompilują się. `tw4j` (`pl.slawas.twl4j`) pochodzi z repozytorium SecurityProvidera, a nie z `sccommon`.
+
+**5. Wniosek.** Przejście `hgdb-client-open` na `sccommon` 2.0.0.1 i ehcache 3.6.1 wymaga jednoczesnego przejścia SecurityProvidera, inaczej `mercury-client` i SecurityProvider nie zadziałają razem w BPM. To jest **osobne zadanie** (zmiana stosu cache w SecurityProviderze, instalatory, test w BPM); nie wchodzi w zakres 214. Do czasu jego wykonania `mercury-client` i `hgdb-client-open` w BPM nie mogą wyjść na 2.0.0.1.
+
+**Decyzja autora (2026-10-27):** `hgdb-client-open` zostaje na `sccommon` 2.0.0.1 i ehcache 3.6.1 (blok `jdk1.7` pozostaje tylko komentarzem w POM-ie). Konsekwencja: `mercury-client` musi przejść na ten sam stos (jego `pom.xml` ma jeszcze `net.sf.ehcache` 2.10.1 i `sccommon-cache` 0.0.3-20180724), a SecurityProvider wymaga osobnego zadania (patrz wyżej).
+
+## Zmiana planu (2026-10-27)
+
+**Decyzja autora:** `mercury-client` zostaje w obecnej postaci, zgodny z `D:\workspace\git\mercury-v3.0.1.20210709`, i nie jest dalej rozwijany. Zmiany z `hgdb-058` w `mercury-client` (logowanie, podniesione wersje, poprawki `Long` -> `String` i `TestPropertiesLoader`) nie wchodzą do wydania. Jedyna funkcja, która musi przetrwać, to `mercury-bpm/.../dao` (patrz niżej); ma powstać w nowym projekcie `hgdb-ibm-bpm-client`.
+
+**Co robi `mercury-bpm/.../dao` (14 klas, 1843 linie):** `MrcTaskDAO`, `MrcBpdInstanceDAO` i `MrcTaskNarrativeDAO` nadpisują DAO IBM BPM (`TaskDAO` itd.; podmiana w `registry.persistence.xml` dla BPM 8.5.x). Po zapisie zadania, instancji procesu albo narracji w BPM `BpmTaskBufferDAO` (i dwie podobne) tworzą rekordy buforowe (`Transformer`) i w puli wątków (20–200 wątków, opóźnienie 2 s na łączenie zadania z narracją) wstawiają je `INSERT`-em JDBC (`AbstractDAO`, źródło danych z JNDI) do tabel bufora w bazie Mercury (encje `MBpmTaskBuffer` itd. w `mercury-lib`). Przy błędzie robi zrzut danych do pliku (`dumpErrorLog`). Serwer Mercury przetwarza bufor po swojej stronie.
+
+**Do rozstrzygnięcia w nowym zadaniu (kanał BPM -> Mercury):**
+
+| Wariant | Uwagi |
+|---|---|
+| A. JDBC do tabel bufora (stan obecny) | BPM musi mieć dostęp do bazy Mercury i znać jej schemat; sprzężenie z bazą |
+| B. REST z OAuth (narzędzie Swagger w BPM) | REST serwera ma tylko OAuth 2.0 (`/rest/token`, grant `password` i `refresh_token`); Basic jest tylko w `RemoteBasicAuthFilter` dla RMI i CMIS. Trzeba sprawdzić, czy narzędzie w BPM obsłuży token i odświeżanie; jeśli nie, dodać Basic do REST. Wywołanie synchroniczne wiąże zapis w BPM z dostępnością Mercury, więc i tak potrzebny jest bufor z ponawianiem |
+| C. DAO -> JMS/MQ/Kafka -> odbiorca w Mercury | oddziela dostępność, daje kolejkowanie i ponawianie; po stronie Mercury nowy komponent (`org.mercury`) zapisujący bufor. JMS jest natywny w WebSphere; precedens: `security-mq-client` w SecurityProviderze (ActiveMQ i Spring JMS). Klient Kafki w BPM ma wymagania co do wersji Javy i konfliktów bibliotek (BPM 8.6.8+ ma własne `slf4j-api` 2.0.1) |
+
+**Zakres 214 po zmianie:** `mercury-lib`, `mercury`, `hgdb-client-open`, `mercury-cmd`, `mercury-docker`. Bez `mercury-client`. SecurityProvider: osobne zadanie (stos cache).
+
+**`mercury-cmd` — moduły (stan 2026-10-27):**
+
+| Moduł | Rola | Pliki Java (main/test) | Zależności |
+|---|---|---|---|
+| `mercury-benchmark` | pomiary wydajności klienta | 1 / 6 | `hgdb-ws-client-cxf`, `hgdb-multi-client`, `hgdb-client-mock`, CXF, `sccommon-*` |
+| `mercury-srv-cmd` | polecenia linii komend dla serwera (`pro.ibpm.mercury.cmd.CommandLine`, `LoggerConfigurator`) | 18 / 0 | 11 artefaktów serwera (`mercury-dao`, `mercury-srv`, `mercury-lucene-indexes`, `mercury-ws-server`...), `mercury-lib`, klient, sterowniki JDBC, `activemq-client` |
+| `mercury-transfer` | kopiowanie danych typu między dwiema instancjami serwera (`org.mercury.transfer.cmd.CommandLine`) | 5 / 3 | `mercury-srv-cmd`, klient (`hgdb-*`), CXF |
+| `mercury-install-package` | pakiet instalacyjny (`bin`, `config`, `scripts`, `system-config-sample`, `libExt`) | 0 / 0 | składa moduły powyżej; odwołuje się do `hgdb-client-open`, ale ma jeszcze właściwości wskazujące `mercury-client` |
+
+Zmiany zrobione w `mercury-cmd` (gałąź `hgdb-058`): Logback w POM-ie, `LoggerConfigurator` na Joran, sześć konfiguracji, skrypty `setenv.sh` i `startServer.sh`; podniesione wersje (`mercury.static.version` 3.0.4.18, `hgdb-client.version` 3.1.4.18, `sccommon` 2.0.0.1, `poi-toolkit` 4.1.0.1, `ccrto-openapi` 2.0.0.1) i **`mercury.server.project.version` 3.0.1-SNAPSHOT -> 3.0.4.9** (11 artefaktów serwera w `mercury-srv-cmd`). Do zrobienia: usunąć odwołania do `mercury-client` (właściwości `project.client.dir`, `project.local.client.repo` i repozytorium `project.local.client`), zbudować po pobraniu `hgdb-multi-client` 3.1.4.18 i sprawdzić `mercury-srv-cmd` (zależy od klas serwera, które w 3.0.4.9 mogły się zmienić), sprawdzić nazwę pakietu instalacyjnego (od `mercury.static.version`).

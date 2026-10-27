@@ -15,6 +15,7 @@
         <option value="$PROJECT_DIR$/../sccommon/sccommon/pom.xml" />
         <option value="$PROJECT_DIR$/../ccrto-openapi/pom.xml" />
         <option value="$PROJECT_DIR$/../sccommon/pom.xml" />
+        <option value="$PROJECT_DIR$/../bpm-security-provider/pom.xml" />
       </list>
     </option>
     <option name="ignoredFiles">

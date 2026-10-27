@@ -1,6 +1,24 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
   <component name="Encoding" defaultCharsetForPropertiesFiles="UTF-8">
+    <file url="file://$PROJECT_DIR$/../bpm-security-provider/plugin-umed-provider/src/main/java" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/../bpm-security-provider/plugin-umed-provider/src/main/resources" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/../bpm-security-provider/plugin-wiener-provider/src/main/java" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/../bpm-security-provider/plugin-wiener-provider/src/main/resources" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/../bpm-security-provider/security-integrations/src/main/java" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/../bpm-security-provider/security-integrations/src/main/resources" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/../bpm-security-provider/security-mq-client/src/main/java" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/../bpm-security-provider/security-mq-client/src/main/resources" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/../bpm-security-provider/security-provider-app/src/main/java" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/../bpm-security-provider/security-provider-app/src/main/resources" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/../bpm-security-provider/security-provider/src/main/java" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/../bpm-security-provider/security-provider/src/main/resources" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/../bpm-security-provider/security-wsjmx-client/src/main/java" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/../bpm-security-provider/security-wsjmx-client/src/main/resources" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/../bpm-security-provider/src/main/java" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/../bpm-security-provider/src/main/resources" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/../bpm-security-provider/tw4j/src/main/java" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/../bpm-security-provider/tw4j/src/main/resources" charset="UTF-8" />
     <file url="file://$PROJECT_DIR$/../ccrto-openapi/src/main/java" charset="UTF-8" />
     <file url="file://$PROJECT_DIR$/../ccrto-openapi/src/main/java-templates" charset="UTF-8" />
     <file url="file://$PROJECT_DIR$/../ccrto-openapi/src/main/resources" charset="UTF-8" />

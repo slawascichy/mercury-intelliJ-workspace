@@ -12,6 +12,11 @@
       <option name="url" value="https://nexusrepo.scisoftware.pl/repository/maven-public/" />
     </remote-repository>
     <remote-repository>
+      <option name="id" value="security.project.local" />
+      <option name="name" value="project" />
+      <option name="url" value="https://nexusrepo.scisoftware.pl/repository/maven-public/" />
+    </remote-repository>
+    <remote-repository>
       <option name="id" value="central" />
       <option name="name" value="Central Repository" />
       <option name="url" value="https://nexusrepo.scisoftware.pl/repository/maven-public/" />
