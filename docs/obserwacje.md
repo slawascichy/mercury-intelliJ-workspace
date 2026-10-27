@@ -174,3 +174,13 @@ Spostrzeżenia z weryfikacji kodu przy poprawianiu strony „Case metadata”. W
 | 95 | mercury (`updateable`, `isRequired`) | Serwer nie sprawdza `updateable` ani `isRequired` przy zapisie sprawy (wartości są tylko przekazywane klientom, do OpenAPI jako `x-updatable` i do generowanego źródła typu). `ONCREATE` ma tylko pole nagłówka `caseId`. | Zdecydować, czy serwer ma egzekwować te pola (zmiana zachowania API), czy dokumentacja zostaje przy opisie „pole sterujące dla klienta”. |
 | 96 | docusaurus-hgdb (`004_API/002_CaseHeader`) | W tabeli nagłówka nazwa pola to `piervousVersionId` (literówka); w kodzie jest `previousVersionId`. | Poprawić w osobnej zmianie dokumentacji. |
 | 97 | docusaurus-hgdb (`003_Architecture/002_Cases_Versioning`) | Zapytanie `mrc_rootVersionId:118904` i zrzut ekranu pokazują liczbowy identyfikator (zadanie 169). Nie sprawdzono, jak pole jest indeksowane w Lucene. | Sprawdzić składnię zapytania dla identyfikatora tekstowego i wymienić zrzut. |
+
+## Logowanie i podatności log4j (zadanie 058, 2026-10-27)
+
+Fakty z POM-ów i kodu; szczegóły w `tasks/hgdb/058-…/TASK.md`. CVE podane z pamięci, do potwierdzenia skanerem zależności.
+
+| # | Miejsce | Obserwacja | Propozycja |
+|---|---|---|---|
+| 98 | mercury, mercury-ws-app, mercury-cmd (`log4j-core` 2.17.2) | Żaden plik w pięciu repozytoriach nie importuje API log4j 2, a zależność jest `provided` (nie ma jej w WAR). Wygląda na pozostałość po Log4Shell. | Usunąć zależność po sprawdzeniu jarów w `lib/` Tomcata. |
+| 99 | mercury-lib, hgdb-client-open, mercury-client, mercury-cmd (`slf4j-log4j12`, `log4j` 1.2.14/1.2.17) | Wersje log4j 1.x wycofane i podatne (np. CVE-2019-17571, CVE-2021-4104). `mercury` używa już `slf4j-reload4j`, więc w repozytoriach są dwa różne bindingi. | Ujednolicić na `slf4j-reload4j` (minimum) albo przejść na Logback (docelowo). |
+| 100 | mercury-server (`apache-tomcat/mercury/lib`, jary z 2024-11-05) | Aplikacja działa na **log4j 1.2.14** z `slf4j-log4j12` 1.7.25 (obok `slf4j-api` 1.7.36, `commons-logging` 1.2, `spring-jcl`), a nie na `slf4j-reload4j` z POM-u `mercury`. `apache-tomcat/lib` ma tylko `log4j.properties`. Inne serwery: `poi-toolkit-server` ma `reload4j` 1.2.19, `log4j-core` 2.17.2 i `log4j-api` 2.17.1; ActiveMQ 5.16.4 ma `reload4j` 1.2.19, `insight-log4j` i `activemq-log4j-appender` (katalog `optional`); `ehcache-clustered` ma `logback` 1.2.3. | ✅ Decyzja autora (2026-10-27): wariant A, Logback 1.2.x (Java 8) w aplikacji Mercury. Zadanie migracji: `tasks/hgdb/214-Migracja-logowania-na-Logback`. Komponenty zewnętrzne (ActiveMQ, ehcache, poi-toolkit-server) osobno. |

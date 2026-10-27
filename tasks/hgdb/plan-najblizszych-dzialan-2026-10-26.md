@@ -30,6 +30,7 @@ i krótkiej lekturze kodu, a nie na pełnym rozpoznaniu.
 | 190 Dokumentacja metadanych typów | **w toku** (faza A) | 2–3 d | Zebrane fakty z kodu do pozycji 1–6 i 8; zostają 7 (`HtmlControlUtils`), 9, 10. Dokumentacja w `docusaurus-hgdb` plus poprawka `HtmlControlUtils` w `mercury` |
 | 058 Logger: poziomy logowania (REST) | **nowe** (faza B) | 3–4 d | Backend logowania do ustalenia; panel w `mercury-ws-app` |
 | 016 Widoki | **nowe** (faza B) | ok. 3 tyg. (przypuszczenie) | Etapy 0–4 w `016-Widoki/TASK.md`. Decyzje autora z 2026-10-27: cztery bazy (PostgreSQL, Oracle, MySQL, MSSQL), uprawnienia jak dla spraw, wynik w modelu Iron POI Server, rozszerzenie istniejącego eksportu, nowe DTO w `mercury-lib` (kolejne wydanie) |
+| 214 Migracja logowania na Logback | **nowe** (faza B, po 058) | 3–5 d (przypuszczenie) | Decyzja autora 2026-10-27: wariant A, Logback 1.2.x (Java 8). Usuwa log4j 1.x i 2.x; POM-y `mercury-lib` zmieniają się, więc wejdzie do wydania biblioteki. Zadanie: `214-Migracja-logowania-na-Logback/TASK.md` |
 | 209 Polecenie kalibracji (`mercury-cmd`) | szkic (faza B) | średnie | Pytania rozstrzygamy przy starcie |
 | 191 Rewizja wersji i Java 17 | w kolejce (faza C) | etap 1: kilka dni; etap 2: duże | Zawiera Lucene 9 |
 | 049 CMIS | **nowe** (faza C) | duże | Szkic wpięty w `web.xml`; patrz niżej |
@@ -101,3 +102,5 @@ Nie widzę przeszkody blokującej wydanie. Są jednak warunki, które trzeba spe
   Kolejne wydanie `mercury-lib` będzie potrzebne dla 016 (nowe DTO), więc przy nim warto naprawić 3.0.4.18.
 - **016 po decyzjach autora:** cztery bazy, uprawnienia jak dla spraw, wynik w modelu Iron POI Server (`IExcelData`), rozszerzenie istniejącego eksportu. Widoki typów (`T_<kod typu>`) trafiają do `CaseViewDefinition` (sprawdzone w kodzie).
   Szczegóły: `016-Widoki/TASK.md` (sekcja „Decyzje autora”).
+- **Logowanie (2026-10-27):** na serwerze działa log4j 1.2.14 z `slf4j-log4j12` (jary w `mercury-server/apache-tomcat/mercury/lib`), a POM-y wskazują różne bindingi. Autor wybrał wariant A (Logback 1.2.x, Java 8).
+  Zadanie `214-Migracja-logowania-na-Logback` wchodzi do fazy B po 058 i przed fazą D (pakiet i obrazy muszą zawierać nowy backend). Usługa z 058 ma adaptery dla Logbacka i log4j 1.x, więc nie czeka na migrację.
