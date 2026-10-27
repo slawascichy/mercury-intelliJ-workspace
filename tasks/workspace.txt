@@ -61,11 +61,11 @@ Strumień:
   D190-Dokumentacja-metadane-typow
 191-Rewizja-wersji-migracja-Java17
   D192-Lokalizacja-opisow-specyfikacji-i-tekstow-stalych
-B193-Analiza-typu-porownanie-wektorowe
-B195-Lokalizacja-interfejsu-Swagger-UI
-B198-Tlumaczenie-opisow-WSDL-na-angielski
-208-Lokalizacja-interfejsu-Swagger-UI
+ B193-Analiza-typu-porownanie-wektorowe
+ B195-Lokalizacja-interfejsu-Swagger-UI
+ B198-Tlumaczenie-opisow-WSDL-na-angielski
+ B208-Lokalizacja-interfejsu-Swagger-UI
 209-Polecenie-kalibracji-parametrow-indeksu-Lucene
 211-Aktualizacja-obrazow-Docker-i-wydanie
 >214-Migracja-logowania-na-Logback
-B215-Nowa-komunikacja-IBM-BPM-HgDB
+ B215-Nowa-komunikacja-IBM-BPM-HgDB

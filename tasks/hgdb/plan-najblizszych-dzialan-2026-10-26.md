@@ -52,7 +52,7 @@ i krótkiej lekturze kodu, a nie na pełnym rozpoznaniu.
 ### Etap 1: zakończenie 058 i 214
 
 1. **Zatwierdzenia przez autora** (commity robi autor): `mercury`, `mercury-lib`, `hgdb-client-open`, `mercury-cmd`, `mercury-docker`, `docusaurus-hgdb` (nowa strona „Logging configuration”, `Logging_levels`) i workspace (`docs/`, `tasks/`). Gałąź `hgdb-058` w `mercury-client` usunąć (`git checkout master`, `git branch -D hgdb-058`).
-2. **Obserwacja 107** (przed zamknięciem 058, bo wiąże się ze zmianą poziomów w locie): decyzja, czy `OAuthFilter` przestaje zapisywać sekret klienta w `oAuthModuleId` (mała zmiana w `mercury-gui-core`); oczyszczenie trzech linii w dzienniku serwera dev.
+2. **Obserwacja 107** (zrobione 2026-10-27, decyzja autora): `OAuthFilter` i `SystemOAuthController` nie zapisują już sekretu klienta OAuth; sprawdzone na serwerze dev. Zostaje decyzja autora o oczyszczeniu trzech starych linii w dzienniku serwera dev.
 3. **Wydania** (wykonuje autor; stan 2026-10-27: `mercury-lib` 3.0.4.18 poprawione, `mercury` 3.0.4.9, `hgdb-client-open` 3.1.4.18). Po zatwierdzeniach i ewentualnych poprawkach z kroku 2 mogą być potrzebne kolejne numery, które poda autor. W `mercury-cmd` podbić `mercury.static.version`, `hgdb-client.version`, `hgdb.client.version.release` i `mercury.server.project.version` (stan 2026-10-27: 3.0.4.18, 3.1.4.18, 3.1.4.18 i 3.0.4.9; `mvn -o clean test-compile` przechodzi).
 4. **Otwarte sprawdzenia 214:** transfer `mercury-transfer` między dwiema instancjami (pusty zbiór `typeCodes`, obserwacja 105), `LoggerConfigurator` w `mercury-srv-cmd` na pakiecie instalacyjnym, rotacja plików logu (limit 7 MB, 20 kopii; obserwacja 103), REST z tokenem zwykłego użytkownika (zrobione w teście 7–8).
 5. **Zamknięcie:** push `hgdb-058`, PR i merge (autor), pull `master`, ✅ w `docs/obserwacje.md` (98–100 oznaczone, 101–107 według decyzji), aktualizacja `kolejka-zadan` w pamięci. Nowej gałęzi `hgdb-NNN` nie zakładamy przed merge'em 058 (214 jest podzadaniem 58).
@@ -84,7 +84,7 @@ i krótkiej lekturze kodu, a nie na pełnym rozpoznaniu.
 
 Nie widzę przeszkody blokującej zakończenie 058 i 214. Warunki i ryzyka (źródło: `docs/obserwacje.md`):
 
-1. **Obserwacja 107 (nowa):** `OAuthFilter` zapisuje sekret klienta OAuth w dzienniku przy DEBUG; usługa z 058 pozwala włączyć ten poziom w locie. Warunek zamknięcia 058 (decyzja autora).
+1. **Obserwacja 107:** `OAuthFilter` zapisywał sekret klienta OAuth w dzienniku przy DEBUG; naprawione w 058 (2026-10-27). Zostają trzy stare linie w dzienniku serwera dev (decyzja autora).
 2. **Obserwacja 102 (nowa):** SecurityProvider nie działa na stosie `sccommon` 2.0.0.1 i ehcache 3.6.1, a `hgdb-client-open` na nim zostaje. Klient `mercury-client` nie jest rozwijany, więc ryzyko dotyczy tylko wdrożeń BPM, w których oba produkty mają współistnieć z nową biblioteką.
 3. **Numery wydań `mercury-lib`:** 3.0.4.17 jest wydaniem z `caseId` jako `String`. Wydanie 3.0.4.18 było rano błędne, ale autor wydał je ponownie (2026-10-27 wieczorem; „teraz jest OK”). Używają go `hgdb-client-open`, `mercury-cmd` i serwer dev. Ryzyko zamknięte.
 4. **Obserwacja 103:** retencja logów spadła z 100 do 20 kopii (limit Logbacka); zmiana kontraktu konfiguracji opisana w nowej stronie dokumentacji.
