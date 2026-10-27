@@ -41,10 +41,8 @@ git pull
 git branch -d hgdb-119
 claude --resume aa3430ea-1399-481a-aba9-9d5786b44249
 
-Dołożyłem zadania:
-016-Widoki
-
 Strumień:
+016-Widoki
   D039-[Lucene]-Optymalizacja-dostępu-do-IndexReader-a
 049-[CMIS]-Implementacja-API-CMIS
 058-Logger-dynamiczne-zmiana-poziomów-logowania
