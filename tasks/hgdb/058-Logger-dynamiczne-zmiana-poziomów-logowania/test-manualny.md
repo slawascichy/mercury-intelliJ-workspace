@@ -1,6 +1,6 @@
 # [58] Test ręczny usługi poziomów logowania (2026-10-27)
 
-Cel: sprawdzić na działającym serwerze to, czego nie obejmują testy jednostkowe: wywołanie REST z tokenem OAuth, rolę `mrc_sysadmin`, panel w przeglądarce i faktyczny wpływ zmiany poziomu na logi.
+Cel: sprawdzić na działającym serwerze to, czego nie obejmują testy jednostkowe: wywołanie REST z tokenem OAuth, rolę `mrc-sysadmin`, panel w przeglądarce i faktyczny wpływ zmiany poziomu na logi.
 Testy jednostkowe (30 z 30) sprawdzają logikę i adaptery, ale nie przepływ przez serwer.
 
 ## 1. Przygotowanie
@@ -9,7 +9,7 @@ Testy jednostkowe (30 z 30) sprawdzają logikę i adaptery, ale nie przepływ pr
    Jeśli budujesz od nowa: `mvn -pl mercury-ws-app -am package -Ddatabse.provider=POSTGRESQL -Dmaven.test.skip` (WAR w `mercury-ws-app/target/`).
 2. **Biblioteki logowania w `apache-tomcat/mercury/lib`.** Na serwerze są `log4j-1.2.14.jar` i `slf4j-log4j12-1.7.25.jar` (backend `log4j`). Test warto wykonać na tym stanie, a potem powtórzyć po migracji na Logback (zadanie 214; backend `logback`).
    Adapter Logbacka w WAR-ze jest `provided`, więc do działania na Logbacku jary Logbacka muszą być w `mercury/lib`.
-3. **Rola `mrc_sysadmin`.** Klient OAuth używany do testu musi mieć w konfiguracji zakres `mrc_sysadmin` (w przykładach: `mrc-user,mrc-useradmin`), a testowy użytkownik tę rolę w tabeli ról. Drugi użytkownik, bez tej roli, posłuży do testu odmowy.
+3. **Rola `mrc-sysadmin`.** Klient OAuth używany do testu musi mieć w konfiguracji zakres `mrc-sysadmin` (w przykładach: `mrc-user,mrc-useradmin`), a testowy użytkownik tę rolę w tabeli ról. Drugi użytkownik, bez tej roli, posłuży do testu odmowy.
 4. **Plik z danymi dostępowymi** poza repozytorium: `~/.mercury-test-058.env` (format w nagłówku `test-manualny.sh`). Skrypt nie wypisuje haseł ani sekretów.
 
 ## 2. Test przez skrypt
@@ -30,15 +30,28 @@ Na końcu pisze `Wynik: N OK, M błędów`. Pełnych odpowiedzi nie trzeba mi pr
 3. **Klaster:** zmiana dotyczy tylko węzła, który odpowiedział. Na drugim węźle poziom ma się nie zmienić (jeśli masz drugi węzeł).
 4. **Restart:** po restarcie węzła obowiązuje znów poziom z pliku konfiguracyjnego (zmiana nie jest trwała).
 
-## 4. Panel w przeglądarce
+## 4. Panel w przeglądarce (logowanie formularzem, bez tokenu)
 
-1. Otwórz `<adres mercury-ws-app>/static/admin/loggers.html`.
-2. Zaloguj się (użytkownik, hasło, `client_id`, `client_secret`) albo wklej token (np. ze Swagger UI, przycisk Authorize). Oczekiwany efekt: komunikat „Zalogowano.” i dwa panele (wyszukiwanie, pojedyncza kategoria).
+Panel działa tak jak `swagger-ui/types.html`: dostęp daje logowanie formularzem (Tomcat, `security-constraint` w `web.xml` dla `/static/admin/*` i `/admin/loggers/*`, rola `mrc-sysadmin`),
+a zaplecze (`/admin/loggers/{getLevel|setLevel|search}`) używa sesji i roli z realmu kontenera. Nie wymaga tokenu OAuth ani danych klienta.
+
+1. Otwórz `http://localhost:8080/mercury-ws-app/static/admin/loggers.html`. Bez sesji przeglądarka przejdzie do formularza logowania (`/auth/inv_logon.jsp`).
+2. Zaloguj użytkownika z rolą `mrc-sysadmin` (w tabeli mapowania ról). Oczekiwany efekt: po zalogowaniu wraca na stronę panelu z polami wyszukiwania i pojedynczej kategorii.
 3. Wyszukaj `mercury` (limit 10): tabela z kategoriami; wybierz poziom w wierszu i kliknij „Zastosuj”: komunikat „Zmieniono: …”, kolumny poziomów się zmieniają.
 4. W polu „Nazwa kategorii” wpisz kategorię, „Pobierz” i „Ustaw”.
-5. Zaloguj użytkownika bez roli: oczekiwany komunikat o błędzie z kodem `SC001`.
-6. **Do sprawdzenia, bo nie testowałem:** czy `/rest/token` przyjmuje dane klienta w treści formularza (panel i skrypt tak je wysyłają). Jeśli serwer wymaga uwierzytelnienia Basic dla klienta, pobierz token inaczej (Swagger UI) i wklej go w panelu; wtedy daj znać, poprawię wywołanie.
-7. Panel jest statyczny i wołany z tej samej domeny co REST. Jeśli aplikacja stoi za serwerem pośredniczącym (Nginx), sprawdź, że `/static/admin/` jest przez niego przepuszczane.
+5. **Odmowa:** zaloguj użytkownika bez roli `mrc-sysadmin` (np. tylko `mrc-user`). Oczekiwany efekt: strona błędu 403 z Tomcata (`/auth/inv_forbidden.jsp`), bo ograniczenie w `web.xml` nie wpuszcza go do `/static/admin/*`.
+6. **Do sprawdzenia, bo nie testowałem:** czy po wygaśnięciu sesji panel pokazuje komunikat „Sesja wygasła albo brak uprawnień” (odpowiedź na wywołanie zaplecza to wtedy strona logowania, nie JSON).
+7. Wersje `web-INEA.xml`, `web-REST-2.0.xml` i `web-REST-3.0.xml` w `WEB-INF` nie zawierają nowego ograniczenia; zmiana jest tylko w `web.xml`.
+
+## 4a. Token OAuth dla klientów API
+
+Panel nie używa tokenu, ale klienci REST (skrypt, Swagger UI) tak. Żądanie `POST /rest/token` ma **wymagany parametr `scope`** (wartość domyślna pusta oznacza błąd).
+Zakresy w tokenie muszą mieć część wspólną z zakresami skonfigurowanymi dla ścieżki `/rest/service/**` (inaczej `OAuthFilter` zwróci `invalid_scope`), a rolę administratora token dostaje tylko wtedy,
+gdy w `scope` jest `mrc-sysadmin`. Przykład żądania tokenu: `scope=mrc-user,mrc-sysadmin`.
+Jeśli dostajesz `invalid_scope`: sprawdź zakresy zaznaczone w „Authorize” (Swagger UI) oraz zakresy klienta dla wzorca `/rest/service/**` w konfiguracji OAuth (`mercury-db:1`). Zakresy tokenu widać w nagłówkach
+odpowiedzi `/rest/token`: `X-OAuth-Scopes` i `X-Accepted-OAuth-Scopes`. Po włączeniu logowania `DEBUG` dla `pro.ibpm.mercury.oauth.OAuthFilter` w logu jest każdy sprawdzany zakres.
+
+**Zakres tokenu jest związany z rolami użytkownika:** serwer przy wydawaniu tokenu sprawdza, że każdy żądany zakres jest wśród ról użytkownika z realmu (tabela `MRC_LDAP_INT_ROLES_MAP`), inaczej zwraca `invalid_grant`. Zwykły użytkownik nie dostanie więc tokenu z `mrc-sysadmin`. Test 8 skryptu to sprawdza na działającym serwerze.
 
 ## 5. Specyfikacja OpenAPI i Swagger UI
 

@@ -109,3 +109,24 @@ Decyzja autora: logowanie migrujemy na Logback (zadanie `214-Migracja-logowania-
   Poprawka: `REQUIRED_SCOPES = ("mrc-user", "mrc-useradmin", "mrc-sysadmin")`. Po regeneracji wszystkie siedem plików `openapi*.json` ma blok `security` z trzema zakresami i nie różni się od HEAD.
 - Build z regeneracją i testami: 47 z 47 (`LoggerLevelServiceTest` 16, `LoggerBackendsTest` 10, `LoggerLevelsExtRestTest` 4, `OpenApiResourcesTest` 17).
 - Wynik budowy zostawia w katalogu roboczym zmiany końców linii w trzech plikach `mercury-server/IBPM/mercury/config/ehcache-*-ext-3.5.xsd` (w indeksie LF, po buildzie CRLF; po ignorowaniu końców linii bez różnic). Nie są częścią zadania; do cofnięcia przed commitem (`git checkout -- mercury-server/IBPM`).
+
+## Panel przez logowanie formularzem i wyniki pierwszego testu (2026-10-27)
+
+**Wyniki testu autora:** (1) logowanie w panelu przez `/rest/token` nie działało, bo `scope` jest parametrem wymaganym (`@RequestParam(value = "scope", required = true)`), a panel i skrypt go nie wysyłały; token ze Swagger UI działał; wyszukiwanie kończyło się błędem;
+(2) wywołanie `search` z tokenem ze Swagger UI zwróciło `invalid_scope`; (3) uwaga projektowa: panel ma być dostępny po zalogowaniu formularzem, jak `swagger-ui/types.html`.
+
+**`invalid_scope` (przyczyna z kodu, bez reprodukcji):** zgłasza je `OAuthFilter`, gdy żaden zakres tokenu nie występuje w zakresach skonfigurowanych dla ścieżki (`MercurySecurityOAuthItem.scopeSet`, wzorzec `/rest/service/**`).
+Token jest wydawany wg zakresów **klienta** (`OAuthService.scopes`), więc możliwy jest rozjazd: token z samym `mrc-sysadmin`, a zakresy ścieżki bez `mrc-sysadmin`. Do ustalenia z autorem: zakresy zaznaczone w „Authorize” i zakresy wpisu dla `/rest/service/**`. Diagnostyka: nagłówki `X-OAuth-Scopes`/`X-Accepted-OAuth-Scopes` odpowiedzi `/rest/token` i `DEBUG` dla `pro.ibpm.mercury.oauth.OAuthFilter`.
+
+**Zmiana architektury (decyzja autora):**
+- `web.xml`: nowe `security-constraint` dla `/static/admin/*` i `/admin/loggers/*` z rolą `mrc-sysadmin` (FORM login jak dla `types.html`) i `<security-role>mrc-sysadmin</security-role>`. Zmiana tylko w `web.xml` (nie w `web-INEA.xml`, `web-REST-*.xml`).
+- Nowy `LoggerLevelsPanelController` (`/admin/loggers/{getLevel|setLevel|search}`): uwierzytelnienie sesją (`createContextBasedOnSession`, role z `GenericPrincipal` realmu), dodatkowo sprawdzenie roli w kontrolerze. Ścieżka jest poza wzorcem `/rest/service/**`, więc `OAuthFilter` jej nie dotyczy.
+- `LoggerLevelsExtRest` (token OAuth, `/rest/service/...`) zostaje dla klientów API. Wspólna logika w `LoggerLevelsOperations` (koperty JSON, dziennik zmian).
+- `static/admin/loggers.html` bez logowania i tokenu: woła `../../admin/loggers/*` z ciasteczkiem sesji; wygasła sesja daje komunikat „Sesja wygasła albo brak uprawnień”.
+- Testy: `LoggerLevelsOperationsTest` (5), atrapa `MemoryLoggerBackend` wspólna z `LoggerLevelServiceTest`; razem 53 z 53 (z `OpenApiResourcesTest`).
+- Dokumentacja docusaurus (en i pl, strona i blog) i `test-manualny.md`/`.sh` zaktualizowane (panel przez formularz, parametr `scope` w żądaniu tokenu, `SCOPE` w skrypcie); w docusaurus poprawiono też nazwę roli na `mrc-sysadmin`.
+
+**Wycofany wniosek o luce (2026-10-27):** wcześniej uznałem, że token z zakresem `mrc-sysadmin` może dostać każdy użytkownik z poprawnymi danymi klienta. To był błąd: przeczytałem tylko publiczną wersję `OAuthService.generateToken` (z `TODO` dotyczącym zakresu `${username}`),
+a prywatna wersja `generateToken(..., TomcatMercuryPrincipal p, ...)` sprawdza, że **każdy** żądany zakres jest wśród ról użytkownika z realmu (`p.getRoles()`, tabela `MRC_LDAP_INT_ROLES_MAP`), i inaczej rzuca `OAuthInvalidGrant`.
+Zakres tokenu jest więc związany z rolami użytkownika w chwili wydania tokenu, a rola `mrc-sysadmin` w tokenie jest wiarygodna. Zostaje drobne zastrzeżenie: role są zapisane w tokenie przy jego wydaniu, więc odebranie roli użytkownikowi nie unieważnia już wydanego tokenu do jego wygaśnięcia.
+Test 8 skryptu `test-manualny.sh` sprawdza to na działającym serwerze (oczekiwany wynik: serwer nie wydaje zwykłemu użytkownikowi tokenu z `mrc-sysadmin`).
