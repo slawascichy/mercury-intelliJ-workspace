@@ -44,12 +44,13 @@ git push origin ${TAG_VERSION}
 export BRANCH_VERSION=hgdb-058
 git push origin ${BRANCH_VERSION}
 ```
-
 ```bash
 git checkout master && git pull && git branch -d ${BRANCH_VERSION}
 ```
 
+```bash
 claude --resume aa3430ea-1399-481a-aba9-9d5786b44249
+```
 
 Strumień:
 016-Widoki

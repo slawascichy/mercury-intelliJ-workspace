@@ -10,7 +10,7 @@ Lista dla autora (wydania robi autor), z podziałem na to, co robisz Ty, i to, c
 | `poi-toolkit` | 4.1.0.1 | wydane, Logback |
 | `ccrto-openapi` | 2.0.0.1 | wydane, bez log4j; w `mercury` i `hgdb-client-open` podniesione z `1.2-SNAPSHOT` do 2.0.0.1 (2026-10-27, zatwierdzone przez autora) |
 | `mercury-lib` | 3.0.4.18 | poprawione wydanie; używane przez `mercury`, `hgdb-client-open`, `mercury-cmd` |
-| `mercury` | 3.0.4.9 | WAR z `LogbackLoggerBackend` i bez adaptera log4j (sprawdzone na serwerze dev) |
+| `mercury` | 3.0.4.10 | wydane 2026-10-27 po PR i merge'u, z `ccrto-openapi` 2.0.0.1 (3.0.4.9 miało snapshot). Sprawdzone: 18 jarów serwera bez odwołań do log4j, WAR z `LogbackLoggerBackend` bez adaptera log4j i bez jarów Logbacka/log4j/`sccommon` w `WEB-INF/lib`, `info.version` w `openapi_en.json` = 3.0.4.10 |
 | `hgdb-client-open` | 3.1.4.18 | `sccommon` 2.0.0.1 i ehcache 3.6.1; `CacheHelper` dostosowany |
 | `mercury-cmd` | niewydane | po podbiciu wersji buduje się (`mvn -o clean test-compile`); pakiet `mercury-install-package-<mercury.static.version>` |
 | `mercury-docker` | niewydane | wersje wskazują jeszcze 3.0.3.2.11 (zadanie 211) |
@@ -29,7 +29,7 @@ Kolejność wynika z zależności: `mercury-lib` → `mercury` i `hgdb-client-op
 | Po wydaniu | Właściwość i plik do podbicia |
 |---|---|
 | `mercury-lib` | `mercury.static.version` w `mercury/pom.xml`; `mercury.project.version` w `hgdb-client-open/pom.xml`; `mercury.static.version` w `mercury-cmd/pom.xml` (nazwa pakietu instalacyjnego bierze się z niej) |
-| `mercury` | `mercury.server.version` w `hgdb-client-open/pom.xml`; `mercury.server.project.version` w `mercury-cmd/mercury-srv-cmd/pom.xml` |
+| `mercury` | `mercury.server.version` w `hgdb-client-open/pom.xml`; `mercury.server.project.version` w `mercury-cmd/mercury-srv-cmd/pom.xml` (3.0.4.10 podniesione 2026-10-27; `hgdb-client-open` i `mercury-cmd` budują się, niezatwierdzone) |
 | `hgdb-client-open` | `hgdb-client.version` w `mercury-cmd/pom.xml`; `hgdb.client.version.release` w `mercury-cmd/mercury-install-package/pom.xml` |
 | `sccommon`, `poi-toolkit`, `ccrto-openapi` | `sccommon.version`, `poi-toolkit.version`, `ccrto-openapi.version` w `mercury-lib`, `mercury`, `hgdb-client-open` i `mercury-cmd` (`sccommon-utils.version` też w `mercury-cmd`) |
 
