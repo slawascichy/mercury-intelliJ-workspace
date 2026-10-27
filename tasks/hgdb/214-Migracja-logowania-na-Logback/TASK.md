@@ -48,3 +48,8 @@ Zakres obejmuje kod i konfigurację w repozytoriach `mercury-lib`, `mercury`, `h
 - Skan zależności na WAR i pakiecie nie zgłasza podatności log4j.
 - Logowanie działa jak dotąd (pliki, rotacja, poziomy) na serwerze jedno- i wielowęzłowym oraz w obrazie Docker.
 - Instrukcja aktualizacji opisuje zamianę `log4j.properties` na `logback.xml` dla klientów z własną konfiguracją.
+
+## Organizacja (decyzja autora 2026-10-27)
+
+Zadanie 214 jest **podzadaniem zadania 58**: realizujemy je na tej samej gałęzi `hgdb-058` (bez zakładania `hgdb-214`) w repozytoriach, które dotyka (`mercury`, a dla zmian w `mercury-lib`, `hgdb-client-open`, `mercury-client`, `mercury-cmd`, `mercury-docker` osobne gałęzie o nazwie `hgdb-058` w każdym z nich).
+Kolejność: najpierw ręczny test 058 (`058-…/test-manualny.md`), potem migracja.

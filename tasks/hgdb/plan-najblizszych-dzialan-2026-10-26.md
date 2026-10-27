@@ -104,3 +104,4 @@ Nie widzę przeszkody blokującej wydanie. Są jednak warunki, które trzeba spe
   Szczegóły: `016-Widoki/TASK.md` (sekcja „Decyzje autora”).
 - **Logowanie (2026-10-27):** na serwerze działa log4j 1.2.14 z `slf4j-log4j12` (jary w `mercury-server/apache-tomcat/mercury/lib`), a POM-y wskazują różne bindingi. Autor wybrał wariant A (Logback 1.2.x, Java 8).
   Zadanie `214-Migracja-logowania-na-Logback` wchodzi do fazy B po 058 i przed fazą D (pakiet i obrazy muszą zawierać nowy backend). Usługa z 058 ma adaptery dla Logbacka i log4j 1.x, więc nie czeka na migrację.
+- **214 jako podzadanie 58 (2026-10-27):** migracja logowania na Logback realizowana na gałęzi `hgdb-058` (bez `hgdb-214`). Przed nią ręczny test usługi 58 na serwerze (`058-…/test-manualny.md`, `test-manualny.sh`).
