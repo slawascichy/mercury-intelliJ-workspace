@@ -124,6 +124,6 @@ Wersja ma pięć pozycji (opis z `mercury-lib/README.md`):
 | Hibernate | 5.6.14.Final | – (JPA 2.1) | – | – |
 | Lucene | 7.5.0 | – | – | – |
 | Ehcache | 3.6.1 | 3.6.1 | 2.10.1 | 2.10.1 |
-| Logowanie | slf4j 1.7.36 + log4j 2.17.2 / reload4j | log4j 1.2.17 | log4j 1.2.14 | log4j 1.2.14 |
+| Logowanie | slf4j 1.7.36 + Logback 1.2.13 | slf4j 1.7.36 + Logback 1.2.13 | slf4j 1.7.36 + Logback 1.2.13 | slf4j 1.7.36 + Logback 1.2.13 |
 | Serwer aplikacji | Tomcat 8.0.32 (`mercury-server`) | – | – | IBM WebSphere 8.5.5 |
 | Inne | ActiveMQ 5.16, OpenCMIS 1.1.0, POI 5.2.1, Jackson 2.13 | POI 5.2.1, Jackson 2.12 | – | IBM BPM 8.6.3, Axis 1.4 |

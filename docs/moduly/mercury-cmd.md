@@ -41,7 +41,7 @@ Projekt korzysta z wydanych wersji pozostałych repozytoriów, a nie z bieżący
 | Katalog | Zawartość |
 |---|---|
 | `src/main/bin` | `startup.sh`, `shutdown.sh`, `mercury-server.sh`, `mercury-cmd.sh`, `mercury-transfer.sh`, `mercury-ports.sh` |
-| `src/main/config` | Konfiguracja CLI i transferu, log4j, komunikaty i etykiety w sześciu językach (pl, en, de, es, fr, ko) |
+| `src/main/config` | Konfiguracja CLI i transferu, logowanie (`logback.xml`), komunikaty i etykiety w sześciu językach (pl, en, de, es, fr, ko) |
 | `src/main/scripts` | Skrypty SQL: inicjalizacja baz Mercury, ActiveMQ i LDAP, role i użytkownicy, schematy LDAP (DB2, MySQL, Oracle, PostgreSQL), migracje do 2.0 i z 2.0 do 3.0 |
 | `src/main/installableApps` | `setwebconf.sh` |
 | `bin/` | Apache Tomcat 8.5.14 i instalatory JDK 8 (u112 Windows, u131 Linux) |
@@ -67,7 +67,7 @@ flowchart LR
 ## Stos technologiczny
 
 Spring 5.3.20, Hibernate 5.4.24.Final, Lucene 7.5.0, Apache CXF 3.0.10, Ehcache 3.6.1,
-ActiveMQ 5.16.2, POI 5.2.1, OpenCMIS 1.1.0, Jackson 2.13.2, slf4j 1.7.36 + log4j 2.17.2.
+ActiveMQ 5.16.2, POI 5.2.1, OpenCMIS 1.1.0, Jackson 2.13.2, slf4j 1.7.36 + Logback 1.2.13.
 
 ## Budowanie
 

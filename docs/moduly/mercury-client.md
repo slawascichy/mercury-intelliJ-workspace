@@ -59,7 +59,7 @@ Moduł ma dwie role:
 1. **Narzędzie CLI** (`pro.ibpm.mercury.cmd.Client`) z akcjami `-ep` (kodowanie hasła),
    `-?` (pomoc) i trybem shell. Uruchamia się je skryptami `src/main/bin/startApp.sh` / `.bat`.
    Konfiguracja leży w `src/main/conf`: `client.properties`, `mercury.properties`,
-   `lucene.properties`, `log4j.properties`.
+   `lucene.properties`, `logback.xml`.
 2. **Pakiet instalacyjny bibliotek klienta** dla serwera IBM BPM (`src/main/build/build-installation.xml`).
    Właściwość `artifactIdsMaps` wskazuje, które biblioteki trafiają do katalogu `Lombardi/lib`
    i w jakim trybie: `B` – BPM, `S` – klient/serwer. Lista jest podzielona na grupy z prefiksem
@@ -81,7 +81,7 @@ już nie definiuje.
 ## Stos technologiczny
 
 IBM BPM 8.6.3 (`tw4j` 8.6.3.21030.2.0.3.20230127), IBM WebSphere 8.5.5.22, Spring 4.1.9.RELEASE,
-Apache CXF 2.7.15, Ehcache 2.10.1, POI 3.9, log4j 1.2.14, Jackson 2.5.3, JUnit 4.7.
+Apache CXF 2.7.15, Ehcache 2.10.1, POI 3.9, slf4j 1.7.36 + Logback 1.2.13, Jackson 2.5.3, JUnit 4.7.
 
 ## Budowanie
 
