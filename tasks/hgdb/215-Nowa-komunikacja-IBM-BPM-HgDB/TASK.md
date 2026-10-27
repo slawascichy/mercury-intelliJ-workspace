@@ -1,6 +1,8 @@
-# [?] Nowa komunikacja IBM BPM -> HgDB (projekt `hgdb-ibm-bpm-client`)
+# [215] Nowa komunikacja IBM BPM -> HgDB (projekt `hgdb-ibm-bpm-client`)
 
-Szkic zadania do założenia w trackerze. Numer, nazwę katalogu i rozdzielenie na podzadania ustala autor. Stan na 2026-10-27.
+**Status (2026-10-27):** **not now** (decyzja autora, 2026-10-27); wróci po decyzji autora. Zakres: nowe rozwiązanie komunikacji IBM BPM -> HgDB w miejsce zamrożonego `mercury-client`.
+
+Zadanie założone przez autora 2026-10-27 (stan analizy z tego dnia). Powiązane: zadanie 214 (migracja logowania) i osobne zadanie dla SecurityProvidera (stos cache).
 
 ## Przyczyna
 

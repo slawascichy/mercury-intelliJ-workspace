@@ -1,5 +1,7 @@
 # [191] Rewizja wersji oprogramowania i migracja serwera na Javę 17
 
+**Status (2026-10-27):** w planie po 049 (kolejność autora: 016, 049, 191). Plan: `plan-najblizszych-dzialan-2026-10-26.md`.
+
 > Zadanie wydzielone z [133 – Swagger](../133-Swagger-implementacja/TASK.md)
 > (dawne etapy 3 i 4). Swagger nie zależy od tego zadania.
 

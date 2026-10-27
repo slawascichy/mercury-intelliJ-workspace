@@ -1,5 +1,7 @@
 # [198] Tłumaczenie opisów w `@WSDLDocumentation` na angielski (tekst domyślny dokumentacji i WSDL)
 
+**Status (2026-10-27):** **not now** (decyzja autora, 2026-10-27); bez działań.
+
 https://github.com/slawascichy/hgdb/issues/198
 
 > Zadanie wydzielone z [192 – Lokalizacja opisów specyfikacji](../192-Lokalizacja-opisow-specyfikacji-i-tekstow-stalych/TASK.md)

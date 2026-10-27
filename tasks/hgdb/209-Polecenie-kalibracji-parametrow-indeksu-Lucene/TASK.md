@@ -1,5 +1,7 @@
 # [209] [mercury-cmd] Polecenie linii komend kalibrujące parametry początkowe indeksu Lucene
 
+**Status (2026-10-27):** w planie po 191 (decyzja autora 2026-10-27: 209 i 211 pozostają w planie). Plan: `plan-najblizszych-dzialan-2026-10-26.md`.
+
 Zgłoszenie: https://github.com/slawascichy/hgdb/issues/209
 
 Szkic zadania (2026-10-26, propozycja z zadania 119). Numer zgłoszenia (209) nadany przez autora.

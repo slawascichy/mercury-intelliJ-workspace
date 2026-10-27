@@ -1,5 +1,7 @@
 # [211] [mercury-docker] Aktualizacja obrazów Docker i wydanie nowej wersji
 
+**Status (2026-10-27):** zwieńczenie planu, po 209 (decyzja autora 2026-10-27: 209 i 211 pozostają w planie); po nim autor stawia serwer testowy. Plan: `plan-najblizszych-dzialan-2026-10-26.md`.
+
 Szkic zadania (2026-10-26). 
 Zadanie **zamyka pakiet zmian** (zadania 119, 169, 190, 058, 191 i kolejne) wydaniem nowego release. Zakres i kolejność to propozycje do decyzji autora.
 Elementy oznaczone „przypuszczenie” nie były sprawdzane.

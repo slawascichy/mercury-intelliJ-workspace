@@ -1,5 +1,7 @@
 # [193] Analiza typu sprawy z porównaniem wektorowym (odległość nowej definicji od istniejącej)
 
+**Status (2026-10-27):** **not now** (decyzja autora, 2026-10-27); bez działań.
+
 > Zadanie wydzielone z [133 – Swagger](../133-Swagger-implementacja/TASK.md) (obserwacja 55, decyzja autora z 2026-10-20).
 > Zadanie 133 nie zależy od tego zadania. Zadanie jest propozycją do rozważenia, nie ma jeszcze decyzji o realizacji.
 

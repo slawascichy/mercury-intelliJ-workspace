@@ -1,5 +1,7 @@
 # [49] [CMIS] Implementacja API CMIS
 
+**Status (2026-10-27):** w planie po 016 (kolejność autora: 016, 049, 191). Plan: `plan-najblizszych-dzialan-2026-10-26.md`.
+
 
 Mercury może robić za repozytorium dokumentów. Trzeba dorobić API CMIS.
 Specyfikacja CMIS:

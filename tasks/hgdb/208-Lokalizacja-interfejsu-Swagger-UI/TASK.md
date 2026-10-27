@@ -1,5 +1,7 @@
 # [208] Lokalizacja tekstów interfejsu Swagger UI (etap 4 zadania 192)
 
+**Status (2026-10-27):** **not now** (decyzja autora, 2026-10-27); bez działań.
+
 > Zadanie wydzielone z [192 – Lokalizacja opisów specyfikacji](../192-Lokalizacja-opisow-specyfikacji-i-tekstow-stalych/TASK.md)
 > (etap 4 i pytanie Q3); decyzja autora z 2026-10-22: **odłożone, niepilne**. Zadanie 192 nie zależy od tego zadania.
 > Brak tłumaczenia napisów samego Swagger UI nie zmienia ogólnego wrażenia z nowych funkcji: opisy operacji, schematów, tekstów stałych

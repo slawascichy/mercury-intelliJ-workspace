@@ -1,5 +1,7 @@
 # [16] Widoki
 
+**Status (2026-10-27):** w planie po 058 i 214 (kolejność autora: 016, 049, 191); etap 0 zaraz po zamknięciu 058 i 214. Plan: `plan-najblizszych-dzialan-2026-10-26.md`.
+
 https://github.com/slawascichy/hgdb/issues/16
 https://github.com/slawascichy/hgdb/issues/17
 Obsługa widoków jest bardzo istotna. Trzeba opracować koncepcję jak to w końcu zaimplementować. Na pewno trzeba zrobić:
