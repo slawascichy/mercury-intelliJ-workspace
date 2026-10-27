@@ -1,6 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
   <component name="Encoding" defaultCharsetForPropertiesFiles="UTF-8">
+    <file url="file://$PROJECT_DIR$/../ccrto-openapi/src/main/java" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/../ccrto-openapi/src/main/java-templates" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/../ccrto-openapi/src/main/resources" charset="UTF-8" />
     <file url="file://$PROJECT_DIR$/../hgdb-client-open/hgdb-client-mock/src/main/java" charset="UTF-8" />
     <file url="file://$PROJECT_DIR$/../hgdb-client-open/hgdb-client-mock/src/main/resources" charset="UTF-8" />
     <file url="file://$PROJECT_DIR$/../hgdb-client-open/hgdb-multi-client/src/main/java" charset="UTF-8" />
@@ -12,8 +15,10 @@
     <file url="file://$PROJECT_DIR$/../hgdb-client-open/src/main/java" charset="UTF-8" />
     <file url="file://$PROJECT_DIR$/../hgdb-client-open/src/main/resources" charset="UTF-8" />
     <file url="file://$PROJECT_DIR$/../mercury-client/mercury-bpm-fix/src/main/java" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/../mercury-client/mercury-bpm-fix/src/main/resources" charset="UTF-8" />
     <file url="file://$PROJECT_DIR$/../mercury-client/mercury-bpm/src/main/java" charset="UTF-8" />
     <file url="file://$PROJECT_DIR$/../mercury-client/mercury-bpm/src/main/resources" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/../mercury-client/mercury-bpm/src/main/resources-filtered" charset="UTF-8" />
     <file url="file://$PROJECT_DIR$/../mercury-client/mercury-client-cmd/src/main/bin" charset="UTF-8" />
     <file url="file://$PROJECT_DIR$/../mercury-client/mercury-client-cmd/src/main/build" charset="UTF-8" />
     <file url="file://$PROJECT_DIR$/../mercury-client/mercury-client-cmd/src/main/conf" charset="UTF-8" />
@@ -126,5 +131,23 @@
     <file url="file://$PROJECT_DIR$/../poi-toolkit/src/main/resources" charset="UTF-8" />
     <file url="file://$PROJECT_DIR$/../poi-toolkit/src/main/sample" charset="UTF-8" />
     <file url="file://$PROJECT_DIR$/../poi-toolkit/src/main/ssl" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/../sccommon/sccommon-cache/src/main/java" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/../sccommon/sccommon-cache/src/main/resources" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/../sccommon/sccommon-eclipse-emf-api/src/main/java" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/../sccommon/sccommon-eclipse-emf-api/src/main/resources" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/../sccommon/sccommon-http-client/src/main/java" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/../sccommon/sccommon-http-client/src/main/resources" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/../sccommon/sccommon-ldap/src/main/java" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/../sccommon/sccommon-ldap/src/main/resources" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/../sccommon/sccommon-mail/src/main/java" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/../sccommon/sccommon-mail/src/main/resources" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/../sccommon/sccommon-utils/src/main/java" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/../sccommon/sccommon-utils/src/main/resources" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/../sccommon/sccommon/src/main/java" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/../sccommon/sccommon/src/main/resources" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/../sccommon/sctrustmanager/src/main/java" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/../sccommon/sctrustmanager/src/main/resources" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/../sccommon/src/main/java" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/../sccommon/src/main/resources" charset="UTF-8" />
   </component>
 </project>

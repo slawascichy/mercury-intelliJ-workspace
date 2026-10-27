@@ -3,7 +3,7 @@
 ####################
 0. Zarządzanie poziomami logowania
 1. Zarządzanie konfiguracją OAUTH (rola mrc_sysadmin + mrc_useradmin)
-2. Zarządzanie Użytkownikami (rola mrc_sysadmin + mrc_useradmin)
+2. Zarządzanie Użytkownikami (rola mrc_sysadmin + mrc_useradmin) + dodawanie lokalnych użytkowników
 	096-GUI-do-zarządzania-danymi-uwierzytelniania-i-autoryzacji
 	https://github.com/slawascichy/hgdb/issues/96
 3. Zarządzanie pamięciami podręcznymi

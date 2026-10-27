@@ -27,6 +27,11 @@
       <option name="url" value="https://nexusrepo.scisoftware.pl/repository/maven-public/" />
     </remote-repository>
     <remote-repository>
+      <option name="id" value="project.local" />
+      <option name="name" value="project" />
+      <option name="url" value="file://$PROJECT_DIR$/../sccommon/repo" />
+    </remote-repository>
+    <remote-repository>
       <option name="id" value="ibm.local" />
       <option name="name" value="project" />
       <option name="url" value="$PROJECT_DIR$/../mercury-client/maven-ibm-lib-repo" />

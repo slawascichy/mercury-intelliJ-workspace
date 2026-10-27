@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
   <component name="VcsDirectoryMappings">
+    <mapping directory="$PROJECT_DIR$/../ccrto-openapi" vcs="Git" />
     <mapping directory="$PROJECT_DIR$/../hgdb-client-open" vcs="Git" />
     <mapping directory="$PROJECT_DIR$/../hgdb-grafana-datasource" vcs="Git" />
     <mapping directory="$PROJECT_DIR$/../mercury" vcs="Git" />
@@ -10,6 +11,7 @@
     <mapping directory="$PROJECT_DIR$" vcs="Git" />
     <mapping directory="$PROJECT_DIR$/../mercury-lib" vcs="Git" />
     <mapping directory="$PROJECT_DIR$/../poi-toolkit" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/../sccommon" vcs="Git" />
     <mapping directory="$PROJECT_DIR$/../scisoftware-webpage/docusaurus-hgdb" vcs="Git" />
   </component>
 </project>
