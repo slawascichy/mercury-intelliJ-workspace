@@ -8,7 +8,7 @@ Lista dla autora (wydania robi autor), z podziałem na to, co robisz Ty, i to, c
 |---|---|---|
 | `sccommon` | 2.0.0.1 | wydane, bez log4j; używane w `mercury-lib`, `mercury`, `hgdb-client-open`, `mercury-cmd` |
 | `poi-toolkit` | 4.1.0.1 | wydane, Logback |
-| `ccrto-openapi` | 2.0.0.1 | wydane, bez log4j; **w `mercury` i `hgdb-client-open` nadal `1.2-SNAPSHOT`** (patrz „Do podbicia”) |
+| `ccrto-openapi` | 2.0.0.1 | wydane, bez log4j; w `mercury` i `hgdb-client-open` podniesione z `1.2-SNAPSHOT` do 2.0.0.1 (2026-10-27, zatwierdzone przez autora) |
 | `mercury-lib` | 3.0.4.18 | poprawione wydanie; używane przez `mercury`, `hgdb-client-open`, `mercury-cmd` |
 | `mercury` | 3.0.4.9 | WAR z `LogbackLoggerBackend` i bez adaptera log4j (sprawdzone na serwerze dev) |
 | `hgdb-client-open` | 3.1.4.18 | `sccommon` 2.0.0.1 i ehcache 3.6.1; `CacheHelper` dostosowany |
@@ -35,7 +35,7 @@ Kolejność wynika z zależności: `mercury-lib` → `mercury` i `hgdb-client-op
 
 W `mercury` właściwości `3.0.4-SNAPSHOT` (wersja projektu) ustawia skrypt wydania; ich nie ruszam.
 
-**Do podbicia teraz** (znalezione 2026-10-27): `ccrto-openapi.version` = `1.2-SNAPSHOT` w `mercury/pom.xml` (linia 110) i `hgdb-client-open/pom.xml` (linia 41). Wydanie 2.0.0.1 jest bez log4j. Sprawdzone: `mercury-core-server` i cały `hgdb-client-open` kompilują się z `-Dccrto-openapi.version=2.0.0.1`; `mercury-ws-app` i serwer dev (`ccrto-openapi-2.0.0.1.jar` w `mercury/lib`) nie były budowane razem. Jeśli `mercury` 3.0.4.9 i `hgdb-client-open` 3.1.4.18 zostały wydane ze snapshotem, potrzebne jest kolejne wydanie obu.
+**Podniesione 2026-10-27** (decyzja autora): `ccrto-openapi.version` z `1.2-SNAPSHOT` do `2.0.0.1` w `mercury/pom.xml` i `hgdb-client-open/pom.xml` (wydanie 2.0.0.1 jest bez log4j). Sprawdzone budowaniem: `mvn -o -pl mercury-ws-app -am test-compile` w `mercury` i `mvn -o test-compile` w `hgdb-client-open` przechodzą. Zmiany niezatwierdzone. Jeśli `mercury` 3.0.4.9 i `hgdb-client-open` 3.1.4.18 zostały wydane ze snapshotem, potrzebne jest kolejne wydanie obu.
 
 ## 4. Kontrola po każdym wydaniu
 
