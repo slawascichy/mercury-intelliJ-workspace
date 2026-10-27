@@ -99,3 +99,13 @@ Decyzja autora: logowanie migrujemy na Logback (zadanie `214-Migracja-logowania-
 - **Testy:** 30 z 30 (`LoggerLevelServiceTest` 16, `LoggerBackendsTest` 10, `LoggerLevelsExtRestTest` 4), `mvn -pl mercury-ws-app -am test` z filtrem `-Dtest`.
 - **Nie sprawdzono:** wywołania na działającym serwerze (REST, panel, `/rest/token` z danymi klienta OAuth), obecności operacji w specyfikacji OpenAPI i Swagger UI (zależy od `ExtRestOpenApi`, nie uruchamiano), tego, czy token zawiera zakres `mrc_sysadmin`
   na wdrożeniach (konfiguracja klientów OAuth w XML ma w przykładach `mrc-user,mrc-useradmin`, więc zakres `mrc_sysadmin` trzeba dopisać w konfiguracji klienta).
+
+## Korekta nazwy roli i generatora OpenAPI (2026-10-27)
+
+- **Nazwa roli to `mrc-sysadmin` (z myślnikiem), nie `mrc_sysadmin`.** Autor potwierdził: zakres w definicji OAuth to `mrc-user,mrc-useradmin,mrc-sysadmin`, a w tabeli mapowania ról administrator jest przypisany do `mrc-sysadmin`.
+  Wcześniej w kodzie i dokumentacji użyłem podkreślnika (po notatniku autora, który pisze „mrc_sysadmin”); zamieniono we wszystkich plikach: `LoggerLevelsExtRest.ROLE_SYSADMIN`, interfejs i test, 6 plików `openapi-docs_*`, panel, 4 pliki docusaurus, skrypt i instrukcję testu ręcznego.
+  Test negatywny sprawdza teraz wariant z podkreślnikiem i wielkimi literami jako odrzucane.
+- **Generator `openapi*.json` nadpisywał ręczną zmianę autora** w bloku `security`, bo `OpenApiSpecBuilder.REQUIRED_SCOPES` miał tylko `mrc-user` i `mrc-useradmin` (schemat `securitySchemes` już zawierał `mrc-sysadmin`).
+  Poprawka: `REQUIRED_SCOPES = ("mrc-user", "mrc-useradmin", "mrc-sysadmin")`. Po regeneracji wszystkie siedem plików `openapi*.json` ma blok `security` z trzema zakresami i nie różni się od HEAD.
+- Build z regeneracją i testami: 47 z 47 (`LoggerLevelServiceTest` 16, `LoggerBackendsTest` 10, `LoggerLevelsExtRestTest` 4, `OpenApiResourcesTest` 17).
+- Wynik budowy zostawia w katalogu roboczym zmiany końców linii w trzech plikach `mercury-server/IBPM/mercury/config/ehcache-*-ext-3.5.xsd` (w indeksie LF, po buildzie CRLF; po ignorowaniu końców linii bez różnic). Nie są częścią zadania; do cofnięcia przed commitem (`git checkout -- mercury-server/IBPM`).
