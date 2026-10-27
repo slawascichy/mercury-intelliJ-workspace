@@ -52,7 +52,7 @@ Podział na etapy, bo punkty 1–5 różnią się wielkością i ryzykiem:
 
 Razem ok. 2–3 tygodnie (przypuszczenie). Etapy 1–3 można wydać bez etapu 4.
 
-## Pytania do autora
+## Pytania do autora (odpowiedzi w sekcji „Decyzje autora”)
 
 1. Które bazy obsługujemy dla widoków: PostgreSQL i Oracle (stan z punktu 1), czy tylko PostgreSQL?
 2. Czy „widok” ma być wyłącznie definicją z `CaseViewDefinition` (generowany z typów), czy także dowolny widok relacyjny z bazy (rejestrowany przez administratora)?
@@ -67,3 +67,44 @@ Razem ok. 2–3 tygodnie (przypuszczenie). Etapy 1–3 można wydać bez etapu 4
 - Etapy 1–3 zrealizowane i przetestowane na kopii bazy z widokami zależnymi od innych widoków.
 - Po zmianie API: `openapi-doc-report.txt`, klucze `openapi-docs_*` w 6 językach (tłumaczenia przez translator Gemini), dokumentacja w `docusaurus-hgdb`.
 - Obserwacje wynikłe z rozpoznania dopisane do `docs/obserwacje.md`.
+
+## Decyzje autora (2026-10-27)
+
+| # | Pytanie | Decyzja |
+|---|---|---|
+| 1 | Bazy | Implementacja dla PostgreSQL, Oracle, MySQL i MSSQL, wszystkie cztery |
+| 2 | Czym jest widok | `CaseViewDefinition` plus widoki generowane automatycznie dla typów spraw i dokumentów (autor nie pamięta, czy trafiają do `CaseViewDefinition`: sprawdzone niżej) |
+| 3 | Uprawnienia | Model uprawnień jak dla spraw |
+| 4 | „Lista parametrów” | Standard prezentacji „Excel” zaimplementowany w Iron POI Server (`D:\workspace\git\poi-toolkit`) |
+| 5 | Eksport | Gotowe mechanizmy eksportu danych rozszerzamy o widoki (bez budowy nowego eksportu) |
+| 6 | DTO | Nowe DTO trafiają do `mercury-lib` (kolejne wydanie biblioteki) |
+
+### Wnioski z rozpoznania po decyzjach
+
+**Ad. 2. Widoki typów trafiają do `CaseViewDefinition`.** `CaseViewCreatorReceiver` dla każdego kodu typu wylicza nazwę widoku `T_<kod typu>` (`CaseBusinessSupport.VIEW_PREFIX`), a potem wywołuje `createView` (albo `updateView`, gdy definicja już jest)
+i `generateView`. Definicja jest więc zapisana w `IGO_DA_CASE_VIEW_DEFS` (zakres dat 2000–4000, tryb uprawnień `AND`, bez pomijania pól stałych). Generowanie po zmianie typu włącza parametr
+`mercury.view.createAfterTypeChange` (`CaseBusiness.newViewIsNeeded`), a kolejkę zasilają `CaseBusiness` oraz bufory BPM (`BpmBPDInstanceBufferSecretarySingleton`, `BpmTaskBufferSecretarySingleton`).
+Do ustalenia przy rozpoznaniu: domyślna wartość tego parametru i to, czy widoki istnieją na środowiskach klientów.
+
+**Ad. 1. Cztery bazy.** `CaseViewDefinitionDAO` i `CaseViewQueryBuilder` nie zawierają kodu zależnego od dialektu (brak odwołań do Oracle, PostgreSQL, MySQL, MSSQL). Kod w DAO zawiera komentarz,
+że `CREATE OR REPLACE` nie działa w PostgreSQL przy zmianie liczby kolumn, więc przy `force` jest `DROP` i `CREATE`, co oznacza chwilową niedostępność widoku. Odczyt metadanych widoku (kolumny, status, zależności)
+wymaga osobnej implementacji na każdą z czterech baz (przypuszczenie: `information_schema` w PostgreSQL, MySQL i MSSQL; `ALL_TAB_COLUMNS`/`ALL_OBJECTS` w Oracle). Testy na czterech bazach to główny koszt etapu 2.
+
+**Ad. 4 i 5. Format wyniku z Iron POI Server.** Model „Excel” (`org.iron.poi.excel.core`): `IExcelData` zwraca wiersze `ExcelRow` (numer wiersza, mapa numer kolumny → `ExcelColumnValue` z tekstem `value` i `searchValue`),
+nagłówek `Map<Integer, String>`, typy kolumn `Map<Integer, String>` i stronicowanie `ExcelPage`. Widok powinien więc być mapowany na ten sam model (kolumny widoku → numerowane kolumny, nazwy → nagłówek, typy SQL → typy kolumn),
+a istniejący eksport (`ExportGenerator`, `PoiServerWriter`) dostanie drugie źródło wierszy obok obiektów `Case`.
+
+**Ad. 6. DTO w `mercury-lib`.** Nowe obiekty (definicja kolumny widoku, wynik stronicowany widoku, status widoku) powstają w `mercury-lib`, więc po etapie 1 potrzebne jest wydanie biblioteki, a potem podbicie wersji w `mercury`.
+Zalecenie: jedno wydanie po zamknięciu projektu DTO w etapie 0, a nie po każdym etapie.
+
+### Zmiany w etapach (wersja 2)
+
+| Etap | Zmiana względem propozycji |
+|---|---|
+| 0 | Dochodzi: ustalenie wartości `mercury.view.createAfterTypeChange` i stanu widoków `T_*` na środowisku testowym, przegląd `poi-toolkit` (`IExcelData`, `ExcelRow`) pod mapowanie wiersza widoku, projekt DTO |
+| 1 | Odczyt widoków z uprawnieniami jak dla spraw (typ i pola widoku wynikają z `baseTypeCodes` i listy parametrów definicji) |
+| 2 | Metadane i status widoku dla czterech baz, `lock_timeout` i ponowienia w PostgreSQL, `ALTER VIEW ... COMPILE` w Oracle; przebudowa bez okna niedostępności tam, gdzie baza na to pozwala |
+| 3 | Wynik w modelu `IExcelData` przez istniejące mechanizmy eksportu |
+| 4 | Eksport asynchroniczny przez klienta RMI; bez nowych mechanizmów, rozszerzenie istniejących |
+
+Szacunek (przypuszczenie) rośnie do ok. 3 tygodni z powodu czterech baz.

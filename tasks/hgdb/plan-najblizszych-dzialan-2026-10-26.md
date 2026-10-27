@@ -29,7 +29,7 @@ i krótkiej lekturze kodu, a nie na pełnym rozpoznaniu.
 | 169 Typ id sprawy `String` | **kod gotowy** (faza A), do zamknięcia po wydaniu | zrobione | Zostało: commity, wydanie `mercury-lib` 3.0.4.17, scalenie PR-ów, `openapi-doc-report.txt`. Odłożone do wydania: martwe `decode*` w `mercury-lib`, `IArchCase2SubCaseDAO`. Szczegóły: `169-…/audyt-2026-10-26.md` |
 | 190 Dokumentacja metadanych typów | **w toku** (faza A) | 2–3 d | Zebrane fakty z kodu do pozycji 1–6 i 8; zostają 7 (`HtmlControlUtils`), 9, 10. Dokumentacja w `docusaurus-hgdb` plus poprawka `HtmlControlUtils` w `mercury` |
 | 058 Logger: poziomy logowania (REST) | **nowe** (faza B) | 3–4 d | Backend logowania do ustalenia; panel w `mercury-ws-app` |
-| 016 Widoki | **nowe** (faza B) | 2–3 tyg. (przypuszczenie) | Etapy 0–4 w `016-Widoki/TASK.md`. Koncepcja wymaga decyzji autora (6 pytań). Może wymagać nowych DTO w `mercury-lib` i kolejnego wydania biblioteki |
+| 016 Widoki | **nowe** (faza B) | ok. 3 tyg. (przypuszczenie) | Etapy 0–4 w `016-Widoki/TASK.md`. Decyzje autora z 2026-10-27: cztery bazy (PostgreSQL, Oracle, MySQL, MSSQL), uprawnienia jak dla spraw, wynik w modelu Iron POI Server, rozszerzenie istniejącego eksportu, nowe DTO w `mercury-lib` (kolejne wydanie) |
 | 209 Polecenie kalibracji (`mercury-cmd`) | szkic (faza B) | średnie | Pytania rozstrzygamy przy starcie |
 | 191 Rewizja wersji i Java 17 | w kolejce (faza C) | etap 1: kilka dni; etap 2: duże | Zawiera Lucene 9 |
 | 049 CMIS | **nowe** (faza C) | duże | Szkic wpięty w `web.xml`; patrz niżej |
@@ -49,20 +49,25 @@ i krótkiej lekturze kodu, a nie na pełnym rozpoznaniu.
 3. **058, logger (REST).** (a) Ustalić aktywny backend logowania (`slf4j-reload4j` i `log4j-core` 2.17.2 jednocześnie), (b) usługa `I*ExtRest` w `mercury-ws-app`
    (pobranie poziomu, zmiana, wyszukiwanie z limitem 10–30), (c) panel w `mercury-ws-app`, (d) po zmianie API: `openapi-doc-report.txt`, klucze `openapi-docs_*`, tłumaczenia przez translator Gemini,
    (e) uprawnienia tylko dla administratora (przypuszczenie).
-3a. **016, widoki** (komplet funkcjonalności przed wydaniem). Etap 0 (rozpoznanie i koncepcja, 1–2 d) zaczynamy zaraz po 058, bo od odpowiedzi autora na 6 pytań z `016-Widoki/TASK.md` zależy zakres. Potem etapy 1–3 (odczyt widoków w REST, odporność na widoki `INVALID` i blokady,
+4. **016, widoki** (komplet funkcjonalności przed wydaniem). Etap 0 (rozpoznanie i koncepcja, 1–2 d) zaczynamy zaraz 
+   po 058, bo od odpowiedzi autora na 6 pytań z `016-Widoki/TASK.md` zależy zakres. Potem etapy 1–3 (odczyt widoków w REST, odporność na widoki `INVALID` i blokady,
    wynik w JSON i Excelu), na końcu etap 4 (Iron Server), który można wydać osobno. Zmiana API oznacza `openapi-doc-report.txt`, klucze `openapi-docs_*` w 6 językach (translator Gemini) i dokumentację w `docusaurus-hgdb`.
    Jeśli pojawią się nowe DTO w `mercury-lib`, potrzebne będzie kolejne wydanie biblioteki przed fazą D.
-4. **209.** Odpowiedzi na 6 pytań z `TASK.md`, potem implementacja (wariant: po Lucene 9, żeby nie portować kodu pomiarowego dwa razy; przypuszczenie).
+5. **209.** Odpowiedzi na 6 pytań z `TASK.md`, potem implementacja (wariant: po Lucene 9, żeby nie portować kodu 
+   pomiarowego dwa razy; przypuszczenie).
 
 ### Faza C: duże zmiany
 
-5. **191, etap 1** (rewizja wersji, Java 8), potem **etap 2** (Java 17 i Lucene 9; przy okazji `DocValues` dla `*_subCaseIds`, rozważyć W3 część 2).
-6. **049, CMIS.** Szkic jest w produkcyjnym `web.xml` (serwlety Chemistry, repozytorium plikowe bez konfiguracji). Kroki: (a) wybór podzbioru metod pierwszej wersji (z listy 14 w opisie zadania),
+6. **191, etap 1** (rewizja wersji, Java 8), potem **etap 2** (Java 17 i Lucene 9; przy okazji `DocValues` dla 
+`*_subCaseIds`, rozważyć W3 część 2).
+7. **049, CMIS.** Szkic jest w produkcyjnym `web.xml` (serwlety Chemistry, repozytorium plikowe bez konfiguracji). 
+   Kroki: (a) wybór podzbioru metod pierwszej wersji (z listy 14 w opisie zadania),
    (b) wymiana repozytorium plikowego na repozytorium oparte o Mercury (typ „Folder”, `Case2Case`), (c) ochrona wszystkich ścieżek CMIS (obserwacja 87), (d) testy z klientem `mercury-cmis-client`.
 
 ### Faza D: wydanie (po fazach A–C, zadanie obrazów Docker)
 
-7. **211, obrazy Docker i wydanie.** Łańcuch: wydanie `mercury` i `hgdb-client-open` → podbicie wersji w `mercury-cmd` i budowa pakietu instalacyjnego → wgranie pakietu na `hgdb.org/mercury-docker-packages`
+8. **211, obrazy Docker i wydanie.** Łańcuch: wydanie `mercury` i `hgdb-client-open` → podbicie wersji w 
+   `mercury-cmd` i budowa pakietu instalacyjnego → wgranie pakietu na `hgdb.org/mercury-docker-packages`
    → aktualizacja `mercury-docker` (Dockerfile, kompozycje, Helm, README, konfiguracje) → test dymny → publikacja obrazów → artykuły o Docker i Kubernetes.
    Szczegóły i ryzyka: `211-Aktualizacja-obrazow-Docker-i-wydanie/TASK.md`.
    Warunek wejścia do fazy D: zamknięte 169, 190, 058 i 016 (etapy 1–3), zadania z fazy C zamknięte albo świadomie odłożone (patrz ryzyko 6).
@@ -89,3 +94,10 @@ Nie widzę przeszkody blokującej wydanie. Są jednak warunki, które trzeba spe
 - Zmiana API w `mercury-lib` wymaga wydania biblioteki i podbicia wersji w `mercury` oraz `hgdb-client-open` (jak 3.0.4.16 w 119).
 - Po zmianie interfejsów `I*Action` i `I*ExtRest`: sprawdzić `openapi-doc-report.txt`, uzupełnić `openapi-docs_*`, tłumaczenia przekazać translatorowi Gemini.
 - Nowe komponenty w pakiecie `org.mercury`. Dokumentacja po polsku, tylko weryfikowalne fakty.
+
+## 6. Uzupełnienie 2026-10-27
+
+- **Wydania `mercury-lib`:** 3.0.4.17 jest wydaniem z `LoggerEvent.caseId` jako `String`. Wydanie 3.0.4.18 jest błędne (afected) i nie jest używane; autor poprawi je przy następnym wydaniu biblioteki.
+  Kolejne wydanie `mercury-lib` będzie potrzebne dla 016 (nowe DTO), więc przy nim warto naprawić 3.0.4.18.
+- **016 po decyzjach autora:** cztery bazy, uprawnienia jak dla spraw, wynik w modelu Iron POI Server (`IExcelData`), rozszerzenie istniejącego eksportu. Widoki typów (`T_<kod typu>`) trafiają do `CaseViewDefinition` (sprawdzone w kodzie).
+  Szczegóły: `016-Widoki/TASK.md` (sekcja „Decyzje autora”).
