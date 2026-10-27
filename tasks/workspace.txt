@@ -14,7 +14,7 @@
     113-Stworzenie-mechanizmu-do-przeglądu-wykonywanych-zapytań-Lucene
 	https://github.com/slawascichy/hgdb/issues/113
 6. Kreator zapytań indeksu lucene
-7. Desiner definicji typów spraw i dokumentów
+7. Desiner definicji typów spraw i dokumentów + instalator w róznych środowsikach: DEV, TST, PRE, PROD
 
 ####################
 # Pomysły na aplikacje
@@ -39,7 +39,7 @@ git push origin hgdb-119
 git checkout master
 git pull
 git branch -d hgdb-119
-
+claude --resume aa3430ea-1399-481a-aba9-9d5786b44249
 
 Dołożyłem zadania:
 016-Widoki
