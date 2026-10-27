@@ -34,11 +34,11 @@
 # Obsługa zadań
 ####################
 
-git tag -a 3.0.4.16 -m "Wersja 3.0.4.16"
-git push origin hgdb-119
-git checkout master
-git pull
-git branch -d hgdb-119
+git tag -a 4.0.4.17.1 -m "Wersja 4.0.4.17.1 powiązana z mercury-lib-3.0.4.17 oraz poprawka Zmiana typu identyfikatora sprawy na String"
+
+git push origin hgdb-190
+git checkout master && git pull && git branch -d hgdb-190
+
 claude --resume aa3430ea-1399-481a-aba9-9d5786b44249
 
 Strumień:

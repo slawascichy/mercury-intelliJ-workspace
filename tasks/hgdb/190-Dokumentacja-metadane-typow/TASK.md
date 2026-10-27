@@ -85,3 +85,42 @@ stosowanej przez `HtmlArguments`, parser wartości, indeks Lucene (`CaseMapper`)
 
 Dodatkowy zakres z zadania 119 (ta sama witryna): parametry `lucene.properties` (`tasks/hgdb/119-…/parametry-konfiguracji-lucene-2026-10-26.md`),
 pola `truncated` i `totalHits` w odpowiedzi stronicowanej, błędy sortowania `L0009.7` i `L0009.8`.
+
+## Realizacja (2026-10-27)
+
+Stan: kod i dokumentacja gotowe, bez commitów (commituje autor). Nie uruchomiono `npm run build`.
+
+**Kod (`mercury`, gałąź `hgdb-190`, `mercury-ws-app`):**
+- `HtmlControlUtils.prepareSelectControl`: `arg1` = wartość/nazwa, `arg2` = `size`, `arg3` = para `value|name`. `arg4` nie jest już używany dla list. Pole `optional` wynika z `isRequired` (`isRequired = false` daje pustą opcję, zgodnie z opisem w dokumentacji).
+- Typ inputu dla STRING jest czytany z `arg1` (wcześniej z `arg2`, który zarazem był ustawiany jako `size`).
+- Test `HtmlControlUtilsTest` (8 testów, atrapy `MTypeParam` i definicji): SELECT, MULTI, STRING, zależność `optional` od `isRequired`. Wynik: 8 zaliczonych.
+- Pozycja 4 decyzji (kod wywołujący): `createControl` nie ma wywołań w kodzie, więc nic nie zakłada starych znaczeń `arg2` i `arg3` (obserwacja 93).
+
+**Dokumentacja (`docusaurus-hgdb`, `main`, wersja en i pl):**
+
+| # | Zmiana |
+|---|---|
+| 1 | Sekcja `updateable` z wartościami `Updatable`; wiersze `TypeParam.updateable` i `SubType.updateable` |
+| 2 | `recomendedLabel` (pisownia z kodu, API i bazy) |
+| 3 | Rozdzielone wiersze `mimeType` i `knownLobMetadata` (w en; w pl były rozdzielone) |
+| 4 | Pierwszeństwo `arg4`/`arg5` nad `ParamDefinition.knownLobMetadata`/`mimeType` przy odczycie sprawy |
+| 5 | Pole `versionMinor` w `TypeCase` |
+| 6 | `NUMBER`: walidacja liczby zmiennoprzecinkowej |
+| 7 | Jedna konwencja `arg1..arg3` dla list wyboru i STRING (zgodna z kodem po poprawce) |
+| 8 | Tabela wartości domyślnych `arg1..arg5` według `AttributeType` (z `HtmlArguments`) |
+| 9 | Sekcja „Localization of labels and option names” (klucze `${...}`, język, co tłumaczy serwer) |
+| 10 | `isRequired`: serwer nie sprawdza wartości przy zapisie sprawy |
+
+**Pozostało:** dokumentacja z 119 (parametry `lucene.properties`, `truncated`/`totalHits`, błędy `L0009.7` i `L0009.8`), `npm run build` serwisu, oznaczenie obserwacji 23 i 24 ✅ (zrobione), obserwacje 93–97 dopisane do `docs/obserwacje.md`.
+
+## Domknięcie (2026-10-27)
+
+Dokumentacja z 119 dopisana (en i pl, `docusaurus-hgdb`, `main`, bez commitu):
+
+- `004_API/005_PagedResult`: sekcje `truncated` i `totalHits` (pola DTO pojawiają się tylko przy obciętym wyniku; `MrcPagedResult` ich nie zawiera).
+- `003_Architecture/003_Index_Lucene`: sekcja „Parametry konfiguracji Lucene na serwerze (`lucene.properties`)” (gdzie ustawiać, pierwszeństwo, parametry nowe i istniejące, przykłady, wskazówki zapytań).
+- `004_API/008_Search_services/002_CaseSearch` i `003_CaseSearchExt` (`sarchByQuery`): notatka o błędach sortowania `L0009.7` i `L0009.8` przy parametrze `sortClause`.
+
+`npm run build` serwisu: `[SUCCESS]` dla wersji domyślnej i `pl`, bez ostrzeżeń i błędów w logu.
+
+Definicja Gotowości: pozycje 1–10 w en i pl (zrobione), decyzja do pozycji 7 zapisana i wykonana, build bez nowych ostrzeżeń (zrobione), obserwacje 23 i 24 ✅ (zrobione). Do zamknięcia zadania zostają commity i PR (`mercury` na `hgdb-190`).
