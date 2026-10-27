@@ -83,3 +83,19 @@ Decyzja autora: logowanie migrujemy na Logback (zadanie `214-Migracja-logowania-
 - **Testy:** `LoggerLevelServiceTest` (16, atrapa backendu: walidacja, limit, obcięcie) i `LoggerBackendsTest` (10, adaptery na prawdziwych bibliotekach: Logback na własnym kontekście, log4j 1.x, wybór backendu). Wynik: 26 z 26. Test wykrył, że `slf4j-reload4j` używa `Reload4jLoggerFactory`, a nie `Log4jLoggerFactory`.
 
 **Nie zrobiono i nie sprawdzono:** uruchomienia usługi na działającym serwerze (wywołanie REST, panel w przeglądarce, przepływ `/rest/token` z danymi klienta OAuth), tłumaczeń OpenAPI de/es/fr/ko, dokumentacji w `docusaurus-hgdb`, `openapi-doc-report.txt`.
+
+## Aktualizacja po decyzjach autora (2026-10-27)
+
+- **Rola administratora: `mrc_sysadmin`** (zakres tokenu OAuth). Wszystkie operacje (odczyt i zmiana) wymagają tej roli; zastąpiła ona sprawdzanie `isAllRO()`/`isAllRW()`.
+  Użytkownika i role serwer ustala z tokenu OAuth (`RestServicesHelper.createContextBasedOnOAuth`, role = zakresy tokenu) albo z sesji (`createContextBasedOnSession`), a **nie** z pola `context` żądania, bo je wypełnia klient.
+  Pole `context` jest opcjonalne; panel go nie wysyła. `oauthFactoryName` w `CaseTypeOpenApiController` jest teraz `public static`.
+  Sprawdzenie roli: `LoggerLevelsExtRest.isSysAdmin(Context)`, test `LoggerLevelsExtRestTest` (4).
+- **Logback:** autor pobrał `logback-classic` 1.2.13 i poprawił POM (`logback.version` = 1.2.13).
+- **OpenAPI:** klucze `ILoggerLevelsExtRest.*` (16) są teraz we wszystkich sześciu plikach `openapi-docs_*`. Tłumaczenia de, es, fr i ko wykonał translator Gemini (`localizer.py translate`, `validate`: 16 kluczy, 0 błędów, 0 ostrzeżeń na język);
+  stałe (`mrc_sysadmin`, `errorCode`, `INHERIT`, lista poziomów) zachowane.
+- **Dokumentacja (`docusaurus-hgdb`, `main`, en i pl, bez commitu):** nowa strona `005_Configuration/Logging_levels.mdx` (co można zrobić, ograniczenia, rola, backend, trzy operacje z przykładami JSON, panel),
+  pozycje na liście w `005_Configuration/index.mdx` oraz wpis na blogu `2026-10-27-Logging-levels-at-runtime` (informacja o nowej funkcji w następnym wydaniu).
+  Przy okazji pozycja „Parametry konfiguracyjne indeksu Lucene” na liście TODO oznaczona ✅ z odnośnikiem do sekcji dodanej w 190.
+- **Testy:** 30 z 30 (`LoggerLevelServiceTest` 16, `LoggerBackendsTest` 10, `LoggerLevelsExtRestTest` 4), `mvn -pl mercury-ws-app -am test` z filtrem `-Dtest`.
+- **Nie sprawdzono:** wywołania na działającym serwerze (REST, panel, `/rest/token` z danymi klienta OAuth), obecności operacji w specyfikacji OpenAPI i Swagger UI (zależy od `ExtRestOpenApi`, nie uruchamiano), tego, czy token zawiera zakres `mrc_sysadmin`
+  na wdrożeniach (konfiguracja klientów OAuth w XML ma w przykładach `mrc-user,mrc-useradmin`, więc zakres `mrc_sysadmin` trzeba dopisać w konfiguracji klienta).
