@@ -19,7 +19,7 @@ Użytkownik w kontekście operacji (`Context.userName`) nie musi być tym, kto s
 | Uprawnienia do typów i pól wynikają wyłącznie z ról w kontekście (tabela `igo_da_typeparameterroles`). Pusta lista ról daje pusty kontekst uprawnień. | `mercury-dao`: `SecurityContextHelper.createNewInstance` |
 | Role predefiniowane: `mrc-user` (`USER_ROLE_NAME`) i `mrc-admin` (`SUPERUSER_ROLE_NAME`). W bazie dev: `mrc-user` ma `RW` do wszystkich typów i pól, `mrc-admin` ma `RO`. | `MRole`, test na bazie dev 2026-10-28 |
 | Zakresy OAuth: `mrc-sysadmin`, `mrc-user`, `mrc-useradmin`. Rola `mrc-useradmin` występuje w konfiguracji bezpieczeństwa i w skryptach schematu LDAP. | `mercury-security-OAuth.properties`, `OAuthScopesTest`, `MRC_LDAP_CREATE_SCHEMA_*.sql` |
-| Użytkownik `admin` na serwerze dev ma role `mrc-groupadmin`, `mrc-serviceadmin`, `mrc-sysadmin`, `mrc-user`, bez `mrc-useradmin`. | tabela `MRC_LDAP_INT_ROLES_MAP` |
+| Na serwerze dev użytkownik `admin` ma role `mrc-groupadmin`, `mrc-serviceadmin`, `mrc-sysadmin`, `mrc-user` i `mrc-useradmin`. Użytkownik `tester` ma tylko `mrc-user`. Te same pięć ról mają grupy `admins` i `CKJAV-Team` (typ `G`). | tabela `MRC_LDAP_INT_ROLES_MAP` (stan z 2026-10-28) |
 | Tabela użytkowników ma flagę `is_technical`. | `igo_adm_users` |
 
 ## Obserwacje z testu REST (2026-10-28, serwer dev, PostgreSQL)
