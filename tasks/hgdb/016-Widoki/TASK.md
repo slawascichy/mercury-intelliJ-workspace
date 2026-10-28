@@ -6,9 +6,9 @@ https://github.com/slawascichy/hgdb/issues/16
 https://github.com/slawascichy/hgdb/issues/17
 Obsługa widoków jest bardzo istotna. Trzeba opracować koncepcję jak to w końcu zaimplementować. Na pewno trzeba zrobić:
 
-1. Obsługa widoków relacyjnych utworzonych w bazie danych, są problemy z ich w relacyjnej bazie danych, gdy sam 
+1. Obsługa widoków relacyjnych utworzonych w bazie danych. Są problemy z nimi w relacyjnej bazie danych, gdy sam 
    widok jest w zależności od innych widoków/pakietów. W Oracle jest coś takiego jak status `invalid`, kompilujesz 
-   przy pierwszym użyciu, w PosthreSQL pojawiają się lock, i błędy.
+   przy pierwszym użyciu, w PostgreSQL pojawiają się lock, i błędy.
 2. Wykorzystanie mechanizmów dynamicznych jakie już są zaimplementowane
 3. Wynik widoków:
    - Prezentacja w standardzie Excel
@@ -133,3 +133,78 @@ Czytano kod i historię git; niczego nie uruchamiano. Pytania 1–6 z sekcji „
 ### Wniosek i następny krok
 
 Etap 0 jest domknięty po stronie rozpoznania kodu. Do zrobienia na serwerze testowym: zapytanie o stan `IGO_DA_CASE_VIEW_DEFS` i widoków `T_*` oraz próba `DROP`/`CREATE` pod obciążeniem w PostgreSQL. Zapraszam do zatwierdzenia projektu DTO; potem zakładamy gałąź `hgdb-016` (po Twoim potwierdzeniu) i zaczynamy etap 1.
+
+## Etap 1: rozpoznanie wzorców i plan implementacji (2026-10-28)
+
+**DTO.** Zatwierdzone przez autora, zmiany w `mercury-lib` (gałąź `hgdb-016`): pakiet `org.mercury.dto.view` w `mercury-ws-dto-api` (`ViewColumnDefinition`, `ViewInfo`, `ViewQuery`, `ViewFilter`, `ViewSort`, `ViewDataPage`, `ViewStatus`, `ViewFilterOperator`, `ViewSortDirection`). Wydanie biblioteki (następna wersja po 3.0.4.18) po zamknięciu etapu 1.
+
+**Warstwy w `mercury` (wersja pierwotna, zastąpiona sekcją „Korekta planu: rozszerzenie istniejących mechanizmów”).**
+
+| Warstwa | Moduł | Zadanie dla widoków |
+|---|---|---|
+| DAO (interfejs i implementacja) | `mercury-dao-api`, `mercury-dao` | Nowe `IViewDataDAO`: metadane kolumn widoku (etap 1 dla PostgreSQL, pozostałe bazy w etapie 2) i odczyt stronicowany natywnym SQL z parametrami |
+| Logika/biznes | `mercury-srv` (`org.mercury`) | `IViewDataBusinessInternal`: lista widoków z `CaseViewDefinition`, `ViewInfo`, odczyt strony, kontrola uprawnień, limity |
+| REST | `mercury-ws-app` (`org.mercury.rest.server.actions...`) | `IViewDataExtRest` i `ViewDataExtRest` (`@RestController`, koperta JSON z `RestWsStatusUtils`), żądania z `Context` |
+| Dokumentacja OpenAPI | `mercury-ws-app/src/main/resources/META-INF/mercury` | Klucze `openapi-docs_*` w 6 językach (tłumaczy translator Gemini) |
+
+**Reguła uprawnień (propozycja, zgodna z decyzją „jak dla spraw”).** `SecurityContextHelperBean` udostępnia `isAllRO()`, `isRO(typeCode)`, `isAllTypesRO(typeCode)` i `getReadableParams(typeId)`.
+1. Użytkownik z `isAllRO()` widzi wszystkie widoki i kolumny (jak dziś w `CaseViewDefinitionLogic`).
+2. Pozostali widzą widok tylko wtedy, gdy mają odczyt **wszystkich** typów z `baseTypeCodes` definicji, bo widok już filtruje wiersze po tych typach (`typeId IN (...)`) i nie ma uprawnień na poziomie wiersza.
+3. Kolumny pochodzące z pól typu, których użytkownik nie może czytać (`getReadableParams`), są pomijane w metadanych i w wyniku.
+4. Widoki spoza rejestru (`CaseViewDefinition`) nie są dostępne (decyzja nr 2: zakres to definicje i widoki `T_*`).
+
+**Odczyt.** Nazwa widoku pochodzi wyłącznie z rejestru definicji. Nazwy kolumn filtrów i sortowania są sprawdzane względem metadanych, a wartości przekazuje się jako parametry zapytania. Limity: maksymalny rozmiar strony i timeout zapytania z konfiguracji (`mercury.properties`).
+
+**Kolejność.** (1) kompilacja `mercury` na lokalnie zainstalowanej bibliotece z DTO, (2) DAO i test jednostkowy generatora zapytań, (3) biznes z uprawnieniami, (4) REST, (5) OpenAPI i `openapi-doc-report.txt`, (6) test na serwerze dev (PostgreSQL).
+
+## Korekta planu: rozszerzenie istniejących mechanizmów (2026-10-28)
+
+Decyzja autora: nie budować nowego mechanizmu obok istniejącego. Rozpoznanie wykazało, że dla `CaseViewDefinition` jest już cały łańcuch usług, który rozszerzamy zamiast dodawać `IViewData*`:
+
+| Warstwa | Istniejący element | Rozszerzenie dla widoków |
+|---|---|---|
+| Interfejs akcji (generyczny) | `ICaseViewDefinitionAction` w `mercury-core` (`createView`, `updateView`, `generateView`, `dropView`) | `getViewInfo`, `findViewInfos`, `readViewData` ✅ |
+| Interfejs SOAP | `ICaseViewDefinitionAction` w `mercury-ws-server-api` | te same trzy metody z `@WSDLDocumentation` i zwrotkami `WsStatusWithViewInfoDto/Dtos`, `WsStatusWithViewDataPage` ✅ |
+| REST | `CaseViewDefinitionRest` **generowany** (`mercury-ws-app-rest-generator`) z interfejsu SOAP | nic do ręcznego pisania; powstaje przy budowaniu (nowe wpisy dokumentacji `openapi-docs_*`) |
+| Implementacja SOAP | `CaseViewDefinitionAction` (`mercury-ws-server`) | trzy metody delegujące do logiki |
+| Logika | `CaseViewDefinitionLogic` (`mercury-srv`): ma już kontrolę `isAllRO()` i definicje | `getViewInfo`, `findViewInfos`, `readViewData` z regułą uprawnień z sekcji etapu 1 |
+| DAO | `ICaseViewDefinitionDAO` i `CaseViewDefinitionDAO` (`generateView`, `dropView`) | odczyt metadanych kolumn i stronicowany odczyt wierszy |
+| Klient | `CaseViewDefinitionLogic` w `hgdb-ws-client-cxf` i `hgdb-multi-client` implementują `ICaseViewDefinitionLogic` | trzy metody wołające usługę SOAP/REST (klient musi mieć nowe metody, bo implementuje interfejs) |
+| `ws-server-api20` | generowany z interfejsu SOAP | regeneruje się przy budowaniu |
+
+**Zmiany względem poprzedniego projektu DTO.** `mercury-srv-api` i logika nie widzą `mercury-ws-dto-api` (zależność jest odwrotna), więc DTO widoków (`org.mercury.dto.view`) przeniosłem do `mercury-core`. Zwrotki `WsStatusWithView*` leżą w `mercury-ws-dto-api` (`org.mercury.dto.view`), jak ręczne `WsStatusWithCase2Case*`. Poprzednia tabela warstw (DAO `IViewDataDAO`, biznes `IViewDataBusinessInternal`, ręczny `IViewDataExtRest`) jest zastąpiona powyższą.
+
+**Wniosek do rozpoznania z etapu 0.** W tabeli „Czego nie znalazłem” pkt 3 („usługi REST dla widoków”) był błędny: REST dla definicji istnieje (`CaseViewDefinitionRest`, katalog `src/main/generated`). Brakuje REST do odczytu danych widoku, i to ją dodajemy.
+
+## Etap 1: stan implementacji (2026-10-28)
+
+Zrobione i skompilowane (bez testów uruchomieniowych, bez commitów):
+
+| Repozytorium | Zmiana |
+|---|---|
+| `mercury-lib` | DTO `org.mercury.dto.view` w `mercury-core`; metody `getViewInfo`, `findViewInfos`, `readViewData` w `ICaseViewDefinitionAction` (core i SOAP); zwrotki `WsStatusWithView*` w `mercury-ws-dto-api`; klucze `openapi-docs_pl/en` operacji (`mercury-ws-server-api`) |
+| `mercury` | `ICaseViewDefinitionDAO`/`CaseViewDefinitionDAO`: `findViewColumns` (JDBC `DatabaseMetaData`, jedna implementacja dla czterech baz) i `readViewData` (parametry zapytania, kolumny z metadanych, `ORDER BY`, limit czasu); `CaseViewDefinitionLogic`: reguła uprawnień, limity strony (`mercury.view.maxPageSize`, domyślnie 1000; `mercury.view.queryTimeoutMs`, domyślnie 60000); `CaseViewDefinitionAction`; klucze `schema.View*` (pl, en) w generatorze; przegenerowane `openapi*.json` (`info.version` przywrócone do 3.0.4.10) |
+| `hgdb-client-open` | `CaseViewDefinitionLogic` w `hgdb-ws-client-cxf` (`hgdb-multi-client` dziedziczy) |
+
+REST (`CaseViewDefinitionRest`, `rest` i `rest2`) i `ws-server-api20` powstają z generatorów (katalogi `generated` są w `.gitignore`). Raport `openapi-doc-report.txt`: braki opisów 0; braki tłumaczeń `pl` i `en` 0, `de`/`es`/`fr`/`ko` po 64 klucze (dla translatora Gemini).
+
+**Uproszczenia etapu 1 (do rozstrzygnięcia w kolejnych etapach):**
+- Uprawnienia tylko na poziomie typów bazowych; kolumny z pól typu, których użytkownik nie może czytać, nie są jeszcze pomijane (`typeFieldCode` jest pusty, bo nazwy kolumn widoku nie mają prostego mapowania na pola).
+- `status` to `VALID`/`MISSING` (brak kolumn w katalogu); `INVALID` (Oracle), `lock_timeout` i ponowienia w PostgreSQL to etap 2. Lista widoków nie ustawia statusu.
+- Brak testów jednostkowych i testu na serwerze dev; zweryfikowano tylko kompilację i generatory.
+- Test na PostgreSQL, potem na Oracle, MySQL i MSSQL (etap 2).
+
+**Do wydania:** `mercury-lib` (następny numer po 3.0.4.18), potem podbicie wersji w `mercury` i `hgdb-client-open`. Lokalnie w `~/.m2` (D:\workspace\.m2) leży testowa wersja `3.0.4.19-SNAPSHOT` (lib i `POSTGRESQL-3.0.4.19-SNAPSHOT`); wydanie ją zastąpi.
+
+### Test DAO na trzech bazach (2026-10-28)
+
+Program testowy (poza repozytoriami) uruchamia prawdziwe `CaseViewDefinitionDAO` na własnej tabeli `MRC_VW_TEST_T` i widoku `MRC_VW_TEST_V` (25 wierszy; obiekty usuwane na końcu) i sprawdza 18 przypadków: metadane kolumn i typy, brak widoku, stronicowanie (strony 1 i 3), sortowanie, domyślne `ORDER BY 1`, filtry `LIKE` (bez rozróżniania wielkości liter), `GE`/`LT` na liczbach i datach, `IS NULL`/`IS NOT NULL`, wartość z cudzysłowem jako parametr, odrzucenie kolumny z iniekcją SQL, nieznanej kolumny sortowania, liczby z tekstem, `LIKE` na liczbie i niedozwolonej nazwy widoku.
+
+| Baza | Wynik | Uwagi |
+|---|---|---|
+| PostgreSQL (localhost) | 18/18 OK | sterownik 42.2.23 |
+| Oracle 23c Free (`FREEPDB1`) | 18/18 OK | wymaga sterownika `ojdbc11` (JDK 17) i adresu usługi `//host:port/FREEPDB1`; `ojdbc6` z serwera dev kończy się `ORA-28040`; `NUMBER(10)` rozpoznawany jako INTEGER po skali 0 (poprawka w DAO) |
+| MSSQL (`pluton`) | 18/18 OK | sterownik `mssql-jdbc` 8.2.2 (JRE 8), `datetime2`, `decimal`, `int` rozpoznane poprawnie; wcześniej konto wymagało zmiany hasła (zmienione przez autora) |
+| MySQL 8.4 (Docker, `docker/mysql`) | 18/18 OK | sterownik Connector/J 8.0.28, dialekt `MySQL8Dialect`; typy `INT`, `DECIMAL`, `DATETIME` rozpoznane poprawnie |
+
+Wniosek dla etapu 2: adresy `jdbc.oracle.dbSID` w plikach testowych to w rzeczywistości nazwa usługi PDB. Stary sterownik `ojdbc6` nie łączy się z Oracle 23c.

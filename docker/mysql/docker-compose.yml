@@ -1,4 +1,4 @@
-# MySQL do testów Mercury DB (HgDB): bazy mercury-db, mercury-common i mercury-ldap.
+# MySQL do testów Mercury DB (HgDB): bazy mercury, mercury_common i mercury_ldap.
 # Użycie: skopiuj .env.example do .env, ustaw hasła, potem: docker compose up -d
 # Opis: README.md
 name: mercury-mysql
@@ -16,7 +16,7 @@ services:
       # użytkownik i pierwsza baza; pozostałe bazy tworzy init/01-init-mercury-databases.sql
       MYSQL_USER: ${MYSQL_USER:-mercury}
       MYSQL_PASSWORD: ${MYSQL_PASSWORD:?ustaw MYSQL_PASSWORD w pliku .env}
-      MYSQL_DATABASE: mercury-db
+      MYSQL_DATABASE: mercury
       TZ: ${TZ:-Europe/Warsaw}
     command:
       - --character-set-server=utf8mb4

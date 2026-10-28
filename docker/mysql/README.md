@@ -1,7 +1,7 @@
 # MySQL dla Mercury DB (HgDB)
 
 Kompozycja Docker z MySQL 8.4 do testów serwera i klientów na bazie MySQL (np. weryfikacja odczytu widoków z zadania 016).
-Kompozycja tworzy trzy bazy zgodne z konfiguracją w repozytoriach: `mercury-db`, `mercury-common` i `mercury-ldap`.
+Kompozycja tworzy trzy bazy zgodne z konfiguracją w repozytoriach: `mercury`, `mercury_common` i `mercury_ldap`.
 
 ## Uruchomienie
 
@@ -35,16 +35,16 @@ Klucze w `src/test/resources-filtered/properties/<użytkownik>/test-mysql.proper
 jdbc.mysql.default.dbUser=mercury
 jdbc.mysql.default.dbPassword=<MYSQL_PASSWORD>
 jdbc.mysql.default.dbPort=3306
-jdbc.mysql.default.dbName=mercury-db
-jdbc.mysql.default.dbServer=127.0.0.1
+jdbc.mysql.default.dbName=mercury
+jdbc.mysql.default.dbServer=localhost
 jdbc.mysql.common.dbUser=mercury
 jdbc.mysql.common.dbPassword=<MYSQL_PASSWORD>
 jdbc.mysql.common.dbPort=3306
-jdbc.mysql.common.dbName=mercury-common
-jdbc.mysql.common.dbServer=127.0.0.1
+jdbc.mysql.common.dbName=mercury_common
+jdbc.mysql.common.dbServer=localhost
 ```
 
-Adres JDBC: `jdbc:mysql://127.0.0.1:3306/mercury-db`. Sterownik MySQL Connector/J nie jest częścią tej kompozycji.
+Adres JDBC: `jdbc:mysql://127.0.0.1:3306/mercury`. Sterownik MySQL Connector/J nie jest częścią tej kompozycji.
 
 ## Uwagi
 
