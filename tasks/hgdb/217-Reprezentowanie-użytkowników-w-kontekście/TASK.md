@@ -115,15 +115,28 @@ Rozpoznanie wykazało szerszą lukę niż `generateView`: kontrolę `isAllRO()` 
 
 Test na serwerze dev: `admin` (`mrc-user`, `RW` do wszystkich typów) tworzy i generuje widok, a użytkownik z pustą listą ról dostaje `SC001` przy `createView`, `updateView`, `generateView`, `dropView`, `insert`, `update` i `remove`. Po próbie przebudowy bez uprawnień wersja i `oid` widoku w PostgreSQL bez zmian. Dane testowe usunięto. Wymaga wydania `mercury-lib` (zmiana interfejsu).
 
+### Ciała żądań jako tekst JSON (2026-10-28)
+
+Metody z `@RequestBody String` (usługi typów spraw `CaseTypeServicesController` oraz `save` i `initModel` w `CaseBusinessExtRest`, wersje `rest` i `rest2`) nie były objęte advice, bo ciało nie ma typu z `getContext()`. `withCaseAsType` tworzyło przy braku `context` kontekst bez `userName`. Dodano adnotację `@ContextInJsonBody` (na trzech klasach) i obsługę ciał `String` w `ContextVerificationAdvice`: kontekst jest odczytywany z pola `context` tekstu JSON, a brak pola albo niepoprawny JSON kończy się odrzuceniem (`username_required`).
+
+Test na serwerze dev dla `types/SlmAddress/find`, `CaseBusinessExtRest/save` i `CaseBusinessExtRest/initModel`: brak `context`, brak `userName` i niepoprawny JSON dają 403 `username_required`; `tester` jako `admin` i role spoza zestawu dają 403 `invalid_grant`; `tester` jako `tester` i `admin` jako `tester` przechodzą weryfikację.
+
+### Testy automatyczne
+
+- `mercury-gui-core`: `RestServicesHelperVerifyContextTest` (9 testów, atrapa realmu, bez bazy): reguły `verifyContext`.
+- `mercury-ws-app`: `ContextVerificationAdviceTest` (8 testów): które żądania obejmuje advice (ciała z `getContext()`, ciała `String` z `@ContextInJsonBody`, wyłączenie `@IdentityFromToken`) i `extractContext`.
+- Uruchamiane z filtrem `-Dtest=...`. Pełne zestawy testów modułów nie były uruchamiane.
+
 ### Do zrobienia
 
 1. ~~Kontrola uprawnień w `CaseViewDefinitionAction.generateView` przed wysłaniem komunikatu JMS (obserwacja 109).~~ Wykonane 2026-10-28, patrz „Naprawa luki zarządzania widokami”.
-2. `CaseTypeServicesController` przyjmuje `@RequestBody String`, więc advice go nie obejmuje.
-3. Sprawdzić `NodeMonitorRest` (komunikacja między węzłami) i klientów REST wysyłających własny `context` (`mercury-cmd`, serwer Iron POI, IBM BPM): po zmianie ich `context` musi spełniać reguły.
-4. Testy automatyczne w repozytorium (obecnie tylko test ręczny na serwerze dev).
-5. Ewentualny cache ról (każde żądanie czyta role z bazy).
+2. ~~`CaseTypeServicesController` przyjmuje `@RequestBody String`.~~ Wykonane, patrz „Ciała żądań jako tekst JSON”.
+3. `NodeMonitorRest` (`/monitor/NodeMonitorRest/load`) używa `context` tylko do serializacji odpowiedzi i podlega nowym regułom (klient musi podać poprawny `context`). W repozytoriach `mercury-cmd`, `mercury-client`, `hgdb-client-open` i `mercury-docker` nie ma klientów REST w Javie, więc nie wiadomo, które zewnętrzne narzędzia (monitoring, serwer Iron POI, IBM BPM, Swagger UI) wysyłają własny `context`. W Swagger UI przykładowe żądania nie mają wypełnionego `userName`, trzeba go podać. Do rozstrzygnięcia przez autora: czy `NodeMonitorRest` ma zostać pod regułą, czy dostać `@IdentityFromToken`.
+4. ~~Testy automatyczne w repozytorium.~~ Wykonane, patrz „Testy automatyczne”.
+5. Ewentualny cache ról (każde żądanie czyta role z bazy, a dla użytkowników LDAP także z LDAP). Dodać po pomiarze.
 6. Kanały SOAP i RMI/CMIS (osobna decyzja, razem z kontami technicznymi).
 7. Role procesowe w istniejących środowiskach: `mrc-admin` musi być zmapowana użytkownikom, którzy mają ją podawać w `context`.
+8. Przegląd operacji wykonywanych kontekstem systemowym: w warstwie `ws` jedyną wysyłką JMS z akcji użytkownika był `generateView` (naprawiony). Wewnętrzne użycia kontekstu systemowego w `mercury-srv` (sekretarze, `CaseBusiness`) nie były audytowane.
 
 ## Czego nie wiemy (do rozpoznania)
 
