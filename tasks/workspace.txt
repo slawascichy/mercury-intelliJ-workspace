@@ -35,7 +35,7 @@
 ####################
 
 ```bash
-export TAG_VERSION="3.0.4.10"
+export TAG_VERSION="3.1.4.19"
 git tag -a ${TAG_VERSION} -m "Wersja ${TAG_VERSION} bez log4j"
 git push origin ${TAG_VERSION}
 ```
@@ -56,7 +56,7 @@ Strumień:
 016-Widoki
   D039-[Lucene]-Optymalizacja-dostępu-do-IndexReader-a
 049-[CMIS]-Implementacja-API-CMIS
->058-Logger-dynamiczne-zmiana-poziomów-logowania
+  D058-Logger-dynamiczne-zmiana-poziomów-logowania
   D062-Problem-dodawanie-klucza-głównego-po-utworzniu-typu-bez-pola
   D109-CaseBusiness_changeModel-duplicate-key-value-violates-unique-constraint-igo_da_typecode_case_uk
   D110-CaseLobProperty-More-than-one-row-with-the-given-identifier-was-found
@@ -78,5 +78,5 @@ Strumień:
  B208-Lokalizacja-interfejsu-Swagger-UI
 209-Polecenie-kalibracji-parametrow-indeksu-Lucene
 211-Aktualizacja-obrazow-Docker-i-wydanie
->214-Migracja-logowania-na-Logback
+  D214-Migracja-logowania-na-Logback
  B215-Nowa-komunikacja-IBM-BPM-HgDB

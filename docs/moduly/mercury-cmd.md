@@ -12,7 +12,7 @@ instancjami, testy wydajności i pakiet instalacyjny serwera. Moduły mają GAV
 `io.hgdb.mercury:<moduł>:3.0.8.6-SNAPSHOT`.
 
 Projekt korzysta z wydanych wersji pozostałych repozytoriów, a nie z bieżących snapshotów:
-`mercury.static.version=3.0.3.2.12` (serwer i `mercury-lib`), `hgdb-client.version=3.1.2.0.2`.
+`mercury.lib.version=3.0.4.18` (`mercury-lib`), `mercury.srv.version=3.0.4.10` (serwer i wersja pakietu), `hgdb-client.version=3.1.4.19` (stan 2026-10-28; wcześniej jedna właściwość `mercury.static.version=3.0.3.2.12` dla serwera i `mercury-lib`).
 
 ## Moduły
 

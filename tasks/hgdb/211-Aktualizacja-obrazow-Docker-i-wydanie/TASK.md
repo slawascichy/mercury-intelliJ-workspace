@@ -30,7 +30,7 @@ Artykuły o Docker i Kubernetes w `docusaurus-hgdb` czekają na nowe obrazy (obs
 | 1 | – | Decyzja o numerze wydania i zakresie (co wchodzi, czy 191 etap 2 jest gotowy) |
 | 2 | `mercury-lib` | Wydanie (3.0.4.16 jest wydane po zadaniu 119; kolejne tylko jeśli zmiany w bibliotece) |
 | 3 | `mercury`, `hgdb-client-open` | Wydanie serwera i klienta; podbicie zależności od `mercury-lib` |
-| 4 | `mercury-cmd` | Podbicie `mercury.static.version` i `hgdb-client.version`; budowa `mercury-install-package` (ZIP) |
+| 4 | `mercury-cmd` | Podbicie `mercury.lib.version`, `mercury.srv.version` i `hgdb-client.version` (główny `pom.xml`); budowa `mercury-install-package` (ZIP; `mvn -o install -Dmaven.test.skip=true`) |
 | 5 | publikacja | Wgranie ZIP-a na `hgdb.org/mercury-docker-packages` (czynność autora) |
 | 6 | `mercury-docker` | Aktualizacja `HGDB_VERSION`, tagów, kompozycji, Helm, README, konfiguracji (patrz niżej) |
 | 7 | `mercury-docker` | Budowa obrazów i test dymny kompozycji (jednowęzłowej, potem klastrów) |

@@ -11,8 +11,8 @@ Lista dla autora (wydania robi autor), z podziałem na to, co robisz Ty, i to, c
 | `ccrto-openapi` | 2.0.0.1 | wydane, bez log4j; w `mercury` i `hgdb-client-open` podniesione z `1.2-SNAPSHOT` do 2.0.0.1 (2026-10-27, zatwierdzone przez autora) |
 | `mercury-lib` | 3.0.4.18 | poprawione wydanie; używane przez `mercury`, `hgdb-client-open`, `mercury-cmd` |
 | `mercury` | 3.0.4.10 | wydane 2026-10-27 po PR i merge'u, z `ccrto-openapi` 2.0.0.1 (3.0.4.9 miało snapshot). Sprawdzone: 18 jarów serwera bez odwołań do log4j, WAR z `LogbackLoggerBackend` bez adaptera log4j i bez jarów Logbacka/log4j/`sccommon` w `WEB-INF/lib`, `info.version` w `openapi_en.json` = 3.0.4.10 |
-| `hgdb-client-open` | 3.1.4.18 | `sccommon` 2.0.0.1 i ehcache 3.6.1; `CacheHelper` dostosowany |
-| `mercury-cmd` | niewydane | po podbiciu wersji buduje się (`mvn -o clean test-compile`); pakiet `mercury-install-package-<mercury.static.version>` |
+| `hgdb-client-open` | 3.1.4.19 | wydane 2026-10-28 po PR i merge'u (3.1.4.18 miało `ccrto-openapi` `1.2-SNAPSHOT`); `sccommon` 2.0.0.1, ehcache 3.6.1, `ccrto-openapi` 2.0.0.1, `mercury.server.version` 3.0.4.10; `CacheHelper` dostosowany. Trzy jary klienta 3.1.4.19 bez odwołań do log4j |
+| `mercury-cmd` | niewydane | wersje w jednym pliku (`pom.xml`): `mercury.lib.version` 3.0.4.18, `mercury.srv.version` 3.0.4.10, `hgdb-client.version` 3.1.4.19 (stan 2026-10-28); `mvn -o clean test-compile` i `mvn -o install` przechodzą, pakiet `mercury-install-package-<mercury.srv.version>.POSTGRESQL.<data>.zip` zbudowany; zmiany niezatwierdzone, gałąź `hgdb-058` bez PR |
 | `mercury-docker` | niewydane | wersje wskazują jeszcze 3.0.3.2.11 (zadanie 211) |
 
 ## 2. Kolejność wydań
@@ -28,9 +28,9 @@ Kolejność wynika z zależności: `mercury-lib` → `mercury` i `hgdb-client-op
 
 | Po wydaniu | Właściwość i plik do podbicia |
 |---|---|
-| `mercury-lib` | `mercury.static.version` w `mercury/pom.xml`; `mercury.project.version` w `hgdb-client-open/pom.xml`; `mercury.static.version` w `mercury-cmd/pom.xml` (nazwa pakietu instalacyjnego bierze się z niej) |
-| `mercury` | `mercury.server.version` w `hgdb-client-open/pom.xml`; `mercury.server.project.version` w `mercury-cmd/mercury-srv-cmd/pom.xml` (3.0.4.10 podniesione 2026-10-27; `hgdb-client-open` i `mercury-cmd` budują się, niezatwierdzone) |
-| `hgdb-client-open` | `hgdb-client.version` w `mercury-cmd/pom.xml`; `hgdb.client.version.release` w `mercury-cmd/mercury-install-package/pom.xml` |
+| `mercury-lib` | `mercury.static.version` w `mercury/pom.xml` (to właściwość `mercury`, nie `mercury-cmd`); `mercury.project.version` w `hgdb-client-open/pom.xml`; **`mercury.lib.version`** w `mercury-cmd/pom.xml` |
+| `mercury` | `mercury.server.version` w `hgdb-client-open/pom.xml`; **`mercury.srv.version`** w `mercury-cmd/pom.xml` (steruje też nazwą pakietu, jarów `mercury-srv-cmd` i `mercury-transfer` oraz ścieżką `lib20`; 3.0.4.10 podniesione 2026-10-27) |
+| `hgdb-client-open` | `hgdb-client.version` w `mercury-cmd/pom.xml` (jedno miejsce; `hgdb.client.version.release` w `mercury-install-package` jest aliasem `${hgdb-client.version}`) |
 | `sccommon`, `poi-toolkit`, `ccrto-openapi` | `sccommon.version`, `poi-toolkit.version`, `ccrto-openapi.version` w `mercury-lib`, `mercury`, `hgdb-client-open` i `mercury-cmd` (`sccommon-utils.version` też w `mercury-cmd`) |
 
 W `mercury` właściwości `3.0.4-SNAPSHOT` (wersja projektu) ustawia skrypt wydania; ich nie ruszam.
@@ -44,6 +44,7 @@ Sprawdzam ja (na podstawie wydanych jarów i WAR-ów w lokalnym repozytorium alb
 - w jarach `mercury-*` i `hgdb-*` nie ma odwołań do `org/apache/log4j` (`unzip -p <jar> | grep -a -c "org/apache/log4j"` daje 0),
 - WAR `mercury-ws-app` ma `LogbackLoggerBackend` i nie ma `Log4j1LoggerBackend`,
 - w `openapi*.json` pole `info.version` równa się numerowi wydania,
+- **Pakiet `mercury-cmd`** weryfikuje się sam: cel `verify` w `build-installation.xml` (uruchamiany przy `mvn install` w `mercury-cmd`) przerywa budowanie, gdy wersje `lib`, `libExt`, `lib20` i WAR `mercury-ws-app` nie zgadzają się z `mercury.lib.version`, `mercury.srv.version` i `hgdb-client.version`, albo w pakiecie są jary starego logowania (szczegóły: `analiza-wersji-mercury-cmd.md`, sekcja 7),
 - `mvn -o clean test-compile` w `mercury-cmd` przechodzi; dla nowych numerów, których nie ma lokalnie, pobierasz je poleceniem `mvn -U test-compile` w `mercury-cmd` (u mnie certyfikaty do Nexusa nie działają).
 
 ## 5. Pakiet i serwer testowy (po wszystkich wydaniach)
