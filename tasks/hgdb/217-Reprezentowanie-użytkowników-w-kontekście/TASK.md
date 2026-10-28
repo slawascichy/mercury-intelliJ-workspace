@@ -103,9 +103,21 @@ Wywołania z `userName=tester` utworzyły w `igo_adm_users` rekord `tester` (id 
 
 Dodatkowo: `CaseSearchExtRest/searchByQuery` (ręczny kontroler) podlega tym samym regułom. `LoggerLevelsExtRest` bez `context` działa jak dotąd (admin z `mrc-sysadmin` dostaje dane, `tester` odmowę z własnej reguły). Nie zakładano żadnych danych w bazie.
 
+### Naprawa luki zarządzania widokami (2026-10-28)
+
+Rozpoznanie wykazało szerszą lukę niż `generateView`: kontrolę `isAllRO()` miały tylko `generateView` i `dropView` w logice, więc `createView`, `updateView` oraz ogólne `insert`/`update`/`remove` (wystawione też w REST) nie sprawdzały uprawnień, a akcja `generateView` zlecała pracę kontekstem systemowym przez JMS bez kontroli.
+
+| Element | Zmiana |
+|---|---|
+| `ICaseViewDefinitionLogic` (`mercury-lib/mercury-srv-api`) | nowa metoda `checkManagePrivileges(Context)` |
+| `CaseViewDefinitionLogic` (`mercury-srv`) | jedna implementacja kontroli (zastąpiła dwa zduplikowane bloki), wywołana w `createView`, `updateView`, `dropView`, `generateView` i w nadpisanych `insert`, `insertList`, `update`, `updateList`, `remove`, `removeList`. Konteksty wewnętrzne z parametrem pomijania weryfikacji (odbiorca JMS) nie są sprawdzane. |
+| `CaseViewDefinitionAction.generateView` (`mercury-ws-server`) | wywołuje `checkManagePrivileges` przed wysłaniem komunikatu JMS |
+
+Test na serwerze dev: `admin` (`mrc-user`, `RW` do wszystkich typów) tworzy i generuje widok, a użytkownik z pustą listą ról dostaje `SC001` przy `createView`, `updateView`, `generateView`, `dropView`, `insert`, `update` i `remove`. Po próbie przebudowy bez uprawnień wersja i `oid` widoku w PostgreSQL bez zmian. Dane testowe usunięto. Wymaga wydania `mercury-lib` (zmiana interfejsu).
+
 ### Do zrobienia
 
-1. Kontrola uprawnień w `CaseViewDefinitionAction.generateView` przed wysłaniem komunikatu JMS (obserwacja 109).
+1. ~~Kontrola uprawnień w `CaseViewDefinitionAction.generateView` przed wysłaniem komunikatu JMS (obserwacja 109).~~ Wykonane 2026-10-28, patrz „Naprawa luki zarządzania widokami”.
 2. `CaseTypeServicesController` przyjmuje `@RequestBody String`, więc advice go nie obejmuje.
 3. Sprawdzić `NodeMonitorRest` (komunikacja między węzłami) i klientów REST wysyłających własny `context` (`mercury-cmd`, serwer Iron POI, IBM BPM): po zmianie ich `context` musi spełniać reguły.
 4. Testy automatyczne w repozytorium (obecnie tylko test ręczny na serwerze dev).
