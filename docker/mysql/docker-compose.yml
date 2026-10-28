@@ -1,0 +1,40 @@
+# MySQL do testów Mercury DB (HgDB): bazy mercury-db, mercury-common i mercury-ldap.
+# Użycie: skopiuj .env.example do .env, ustaw hasła, potem: docker compose up -d
+# Opis: README.md
+name: mercury-mysql
+
+services:
+  mysql:
+    image: mysql:8.4
+    container_name: mercury-mysql
+    restart: unless-stopped
+    ports:
+      # tylko lokalnie; port hosta można zmienić w .env (MYSQL_PORT)
+      - "127.0.0.1:${MYSQL_PORT:-3306}:3306"
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?ustaw MYSQL_ROOT_PASSWORD w pliku .env}
+      # użytkownik i pierwsza baza; pozostałe bazy tworzy init/01-init-mercury-databases.sql
+      MYSQL_USER: ${MYSQL_USER:-mercury}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:?ustaw MYSQL_PASSWORD w pliku .env}
+      MYSQL_DATABASE: mercury-db
+      TZ: ${TZ:-Europe/Warsaw}
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+      # nazwy tabel zapisywane małymi literami, jak na instalacjach Windows (ustawienie działa tylko przy pierwszej inicjalizacji katalogu danych)
+      - --lower-case-table-names=1
+      - --max-connections=300
+      - --max-allowed-packet=256M
+      - --innodb-buffer-pool-size=512M
+    volumes:
+      - mysql-data:/var/lib/mysql
+      - ./init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -uroot -p\"$$MYSQL_ROOT_PASSWORD\" --silent"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 40s
+
+volumes:
+  mysql-data:
