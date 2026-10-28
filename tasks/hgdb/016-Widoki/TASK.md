@@ -1,6 +1,8 @@
 # [16] Widoki
 
-**Status (2026-10-28):** 058 i 214 zamknięte; etap 0 w toku (rozpoznanie w sekcji „Wyniki rozpoznania etapu 0”). Kolejność autora: 016, 049, 191. Plan: `plan-najblizszych-dzialan-2026-10-26.md`.
+**Status (2026-10-28):** 058 i 214 zamknięte; etap 0 w toku (rozpoznanie w sekcji „Wyniki rozpoznania etapu 0”). Kolejność autora: 016, 049, 191. Plan: `plan-najblizszych-dzialan-2026-10-26.md`
+
+**Podzadanie:** 217 „Reprezentowanie użytkowników” (`../217-Reprezentowanie-użytkowników-w-kontekście/TASK.md`), realizowane na gałęzi `hgdb-016`. Dotyczy tożsamości i ról w `Context`, od których zależy kontrola uprawnień widoków..
 
 https://github.com/slawascichy/hgdb/issues/16
 https://github.com/slawascichy/hgdb/issues/17

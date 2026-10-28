@@ -23,7 +23,7 @@
 1. Nowy portal (opcja) z tłumaczeniem spraw w wersji pl + en + ko
 	018-Numer-inwentaryzacyjny
 	https://github.com/slawascichy/hgdb/issues/18
-2. Stany magazynowe
+2. Stany magazynowe + asystent AI
 3. Moje faktury
 	021-Integration-Przelicznik-walut-dla-typów-Currency
 	https://github.com/slawascichy/hgdb/issues/021
@@ -53,7 +53,7 @@ claude --resume aa3430ea-1399-481a-aba9-9d5786b44249
 ```
 
 Strumień:
-016-Widoki
+>016-Widoki
   D039-[Lucene]-Optymalizacja-dostępu-do-IndexReader-a
 049-[CMIS]-Implementacja-API-CMIS
   D058-Logger-dynamiczne-zmiana-poziomów-logowania
@@ -80,3 +80,4 @@ Strumień:
 211-Aktualizacja-obrazow-Docker-i-wydanie
   D214-Migracja-logowania-na-Logback
  B215-Nowa-komunikacja-IBM-BPM-HgDB
+>217-Reprezentowanie-użytkowników-w-kontekście
