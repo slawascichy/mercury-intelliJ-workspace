@@ -2,7 +2,7 @@
 
 https://github.com/slawascichy/hgdb/issues/217
 
-**Status (2026-10-28):** podzadanie zadania 016 (Widoki), realizowane na gałęzi `hgdb-016` (bez osobnej gałęzi `hgdb-217`). Etap 0 (rozpoznanie) wykonany, wyniki w sekcji „Wyniki rozpoznania etapu 0”. Zadanie założone z polecenia autora („bardzo ważny temat”). Temat wyszedł przy testach zadania 016.
+**Status (2026-10-28):** podzadanie zadania 016 (Widoki), realizowane na gałęzi `hgdb-016` (bez osobnej gałęzi `hgdb-217`). Etap 0 (rozpoznanie) wykonany, wyniki w sekcji „Wyniki rozpoznania etapu 0”. Weryfikacja kontekstu w REST zaimplementowana i przetestowana na serwerze dev (sekcja „Stan implementacji”); zostają punkty z listy „Do zrobienia”. Zadanie założone z polecenia autora („bardzo ważny temat”). Temat wyszedł przy testach zadania 016.
 
 ## Założenie autora
 
@@ -65,6 +65,53 @@ Test na własnym widoku `Vw217`: wywołanie `generateView` z `force=true` przez 
 ### Skutki uboczne testów
 
 Wywołania z `userName=tester` utworzyły w `igo_adm_users` rekord `tester` (id 7702). Serwer zakłada rekord użytkownika dla nieznanej nazwy z kontekstu. To kolejny skutek braku weryfikacji nazwy.
+
+## Decyzje autora (2026-10-28)
+
+- Zakres (scope) tokenu decyduje wyłącznie o dostępie do usług. Nie zawęża ról w `context` i nie jest źródłem ról.
+- Role w `context` muszą być podzbiorem ról z `MRC_LDAP_INT_ROLES_MAP` (dla użytkowników spoza lokalnego repozytorium: grupy LDAP mapowane na role w tej samej tabeli). Role w `igo_adm_roles` to role procesowe i muszą być zmapowane użytkownikowi.
+- Reprezentowanie siebie: `userName` równe uwierzytelnionemu. Reprezentowanie innych wymaga roli `mrc-useradmin` w mapowaniu ról.
+- Brak `userName` jest odrzucany. Pusta lista ról oznacza brak uprawnień. Użytkownik bez zmapowanych ról jest odrzucany.
+- `mrc-admin` to zwykła rola procesowa (nie zamieniamy jej na `mrc-useradmin`). Może być w kontekście, jeśli jest zmapowana użytkownikowi.
+- Zakres: REST. SOAP i RMI/CMIS (wspólne poświadczenia usługowe) poza zakresem tego etapu.
+
+## Stan implementacji (2026-10-28, gałąź `hgdb-016`, bez commita)
+
+| Element | Gdzie |
+|---|---|
+| Role użytkownika bez hasła: `TomcatLdapRealm.findUserRoles` | `mercury-gui-core` |
+| Reguły: `RestServicesHelper.verifyContext`, `verifyContextBasedOnOAuth`, stała `ROLE_USER_ADMIN` | `mercury-gui-core` |
+| Weryfikacja przed kontrolerem: `ContextVerificationAdvice` (`@ControllerAdvice`, `RequestBodyAdvice`), HTTP 403 z `{ "error":"invalid_grant" }` albo `{ "error":"username_required" }` | `mercury-ws-app`, pakiet `org.mercury.rest.server.security` |
+| Wyłączenie dla kontrolerów biorących tożsamość z tokenu: adnotacja `@IdentityFromToken` (na razie `LoggerLevelsExtRest`) | `mercury-ws-app` |
+| Skanowanie pakietu | `moduleDb-3.0-servlet.xml`, `moduleDb-2.0-servlet.xml` |
+| Dokumentacja | `docusaurus-hgdb`: `003_Architecture/004_Permissions_mechanism/index.mdx` (EN i PL) |
+
+### Testy na serwerze dev (2026-10-28), operacja `findViewInfos`, wszystkie zgodne z oczekiwaniem
+
+| Token | `context` | Wynik |
+|---|---|---|
+| `tester` | `tester`, `[mrc-user]` | OK |
+| `tester` | `tester`, role puste | OK (brak uprawnień do danych) |
+| `tester` | `tester`, `[mrc-user, mrc-sysadmin]` | 403 `invalid_grant` |
+| `tester` | `admin`, `[mrc-user]` | 403 `invalid_grant` (brak `mrc-useradmin`) |
+| `tester` | brak `userName` albo brak `context` | 403 `username_required` |
+| `admin` | `admin`, `[mrc-user, mrc-sysadmin]` | OK |
+| `admin` | `tester`, `[mrc-user]` | OK (reprezentowanie) |
+| `admin` | `tester`, `[mrc-sysadmin]` | 403 `invalid_grant` (rola spoza ról `tester`) |
+| `admin` | `nikt217` (brak w realmie), role niepuste lub puste | 403 `invalid_grant` |
+| `admin` | `admin`, `[mrc-admin]` | 403 `invalid_grant` (`mrc-admin` nie jest zmapowana `adminowi`) |
+
+Dodatkowo: `CaseSearchExtRest/searchByQuery` (ręczny kontroler) podlega tym samym regułom. `LoggerLevelsExtRest` bez `context` działa jak dotąd (admin z `mrc-sysadmin` dostaje dane, `tester` odmowę z własnej reguły). Nie zakładano żadnych danych w bazie.
+
+### Do zrobienia
+
+1. Kontrola uprawnień w `CaseViewDefinitionAction.generateView` przed wysłaniem komunikatu JMS (obserwacja 109).
+2. `CaseTypeServicesController` przyjmuje `@RequestBody String`, więc advice go nie obejmuje.
+3. Sprawdzić `NodeMonitorRest` (komunikacja między węzłami) i klientów REST wysyłających własny `context` (`mercury-cmd`, serwer Iron POI, IBM BPM): po zmianie ich `context` musi spełniać reguły.
+4. Testy automatyczne w repozytorium (obecnie tylko test ręczny na serwerze dev).
+5. Ewentualny cache ról (każde żądanie czyta role z bazy).
+6. Kanały SOAP i RMI/CMIS (osobna decyzja, razem z kontami technicznymi).
+7. Role procesowe w istniejących środowiskach: `mrc-admin` musi być zmapowana użytkownikom, którzy mają ją podawać w `context`.
 
 ## Czego nie wiemy (do rozpoznania)
 
