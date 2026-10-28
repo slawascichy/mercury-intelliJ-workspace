@@ -3,13 +3,13 @@
 | | |
 |---|---|
 | Lokalizacja | `D:\workspace\git\mercury-cmd` |
-| GAV | `io.hgdb.mercury:mercury-cmd:3.0.8.6-SNAPSHOT` (pom) |
+| GAV | `io.hgdb.mercury:mercury-cmd:3.1.4-SNAPSHOT` (pom) |
 | Java | 1.8 |
 | Opis z POM | System uniwersalnego źródła danych. |
 
 Narzędzia administracyjne serwera Mercury DB: polecenia CLI, transfer danych między
 instancjami, testy wydajności i pakiet instalacyjny serwera. Moduły mają GAV
-`io.hgdb.mercury:<moduł>:3.0.8.6-SNAPSHOT`.
+`io.hgdb.mercury:<moduł>:3.1.4-SNAPSHOT`.
 
 Projekt korzysta z wydanych wersji pozostałych repozytoriów, a nie z bieżących snapshotów:
 `mercury.lib.version=3.0.4.18` (`mercury-lib`), `mercury.srv.version=3.0.4.10` (serwer i wersja pakietu), `hgdb-client.version=3.1.4.19` (stan 2026-10-28; wcześniej jedna właściwość `mercury.static.version=3.0.3.2.12` dla serwera i `mercury-lib`).
@@ -71,7 +71,7 @@ ActiveMQ 5.16.2, POI 5.2.1, OpenCMIS 1.1.0, Jackson 2.13.2, slf4j 1.7.36 + Logba
 
 ## Budowanie
 
-Projekt nie ma README ani skryptów instalacyjnych w katalogu głównym. Buduje się go
+Projekt ma `README.md` w katalogu głównym (moduły, wersje, budowanie, pakiet instalacyjny, weryfikacja). Skrypty `install.sh`, `deploy.sh` i `up_major_version.sh` obsługują wydania. Buduje się go
 standardowo, po zainstalowaniu `mercury-lib`, `mercury` i `hgdb-client-open` w wersjach
 podanych wyżej:
 

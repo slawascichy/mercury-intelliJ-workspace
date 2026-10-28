@@ -109,3 +109,17 @@ W `pre` doszła właściwość `mercury_lib_version` (z `mercury.lib.version`).
 **Testy:** pozytywny: `mvn -o install -Dmaven.test.skip=true` przechodzi i wypisuje „Weryfikacja pakietu zakonczona powodzeniem” (powstał `mercury-install-package-3.0.4.10.POSTGRESQL.20261028.zip`). Negatywne (osobne uruchomienie Anta 1.8.1 na gotowym pakiecie z podmienionymi wartościami lub katalogami): zła wersja `mercury-lib` (3.0.4.17), zła wersja klienta (3.1.4.18), WAR z wydania 3.0.4.9, `log4j-1.2.14.jar` i `commons-logging-1.2.jar` w `lib`, nadmiarowy `mercury-core-3.0.4.10.jar` w `lib`, `log4j.properties` w `config`, nadmiarowy `mercury-transfer-3.0.4.9.jar` w `libExt`, dwa jary w `lib20`: każdy przypadek przerywa budowanie ze zrozumiałym komunikatem. Nie testowano brakującego `logback-classic` ani `log4j-over-slf4j` (kontrola nr 4, druga część).
 
 **Do wiadomości:** w `releases/` jest teraz też starszy `mercury-install-package-3.0.4.10.POSTGRESQL.20261027.zip` (z poprzedniego budowania); nieśledzony, można usunąć.
+
+## 8. Ścieżka `pro/ibpm` w `repo/` i skrypty `install.sh`/`deploy.sh` (2026-10-28)
+
+**Błąd:** `maven-jar-plugin` w głównym `pom.xml` `mercury-cmd` zapisywał jary do `repo/pro/ibpm/mercury/<artefakt>/<mercury.srv.version>/`, czyli w starej grupie `pro.ibpm.mercury` i z wersją serwera, a GAV projektu to `io.hgdb.mercury:<artefakt>:<project.version>`. Plik `.gitignore` ignorował tę błędną ścieżkę (`/repo/pro/ibpm/mercury`), więc błąd nie był widoczny w `git status`. W repozytorium nie było też dokąd wysyłać `mercury-srv-cmd` i `mercury-transfer`: ich jary trafiają do `libExt` pakietu, a nie do `repo/`.
+
+**Poprawki:**
+
+- `pom.xml`: `outputDirectory` = `${project.local.cmd.repo}/io/hgdb/mercury/${project.artifactId}/${project.version}`, `finalName` = `${project.artifactId}-${project.version}` (jak w `hgdb-client-open`). Wersja katalogu to teraz wersja projektu; wersja serwera (`mercury.srv.version`) zostaje w nazwach jarów w `libExt` i pakiecie.
+- `mercury-srv-cmd/pom.xml` i `mercury-transfer/pom.xml`: dodatkowe wykonanie `repo-jar` (`maven-jar-plugin`, faza `package`) z kopią jaru w `repo/io/hgdb/mercury/...`; dotychczasowe wykonanie nadal pisze do `libExt`.
+- `install.sh`: po `install` kopiuje `pom.xml` i pliki pom modułów `mercury-srv-cmd` i `mercury-transfer` do `repo/io/hgdb/mercury/<moduł>/<wersja>/` (w układzie `hgdb-client-open`), potem `versions:revert`.
+- `deploy.sh`: dotąd kopia skryptu `hgdb-client-open` (jary `hgdb-*`). Teraz wysyła pom nadrzędny `mercury-cmd` oraz jary `mercury-srv-cmd` i `mercury-transfer`, sprawdza obecność plików i przerywa z komunikatem, gdy ich nie ma; tryb `DRY_RUN=1`, wersję można nadpisać (`LIB_VERSION`). Nie wysyła `mercury-benchmark` i `mercury-install-package`.
+- `.gitignore`: `/repo/pro/ibpm/mercury` → `/repo/io/hgdb/mercury`.
+
+**Testy:** `mvn -o clean install -Dmaven.test.skip=true` zapisuje pięć jarów w `repo/io/hgdb/mercury/...` (wersja `3.1.4-SNAPSHOT`); `install.sh` uruchomiony naprawdę (offline, wersja 3.1.4.1 z `minor_version.txt`) kończy się sukcesem, kopiuje trzy pliki `pom` z wersją 3.1.4.1 i przywraca wersje POM do `3.1.4-SNAPSHOT`; `DRY_RUN=1 ./deploy.sh` wypisuje trzy polecenia `deploy:deploy-file` z poprawnymi ścieżkami, a brak plików (inna wersja, brak jaru) przerywa z kodem 1. **Prawdziwego wysłania do Nexusa nie wykonano.** Do decyzji autora: czy wysyłać też `mercury-benchmark` (jar tylko z testami) i `mercury-install-package` (pusty jar modułu `pom`); obecnie nie.
