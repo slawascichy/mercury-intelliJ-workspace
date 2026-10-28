@@ -1,6 +1,6 @@
 # [16] Widoki
 
-**Status (2026-10-27):** w planie po 058 i 214 (kolejność autora: 016, 049, 191); etap 0 zaraz po zamknięciu 058 i 214. Plan: `plan-najblizszych-dzialan-2026-10-26.md`.
+**Status (2026-10-28):** 058 i 214 zamknięte; etap 0 w toku (rozpoznanie w sekcji „Wyniki rozpoznania etapu 0”). Kolejność autora: 016, 049, 191. Plan: `plan-najblizszych-dzialan-2026-10-26.md`.
 
 https://github.com/slawascichy/hgdb/issues/16
 https://github.com/slawascichy/hgdb/issues/17
@@ -110,3 +110,26 @@ Zalecenie: jedno wydanie po zamknięciu projektu DTO w etapie 0, a nie po każdy
 | 4 | Eksport asynchroniczny przez klienta RMI; bez nowych mechanizmów, rozszerzenie istniejących |
 
 Szacunek (przypuszczenie) rośnie do ok. 3 tygodni z powodu czterech baz.
+
+## Wyniki rozpoznania etapu 0 (2026-10-28)
+
+Czytano kod i historię git; niczego nie uruchamiano. Pytania 1–6 z sekcji „Pytania do autora” mają decyzje (patrz wyżej), nie ma nowych pytań blokujących etap 1.
+
+1. **`mercury.view.createAfterTypeChange` nie ma wartości domyślnej w kodzie.** `CaseBusiness.newViewIsNeeded()` zwraca `false`, gdy parametru brak. Wartość `true` jest w `mercury-server/IBPM/mercury/config/mercury.properties`, w `mercury-docker/mercury-3.0/docker-init-config/config/mercury.properties` i w pakietach instalacyjnych. Widoki `T_<kod typu>` istnieją więc tam, gdzie konfiguracja pochodzi z tych szablonów. Czy istnieją na konkretnym środowisku klienta, rozstrzygnie zapytanie o `IGO_DA_CASE_VIEW_DEFS` (do wykonania na serwerze testowym).
+2. **Commity zadania 17 (czerwiec–sierpień 2019, ok. 20 w `mercury`, kilka w `mercury-lib`) dotyczą głównie Lucene.** Najwięcej zmian jest w `mercury-lucene-indexes` (kolektory, zapytania, wyniki), a nie w eksporcie widoków. Z widokami wiążą się tylko dwa commity (2019-07-02 i 2019-07-30, pliki `*CaseView*`/`*ViewDef*`) oraz zmiany encji definicji widoku w `mercury-lib` (lista `baseTypeCodes`, rozszerzony kontekst z polami definicji widoku). Integracji z Iron POI Server dla widoków w tych commitach nie znalazłem (przypuszczenie: zadanie 17 nie zostało dokończone).
+3. **Historyczny błąd: „Brak tworzenia widoków reprezentujących typy” (commit `fcf18671e`, 2020-05-11, CMINDEV-2422).** Autor nie znalazł wtedy przyczyny, a poprawka dotyczyła tylko `MDictDAO.checkExists` (zwraca `boolean`). Przy etapie 2 warto sprawdzić, czy problem był w kolejce JMS albo w przebudowie widoku (`CaseViewCreatorReceiver`).
+4. **Generowanie widoku w DAO.** `CaseViewDefinitionDAO.generateView` składa `CREATE VIEW <nazwa> AS <zapytanie>` jako natywne `executeUpdate`, a przy `force` robi `DROP VIEW` i `CREATE VIEW`. Nazwa widoku trafia do SQL przez konkatenację (nazwa pochodzi z definicji, nie od klienta, ale przy odczycie widoków w etapie 1 nazwę trzeba walidować względem rejestru definicji). Blokad (`lock_timeout`), ponowień ani odczytu statusu widoku w DAO nie ma.
+5. **Model Excela w `poi-toolkit` (`org.iron.poi.excel.core`).** `IExcelData` udostępnia `getResult()` i `getResult(ExcelPage)` (listy `ExcelRow`), `getHeader()` i `getColumnTypes()` (mapy numer kolumny → tekst), `getResultSize()` oraz nawigację po stronach (`ExcelPage`: rozmiar, numer, pierwszy i ostatni wiersz, domyślnie maks. 300 stron). To wystarcza do mapowania wiersza widoku: kolumny → numerowane kolumny, nazwy → nagłówek, typy SQL → typy kolumn. Nowa implementacja `IExcelData` nad wynikiem widoku jest prostsza niż zmiana modelu.
+
+### Projekt DTO (do zatwierdzenia przez autora, `mercury-lib`)
+
+| DTO | Pola | Uwagi |
+|---|---|---|
+| `ViewColumnDefinition` | nazwa, typ SQL, typ Mercury, pozycja, czy nullable, powiązany kod pola typu (gdy wynika z definicji) | metadane z `information_schema` / `ALL_TAB_COLUMNS` |
+| `ViewInfo` | nazwa, identyfikator definicji (`CaseViewDefinition`), status (`VALID`, `INVALID`, `MISSING`), wersja wygenerowana i opublikowana, lista kolumn | status dla czterech baz w etapie 2 |
+| `ViewDataPage` | numer strony, rozmiar, liczba wierszy, kolumny, wiersze (lista list wartości tekstowych) | odpowiada `ExcelPage`/`ExcelRow` |
+| `ViewQuery` | nazwa widoku, strona, rozmiar, filtry (kolumna, operator, wartość), sortowanie (kolumna, kierunek) | kolumny tylko z metadanych widoku; wartości jako parametry zapytania |
+
+### Wniosek i następny krok
+
+Etap 0 jest domknięty po stronie rozpoznania kodu. Do zrobienia na serwerze testowym: zapytanie o stan `IGO_DA_CASE_VIEW_DEFS` i widoków `T_*` oraz próba `DROP`/`CREATE` pod obciążeniem w PostgreSQL. Zapraszam do zatwierdzenia projektu DTO; potem zakładamy gałąź `hgdb-016` (po Twoim potwierdzeniu) i zaczynamy etap 1.
