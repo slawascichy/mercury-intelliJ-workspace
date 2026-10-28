@@ -241,4 +241,87 @@ Zmienione pliki: `mercury-lib` (`ViewInfo`, `ICaseViewDefinitionLogic.markGenera
 - `mercury.view.lockTimeoutMs`/`ddlRetries` dotyczą tylko PostgreSQL.
 - Przebudowa atomowa z odtworzeniem zależnych widoków w PostgreSQL (`pg_get_viewdef`, jedna transakcja) została świadomie odłożona.
 
-**Do zrobienia w etapie 2:** `typeFieldCode` w kolumnach (mapowanie kolumna → pole typu ze wspólnego kodu maskowania i `CaseViewQueryBuilder`), test na kopii bazy z widokami zależnymi od innych widoków, dokumentacja w `docusaurus-hgdb`.
+### Kody pól w kolumnach i wspólne źródło nazw kolumn (2026-10-28)
+
+- `CaseViewQueryBuilder.ColumnSource` i `getColumnSources()`: builder jako jedyny wylicza nazwy kolumn pól i zwraca dla każdej kolumny źródło (typ, nazwa pola z definicji, pozycja `parameter_N`, sprawa główna czy zależna, kod pola).
+- `ViewColumnDefinition.typeFieldCode` jest wypełniane w `getViewInfo` i `readViewData`: nazwa pola typu (np. `addressGroupId`), a dla sprawy zależnej `<pole sprawy zależnej>.<pole>`. Kolumny `m_id`, `type_code` i `M_*` zostają bez kodu.
+- Maskowanie pól korzysta z tych samych źródeł, więc zniknęła druga kopia logiki nazewnictwa kolumn w `CaseViewDefinitionLogic`. Dla użytkownika z ograniczeniami błąd wyliczenia źródeł przerywa odczyt (inaczej wartości nie zostałyby zamaskowane); dla metadanych błąd jest tolerowany.
+- Testy: `CaseViewQueryBuilderColumnSourcesTest` (5 testów: sprawa główna, to samo pole w wielu typach, sprawa zależna, pole na wielu pozycjach, przebudowa) i `CaseViewQueryBuilderColumnOrderTest` (4 testy). Test na serwerze dev: trzej użytkownicy testowi reprezentowani przez `admin` (`mrc-useradmin`): odczyt jednego typu z maską w polu `street`, odczyt obu typów bez maski, brak uprawnień (lista widoków pusta, odmowa); `typeFieldCode` poprawne. Dane testowe i użytkowników usunięto.
+
+### Dokumentacja (2026-10-28)
+
+Nowy artykuł „Widoki” / „Views” w `docusaurus-hgdb`: `docs/004_API/011_Views.mdx` i wersja PL w `i18n/pl/…/004_API/011_Views.mdx`: definicja i kolumny widoku, operacje i uprawnienia, `ViewInfo` i status, odczyt z filtrami i sortowaniem, uprawnienia (filtr wierszy i maskowanie), generowanie i zmiana widoków (zmiana w miejscu, zależne widoki, `lock_timeout`).
+
+**Do zrobienia w etapie 2:** test na kopii bazy z widokami zależnymi od innych widoków (wymóg Definicji Gotowości; zależne widoki sprawdzono tylko w PostgreSQL na widoku testowym), a po wydaniu `mercury-lib` tłumaczenia kluczy OpenAPI (de/es/fr/ko).
+
+## Partycjonowanie `igo_da_cases` a widoki (dyskusja 2026-10-28)
+
+Skrypty `mercury/db/postgresql/01…05` budują partycjonowaną tablicę `igo_da_cases`. Poniżej ustalenia, pomiary i otwarte decyzje.
+
+### Założenia autora
+
+- Identyfikator sprawy jest tekstem (`<kod typu>.<numer>`, zadanie 169) **celowo**, żeby mógł być kluczem partycjonowania. Partycjonowanie z id liczbowym nie wchodzi w grę, więc w środowiskach partycjonowanych nie ma id liczbowych.
+- Widoki nie są wielotypowe: mają wiele wersji typu, ale wszystkie typy w widoku mają ten sam kod.
+- Cel Mercury: baza spraw dla procesów bez migracji przy zmianie modelu. Stare wiersze zostają pod starym typem (szczegóły i czyściciel: zadanie 218).
+
+### Jak działa partycjonowanie (skrypty 01 i 02)
+
+- `PARTITION BY RANGE(id)` na kolumnie `varchar`. Klucz partycjonowania jest kluczem głównym, więc `PRIMARY KEY (id)` i siedem kluczy obcych do `igo_da_cases(id)` (skrypt 01) pozostają poprawne. Partycjonowanie po `type_code` (`LIST`) wymusiłoby złożony klucz i rozbiło te klucze obce.
+- Trigger `BEFORE INSERT` na `igo_da_typecode` tworzy partycję na kod typu z granicami `FROM lower(unaccent(kod)) || '.0' TO upper(kod) || '.Z'` i zapisuje nazwę w `igo_da_typecode.partition_name`. Jest też partycja domyślna.
+- Tylko PostgreSQL (w `db/oracle` i `db/mysql` nie ma takich skryptów). Baza dev **nie jest** partycjonowana, więc pomiary zrobiono na schemacie zastępczym.
+- Skrypt 01 jest destrukcyjny (`DROP TABLE … CASCADE` i `DELETE` w ośmiu tabelach): tylko dla świeżych instalacji, ścieżki migracji istniejącej bazy nie ma.
+
+### Pomiary (PostgreSQL 13, schemat zastępczy, 305 partycji, 800 000 wierszy)
+
+| Warunek w zapytaniu widoku | Partycje w planie | Planowanie | Wykonanie |
+|---|---|---|---|
+| tylko `case_type_id = ANY(…)` (jak widok dziś) | 305 | ok. 160 ms | 5–6 ms |
+| + zakres `id >= 'ty7.0' AND id < 'TY7.Z'` (granice partycji) | 1 | 0,1–0,35 ms | ok. 2 ms |
+| zakres z `OR` dla dwóch typów | 2 | | |
+| `id LIKE 'Typ.%'` | wszystkie | | |
+| `type_code = '…'` | wszystkie | | |
+
+- Koszt to głównie planowanie i rośnie z liczbą partycji. `readViewData` robi dwa zapytania na stronę (`COUNT` i dane).
+- Przycinanie działa tylko dla stałych granic na kluczu `id` (także z `OR`). Partycja domyślna też jest przycinana. Zakres obejmował dokładnie wiersze typu (2000 z 2000, 0 obcych).
+
+### Zastrzeżenia
+
+1. Granice zależą od collation: w `"C"` baza odrzuca partycję (`empty range bound specified`). W Windows PL i ICU kody `slm` i `slmaddress` się nie nakładają, innych collation nie testowano. Skrypt miesza `lower(unaccent(kod))` z `upper(kod)`.
+2. Indeksy z rodzica trafiają do wszystkich partycji (16 indeksów `parameter_N` w skrypcie 01), nawet gdy typ tych pól nie używa.
+3. Partycja powstaje w triggerze (DDL w `BEFORE INSERT`). Zgodnie z dokumentacją PostgreSQL utworzenie partycji kończy się błędem, jeśli w partycji domyślnej są wiersze z jej zakresu (nie testowano).
+4. Założenie „prefiks id = kod typu wiersza” jest spełnione dla każdego wiersza (id nowej wersji powstaje z kodu jej typu). Wyjątek to `changeModel` przenoszący sprawy do typu o innym kodzie: robi `UPDATE case_type_id` bez zmiany id, a DAO nie sprawdza zgodności kodów.
+
+### Plan (czeka na zatwierdzenie autora, tylko `mercury`)
+
+1. DAO: odczyt granic partycji z katalogu (`pg_get_expr(relpartbound)`) dla kodów typów, gdy `igo_da_cases` jest partycjonowana (`pg_partitioned_table`); dla innych baz i tablic niepartycjonowanych pusty wynik (bez zmiany zachowania).
+2. `CaseViewQueryBuilder`: `AND (alias.id >= 'od' AND alias.id < 'do')` dla aliasu sprawy głównej i spraw zależnych (każda ma własny kod), z granicami z zewnątrz; testy jednostkowe.
+3. Logika: pobranie granic i zabezpieczenie przed zbudowaniem zapytania: jeśli istnieją wiersze tych `case_type_id` poza zakresem, warunku nie dodawać i zapisać ostrzeżenie w `generationError`.
+4. Testy: odczyt granic i plan zapytania na schemacie zastępczym (nazwa `igo_da_cases` w schemacie testowym i `search_path`). Pełny test przez serwer wymaga bazy z partycjonowaną `igo_da_cases` (na dev nie uruchamiać skryptu 01).
+
+Opcjonalnie: walidacja w `changeModel`, że oba typy mają ten sam kod.
+
+### Rozstrzygnięcie (2026-10-28): stare wiersze przeniesionych spraw w widoku
+
+Decyzja autora: stare sprawy zostają tam, gdzie były, i są w widokach. Problem rozwiązuje czyściciel (zadanie 218). Widok nie dostaje warunku na wersję ani status. Poniżej opis, na czym polega sytuacja.
+
+Wygenerowany widok nie ma warunku na status ani wersję (`WHERE 1=1 AND case_type_id = ANY(…)`). Widok dla kodu typu obejmuje wszystkie wersje typu, więc po zapisie zmieniającym typ sprawy w widoku są dwa wiersze: stary (stara wersja typu, `Z`) i nowy (`A`). Dotyczy to wyłącznie spraw przeniesionych tą ścieżką. Zwykła edycja nie tworzy wierszy. Warianty: bez zmian, anti-join po `piervous_version_id` (istniejący indeks `IGO_DA_CASE_VERSION_INDX`) albo join po `igo_da_case_roots.last_version`. `status <> 'Z'` odradzam. Kryterium proponowane: zgodność z tym, co zwraca wyszukiwanie (do sprawdzenia w indeksowaniu). Czyściciel (zadanie 218) zmniejsza liczbę takich wierszy w czasie, ale decyzji o widoku nie zastępuje.
+
+### Zakres `id` w widoku: stan implementacji (2026-10-28)
+
+Zrealizowano plan z punktów 1–4. Warunek powstaje **tylko wtedy, gdy `igo_da_cases` jest partycjonowana** i typ ma partycję. W pozostałych przypadkach (inna baza, tablica niepartycjonowana, typ bez partycji, błąd odczytu) widok jest taki jak dotąd.
+
+| Element | Zmiana |
+|---|---|
+| `ICaseViewDefinitionDAO.findPartitionBounds` | Dla kodów typów odczyt granic partycji z katalogu PostgreSQL (`igo_da_typecode.partition_name`, `pg_class`, `pg_inherits`, `pg_get_expr(relpartbound)`), tylko PostgreSQL od wersji 10. Błąd odczytu daje pusty wynik (w punkcie zapisu, żeby nie unieważnić transakcji). |
+| `ICaseViewDefinitionDAO.countCasesOutsideRange` | Liczba spraw podanych typów z `id` poza zakresem partycji. |
+| `CaseViewQueryBuilder.withPartitionBounds` | Dla aliasu sprawy głównej i każdej sprawy zależnej dopisuje `AND ((alias.ID >= 'od' AND alias.ID < 'do') [OR …])`, ale tylko gdy granice są znane dla wszystkich kodów typów aliasu (inaczej zakres pominąłby sprawy tego kodu). Wartości są cytowane. |
+| `CaseViewDefinitionLogic.generateView` | Pobiera granice i pomija kod typu, dla którego istnieją sprawy poza zakresem (np. po `changeModel` do typu o innym kodzie): takie zdarzenie jest zapisywane w dzienniku serwera (`WARN`). |
+
+**Odstępstwo od planu:** ostrzeżenie o sprawach poza zakresem trafia do dziennika serwera, a nie do `generationError`, bo generowanie się udaje (widok jest poprawny, tylko czyta wszystkie partycje), a udane generowanie czyści `generationError`.
+
+**Weryfikacja**
+- 8 testów jednostkowych `CaseViewQueryBuilderPartitionTest` (brak granic, jeden kod z wieloma wersjami typu, granice innego kodu, kod bez granic, `OR` dla wielu kodów, własny zakres sprawy zależnej, cytowanie apostrofów), razem z poprzednimi 17 testami buildera.
+- Test DAO: na PostgreSQL ze schematem zastępczym z partycjonowaną `igo_da_cases` (granice odczytane z katalogu, wykrycie sprawy z innym prefiksem), a na PostgreSQL bez partycjonowania, MySQL, MSSQL i Oracle wynik pusty.
+- Prawdziwe zapytanie z buildera na replice z 300 partycjami i 600 000 wierszami: bez granic 301 partycji w planie i 167 ms planowania, z granicami 1 partycja i 0,46 ms, wynik taki sam (2000 wierszy).
+- Serwer dev (niepartycjonowany): `generateView` i odczyt działają, widok nie ma zakresu `id`.
+- Nie przetestowano generowania widoku przez serwer na prawdziwie partycjonowanej bazie (potrzebna baza z zastosowanymi skryptami `db/postgresql/01…05`).
