@@ -124,14 +124,14 @@ Test na serwerze dev dla `types/SlmAddress/find`, `CaseBusinessExtRest/save` i `
 ### Testy automatyczne
 
 - `mercury-gui-core`: `RestServicesHelperVerifyContextTest` (9 testów, atrapa realmu, bez bazy): reguły `verifyContext`.
-- `mercury-ws-app`: `ContextVerificationAdviceTest` (8 testów): które żądania obejmuje advice (ciała z `getContext()`, ciała `String` z `@ContextInJsonBody`, wyłączenie `@IdentityFromToken`) i `extractContext`.
+- `mercury-ws-app`: `ContextVerificationAdviceTest` (9 testów): które żądania obejmuje advice (ciała z `getContext()`, ciała `String` z `@ContextInJsonBody`, wyłączenie `@IdentityFromToken`) i `extractContext`.
 - Uruchamiane z filtrem `-Dtest=...`. Pełne zestawy testów modułów nie były uruchamiane.
 
 ### Do zrobienia
 
 1. ~~Kontrola uprawnień w `CaseViewDefinitionAction.generateView` przed wysłaniem komunikatu JMS (obserwacja 109).~~ Wykonane 2026-10-28, patrz „Naprawa luki zarządzania widokami”.
 2. ~~`CaseTypeServicesController` przyjmuje `@RequestBody String`.~~ Wykonane, patrz „Ciała żądań jako tekst JSON”.
-3. `NodeMonitorRest` (`/monitor/NodeMonitorRest/load`) używa `context` tylko do serializacji odpowiedzi i podlega nowym regułom (klient musi podać poprawny `context`). W repozytoriach `mercury-cmd`, `mercury-client`, `hgdb-client-open` i `mercury-docker` nie ma klientów REST w Javie, więc nie wiadomo, które zewnętrzne narzędzia (monitoring, serwer Iron POI, IBM BPM, Swagger UI) wysyłają własny `context`. W Swagger UI przykładowe żądania nie mają wypełnionego `userName`, trzeba go podać. Do rozstrzygnięcia przez autora: czy `NodeMonitorRest` ma zostać pod regułą, czy dostać `@IdentityFromToken`.
+3. ~~`NodeMonitorRest`.~~ Wykonane 2026-10-28 na polecenie autora: endpoint `/monitor/NodeMonitorRest/load` (prezentacja obciążenia węzłów na stronie głównej) jest poza mechanizmami uwierzytelniania i nie używa tożsamości, więc dostał `@IdentityFromToken`. Bez tego żądanie z tokenem (np. z ciasteczka sesji OAuth) dostawało 403 `username_required`. Test: bez tokenu i z tokenem zwraca listę węzłów. Pozostaje otwarte pytanie o zewnętrznych klientów REST wysyłających własny `context` (monitoring, serwer Iron POI, IBM BPM): w repozytoriach `mercury-cmd`, `mercury-client`, `hgdb-client-open` i `mercury-docker` nie ma klientów REST w Javie. W Swagger UI przykłady nie mają wypełnionego `userName`, trzeba go podać.
 4. ~~Testy automatyczne w repozytorium.~~ Wykonane, patrz „Testy automatyczne”.
 5. Ewentualny cache ról (każde żądanie czyta role z bazy, a dla użytkowników LDAP także z LDAP). Dodać po pomiarze.
 6. Kanały SOAP i RMI/CMIS (osobna decyzja, razem z kontami technicznymi).
