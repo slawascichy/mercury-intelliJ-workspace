@@ -210,3 +210,35 @@ Program testowy (poza repozytoriami) uruchamia prawdziwe `CaseViewDefinitionDAO`
 | MySQL 8.4 (Docker, `docker/mysql`) | 18/18 OK | sterownik Connector/J 8.0.28, dialekt `MySQL8Dialect`; typy `INT`, `DECIMAL`, `DATETIME` rozpoznane poprawnie |
 
 Wniosek dla etapu 2: adresy `jdbc.oracle.dbSID` w plikach testowych to w rzeczywistości nazwa usługi PDB. Stary sterownik `ojdbc6` nie łączy się z Oracle 23c.
+
+## Uprawnienia: stan zaimplementowany (aktualizacja 2026-10-28)
+
+Sekcja „Reguła uprawnień (propozycja)” z etapu 1 jest nieaktualna. Zaimplementowano (zadanie 217, `CaseViewDefinitionLogic.readViewData`):
+
+1. Użytkownik z `isAllRO()` widzi wszystko.
+2. Pozostali widzą definicję, gdy mogą czytać choć jeden typ widoku (przy `baseTypeCodes` jeden z nich).
+3. Wiersze typów bez prawa odczytu są pomijane (filtr `type_code IN (…)` w SQL, więc licznik i stronicowanie są poprawne). Widok bez kolumny `TYPE_CODE` jest dla takich użytkowników niedostępny.
+4. Wartości pól bez prawa odczytu (typ, nazwa pola, pozycja `parameter_N`) są zastępowane maską `###########`. Kolumny pól spraw zależnych są maskowane we wszystkich wierszach, gdy użytkownik nie czyta ich w żadnym typie (przybliżenie).
+5. Zarządzanie definicjami i generowanie widoków wymaga `isAllRO()` (`checkManagePrivileges`).
+
+## Etap 2: stan implementacji (2026-10-28)
+
+| Element | Zmiana | Weryfikacja |
+|---|---|---|
+| Status widoku | `ICaseViewDefinitionDAO.findViewStatus`: istnienie z `DatabaseMetaData.getTables`, poprawność próbnym zapytaniem `SELECT … WHERE 1 = 0` w punkcie zapisu (jedna implementacja na cztery bazy; Oracle rekompiluje nieważny widok przy użyciu). `getViewInfo` i `findViewInfos` ustawiają `VALID`/`INVALID`/`MISSING`. | Test DAO na czterech bazach, w tym `INVALID` po usunięciu tabeli bazowej (MySQL, MSSQL, Oracle; PostgreSQL nie pozwala usunąć tabeli z zależnym widokiem); REST na dev |
+| Stabilna kolejność kolumn | `CaseViewQueryBuilder.withColumnOrder`: kolumny pól, które już są w widoku, zachowują miejsca, nowe są dopisywane na końcu alfabetycznie (wymóg `CREATE OR REPLACE VIEW` w PostgreSQL) | 4 testy jednostkowe `CaseViewQueryBuilderColumnOrderTest` |
+| Zmiana widoku w miejscu | `generateView` z `force` próbuje `CREATE OR REPLACE VIEW` (MSSQL: `CREATE OR ALTER VIEW`). Widok nie znika, więc nie ma okna niedostępności i zależne widoki nie są dotknięte. Dopiero gdy baza odrzuci zmianę (PostgreSQL `42P16`: zmiana lub usunięcie dotychczasowych kolumn), jest `DROP` i `CREATE`. | Test DAO na czterech bazach; REST: dopisanie pola nie zmienia `oid` widoku |
+| Widoki zależne (PostgreSQL) | Przed `DROP` zapytanie do `pg_depend`/`pg_rewrite`. Gdy coś zależy od widoku, zamiast surowego błędu bazy jest komunikat z listą zależnych widoków. Pozostałe bazy pozwalają usunąć taki widok. | Test DAO i REST (zależny widok `mrc_dep016`) |
+| `lock_timeout` i ponowienia | PostgreSQL: `SET LOCAL lock_timeout` (poza transakcją `SET` i `RESET`), po jego przekroczeniu (`55P03`) ponawianie z narastającym opóźnieniem, potem czytelny błąd. Parametry `mercury.view.lockTimeoutMs` (domyślnie 5000) i `mercury.view.ddlRetries` (domyślnie 3). Polecenie DDL w punkcie zapisu, żeby błąd nie unieważnił transakcji. | Test DAO: zajęta blokada kończy się komunikatem po 1142 ms (300 + 500 + 300 ms) |
+| Widoczność błędu generowania | `ViewInfo.generationError` (nowe pole w `mercury-lib`, nie jest duplikatem `errorMessage` zwrotki: ta opisuje wynik wywołania, a pole stan widoku). Generowanie jest asynchroniczne (JMS), więc `CaseViewCreatorReceiver` zapisuje niepowodzenie w definicji (`MODIFY_COMMENT` z prefiksem, osobna transakcja `REQUIRES_NEW`, bez zmiany schematu bazy), a udane generowanie je czyści. Pętla po typach nie przerywa się na jednym błędzie. | REST na PostgreSQL: zależny widok, niezgodna zmiana, `generationError` w `getViewInfo` i `findViewInfos`, widok bez zmian, po usunięciu zależnego widoku generowanie się udaje i błąd znika |
+| OpenAPI | klucz `schema.ViewInfo.generationError` w `pl` i `en`; `de`/`es`/`fr`/`ko` brakuje po 65 kluczy (translator Gemini) | |
+
+Zmienione pliki: `mercury-lib` (`ViewInfo`, `ICaseViewDefinitionLogic.markGenerationFailed`), `mercury` (`CaseViewQueryBuilder`, `ICaseViewDefinitionDAO`, `CaseViewDefinitionDAO`, `CaseViewDefinitionLogic`, `CaseViewCreatorReceiver`, klucze OpenAPI, test buildera). Wymaga wydania `mercury-lib`.
+
+**Ograniczenia i uwagi**
+- Komunikat błędu zawiera prefiks „To jest błąd aplikacji.” z `InternalErrorException`.
+- Zależne widoki w Oracle, MySQL i MSSQL nie są wykrywane (baza pozwala usunąć widok); ich status po przebudowie pokaże `INVALID`, jeśli kolumny zniknęły. Zachowanie przy zależnych widokach na tych bazach wynika z wiedzy o bazach, nie z testu.
+- `mercury.view.lockTimeoutMs`/`ddlRetries` dotyczą tylko PostgreSQL.
+- Przebudowa atomowa z odtworzeniem zależnych widoków w PostgreSQL (`pg_get_viewdef`, jedna transakcja) została świadomie odłożona.
+
+**Do zrobienia w etapie 2:** `typeFieldCode` w kolumnach (mapowanie kolumna → pole typu ze wspólnego kodu maskowania i `CaseViewQueryBuilder`), test na kopii bazy z widokami zależnymi od innych widoków, dokumentacja w `docusaurus-hgdb`.
