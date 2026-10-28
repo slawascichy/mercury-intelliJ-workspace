@@ -35,7 +35,7 @@
 ####################
 
 ```bash
-export TAG_VERSION="3.1.4.19"
+export TAG_VERSION="3.1.4.1"
 git tag -a ${TAG_VERSION} -m "Wersja ${TAG_VERSION} bez log4j"
 git push origin ${TAG_VERSION}
 ```
