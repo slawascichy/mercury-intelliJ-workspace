@@ -110,3 +110,9 @@ Nie widzę przeszkody blokującej zakończenie 058 i 214. Warunki i ryzyka (źr�
 - **214:** wariant A (Logback 1.2.13, Java 8) wykonany w `mercury-lib`, `mercury`, `hgdb-client-open`, `mercury-cmd` i `mercury-docker`; adapter log4j 1.x z 058 usunięty; `mercury-client` poza zakresem. Na serwerze dev: jary Logbacka i `log4j-over-slf4j`, `sccommon` 2.0.0.1, `poi-toolkit` 4.1.0.1, `ccrto-openapi` 2.0.0.1; `commons-logging` zastępuje `spring-jcl`. Nowa strona dokumentacji „Logging configuration (Logback)” (en i pl).
 - **IBM BPM:** logowanie dostarcza BPM (własne `log4j.jar` i `slf4j-api`), więc kod po stronie BPM używa tylko API SLF4J; `mercury-client` i SecurityProvider współdzielą stos `sccommon`/ehcache w jednym katalogu BPM (obserwacja 102).
 - **016 po decyzjach autora:** cztery bazy, uprawnienia jak dla spraw, wynik w modelu Iron POI Server (`IExcelData`), rozszerzenie istniejącego eksportu. Widoki typów (`T_<kod typu>`) trafiają do `CaseViewDefinition` (sprawdzone w kodzie).
+
+## 7. Uzupełnienie 2026-10-28
+
+- **Etap 1 (058 i 214) w prawie całości wykonany:** `sccommon` 2.0.0.1, `poi-toolkit` 4.1.0.1, `ccrto-openapi` 2.0.0.1, `mercury-lib` 3.0.4.18, `mercury` 3.0.4.10, `hgdb-client-open` 3.1.4.19 i `mercury-cmd` (3.1.4.1 wg `minor_version.txt`) są zmergowane i wydane. Zostają: PR i merge `mercury-docker` (gałąź `hgdb-058`, niewypchnięta), wypchnięcie `docusaurus-hgdb`, sprzątanie zdalnych gałęzi `hgdb-058`, formalne zamknięcie 58 i 214.
+- **Sprawdzenia odłożone na serwer testowy** (po 211): transfer `mercury-transfer`, `LoggerConfigurator` w `mercury-srv-cmd` na pakiecie, rotacja plików logu, wysłanie artefaktów `deploy.sh` do Nexusa.
+- **Następne:** 016 (etap 0), 049, 191, 209, 211. Podsumowanie sesji: `214-…/podsumowanie-2026-10-28.md`.
