@@ -1,6 +1,6 @@
 # [16] Widoki
 
-**Status (2026-10-28):** 058 i 214 zamknięte; etap 0 w toku (rozpoznanie w sekcji „Wyniki rozpoznania etapu 0”). Kolejność autora: 016, 049, 191. Plan: `plan-najblizszych-dzialan-2026-10-26.md`
+**Status (2026-10-28, koniec dnia):** etapy 0, 1 i 2 zamknięte (poza testem na kopii bazy z widokami zależnymi od innych widoków); etap 3 w rozpoznaniu (sekcja „Etap 3: przegląd”). Podzadanie 217 zamknięte po stronie kodu REST, zadanie 218 (czyściciel starych wersji) założone. Kolejność autora: 016, 049, 191. Plan: `plan-najblizszych-dzialan-2026-10-26.md`
 
 **Podzadanie:** 217 „Reprezentowanie użytkowników” (`../217-Reprezentowanie-użytkowników-w-kontekście/TASK.md`), realizowane na gałęzi `hgdb-016`. Dotyczy tożsamości i ról w `Context`, od których zależy kontrola uprawnień widoków..
 
@@ -325,3 +325,55 @@ Zrealizowano plan z punktów 1–4. Warunek powstaje **tylko wtedy, gdy `igo_da_
 - Prawdziwe zapytanie z buildera na replice z 300 partycjami i 600 000 wierszami: bez granic 301 partycji w planie i 167 ms planowania, z granicami 1 partycja i 0,46 ms, wynik taki sam (2000 wierszy).
 - Serwer dev (niepartycjonowany): `generateView` i odczyt działają, widok nie ma zakresu `id`.
 - Nie przetestowano generowania widoku przez serwer na prawdziwie partycjonowanej bazie (potrzebna baza z zastosowanymi skryptami `db/postgresql/01…05`).
+
+## Etap 3: przegląd (2026-10-28)
+
+Przegląd bez zmian w kodzie: `poi-toolkit` (model `IExcelData`) i istniejący w `mercury` eksport do Excela.
+
+### Model Excel (`poi-toolkit`, `org.iron.poi.excel.core`)
+
+| Element | Opis |
+|---|---|
+| `IExcelData` | `getResult()`, `getResult(ExcelPage)`, `getMessage()`, `getResultSize()`, informacje o stronach (bieżąca, pierwsza, poprzednia, następna, ostatnia), `getHeader()` (`Map<Integer, String>`), `getColumnTypes()` (`Map<Integer, String>`) |
+| `ExcelRow` | numer wiersza i `Map<Integer, ExcelColumnValue>` (numer kolumny → komórka) |
+| `ExcelColumnValue` | tekst `value` i `searchValue` |
+| `ExcelPage` | rozmiar, numer strony, numer pierwszego i ostatniego wiersza |
+| `ExcelData` | implementacja czytająca plik Excela |
+| `ExcelFileWriterData` | implementacja do zapisu: nagłówek, komunikat, liczba wyników, pierwsza i ostatnia strona, typy kolumn, `setResult(strona, wiersze)` |
+
+### Gdzie `mercury` już używa `IExcelData`
+
+1. **Zwracanie przez RMI:** `ICaseSearcherRMI.fieldMetricQuery` i `dateMetricQuery` (agregacje Lucene). Adaptery w `mercury-lucene-indexes` (`org.mercury.lucene.search.poi`): `ExcelRowPagedResultExcelData(PagedResultSupport<ExcelRow>, PoiHeaderData)` i `DocDateValueHitsExcelData`. `ICaseSearcherRMI` jest jedynym interfejsem RMI poza transferem plików (`remoting-servlet.xml`).
+2. **Eksport asynchroniczny do pliku:** REST `ReportExportStatusRest` → `ReportExportStatusLogicHelper.prepareReportRequest` (wymaga `USER_NAME`, `REPORT_NAME` = kod typu, `SUBJECT`, `FILE_NAME`, `DATE_FROM`, `DATE_TO`; opcjonalnie `CASE_STATUS`, `SKIP_HEADER`, `LUCENE_QUERY`) tworzy `ReportExportStatus` (zapisuje `userName` i `userRoles`, `PARAMS` jako URL query) → wątek `ReportExportSecretary` → `ExportGenerator.generateReport`:
+   - nagłówek i typy kolumn z `poiServerWriter.createHeader` (`ReportHeaderData`; typy to nazwy `SimpleJavaType`: np. `STRING`, `LONG`, `DOUBLE`, `DATE`),
+   - dane: zapytanie Lucene o sprawy stronami (`EXPORT_DEFAULT_PAGE_SIZE` = 1000), konwersja strony przez `PoiServerWriter.convertCollectionByStream` do `ExcelRow` (wartość `NULL` oznacza brak komórki, pola parametrów przechodzą przez `AttributeParser…getClientPresentation`),
+   - zapis stron `ExcelFileWriterData` przez RMI do serwera Iron POI (`IWriteRemote`: `write`, `beginTransaction`, kolejne `write`, `commitTransaction` albo `rollbackTransaction`),
+   - postęp w `GENERATOR_PROGRESS_MAP`.
+
+### Wnioski dla widoków
+
+- **Mapowanie `ViewDataPage` → `IExcelData`** jest proste: kolumny widoku dostają numery od pierwszej kolumny danych, nazwy trafiają do nagłówka, `mercuryType` mapuje się na `SimpleJavaType` (`STRING`→`STRING`, `INTEGER`→`LONG`, `DECIMAL`→`DOUBLE`, `DATE`→`DATE`, `OTHER`→`STRING`, `BOOLEAN` do ustalenia), wiersze to `ExcelRow` z `ExcelColumnValue(tekst, null)`, a stronicowanie ma już `ViewDataPage`. Do zwracania `IExcelData` wystarczy istniejący adapter `ExcelRowPagedResultExcelData`, do zapisu `ExcelFileWriterData`. Nowej implementacji `IExcelData` nie trzeba pisać.
+- **Eksport (etap 4)** to gałąź w `ExportGenerator` dla widoku: raport z `REPORT_NAME` = nazwa widoku i znacznikiem źródła, pętla stron po `readViewData` zamiast zapytania Lucene, nagłówek z kolumn widoku. `prepareReportRequest` wymaga dziś `DATE_FROM` i `DATE_TO`, więc dla widoku trzeba je uczynić opcjonalnymi.
+- **Uprawnienia przy eksporcie:** raport zapisuje `userName` i `userRoles` z żądania REST (które przechodzi weryfikację kontekstu z zadania 217). `ExportGenerator` buduje kontekst z raportu, więc `readViewData` zastosuje filtr wierszy i maskowanie. Do sprawdzenia, czy kontekst z raportu faktycznie niesie role.
+
+### Otwarte pytania do autora
+
+1. **Wartości w Excelu:** surowy tekst z widoku czy prezentacja kliencka jak w eksporcie spraw (`AttributeParser`, daty w formacie użytkownika, słowniki)? Kolumny pól widoku są tekstowe i zawierają wartości zakodowane w bazie, więc bez dekodowania Excel pokaże surowe wartości. `typeFieldCode` pozwala dojść do atrybutu pola, ale typ atrybutu może się różnić między wersjami typu.
+2. **Którędy zwracać `IExcelData` dla widoku:** `ICaseSearcherRMI` jest wyspecjalizowany w wyszukiwaniu. Czy dodajemy metodę tam, nowy interfejs RMI, czy ograniczamy się na razie do eksportu (etap 4)? REST zwraca JSON, więc `IExcelData` dotyczy tylko RMI.
+3. **Gdzie umieścić `ViewQuery` (filtry, sortowanie) w `ReportExportStatus`** bez zmiany schematu: w `PARAMS` (długość kolumny do sprawdzenia) czy w `LUCENE_QUERY` (semantyka pola jest inna).
+4. **Środowisko testowe:** eksport wymaga serwera Iron POI (`IWriteRemote`). Nie sprawdzałem, czy jest dostępny razem z serwerem dev.
+
+## Stan na koniec dnia 2026-10-28
+
+| Obszar | Stan |
+|---|---|
+| Etap 1 (odczyt widoków) | zamknięty, test na czterech bazach |
+| Uprawnienia widoków | zamknięte (filtr wierszy, maskowanie, kontrola zarządzania), zadanie 217 |
+| Etap 2 | status `VALID`/`INVALID`/`MISSING`, stabilna kolejność kolumn, zmiana widoku w miejscu, zależne widoki w PostgreSQL, `lock_timeout` i ponowienia, `generationError`, `typeFieldCode`, zakres `id` dla tablicy partycjonowanej; dokumentacja „Widoki” (EN i PL) |
+| Etap 2, zostaje | test na kopii bazy z widokami zależnymi od innych widoków; test generowania na partycjonowanej bazie; tłumaczenia kluczy OpenAPI (de/es/fr/ko, po 65 kluczy) |
+| Etap 3 | przegląd wykonany (wyżej), implementacja po decyzjach z pytań |
+| 217 | kod zamknięty dla REST; do rozstrzygnięcia: zewnętrzni klienci REST z własnym `context`, cache ról, SOAP i RMI/CMIS, mapowanie ról procesowych w środowiskach |
+| 218 | zadanie założone (czyściciel starych wersji), czeka na decyzje |
+| Wydanie | `mercury-lib` wymaga wydania (nowe DTO, zmiany interfejsów), potem podbicie wersji w `mercury` i `hgdb-client-open` |
+
+**Na jutro:** (1) decyzje z pytań etapu 3 (szczególnie pkt 1 i 2), (2) implementacja etapu 3, (3) dokończenie etapu 2 (test na kopii bazy, jeśli będzie dostępna), (4) decyzje do zadania 218.

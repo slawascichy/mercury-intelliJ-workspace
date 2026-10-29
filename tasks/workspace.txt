@@ -34,12 +34,24 @@
 # Obsługa zadań
 ####################
 
+* Problem z uruchomieniem Active MQ
+* Sprawdź, co dokładnie blokuje port (np. port 61616)
+```cmd
+netsh int ipv4 show excludedportrange protocol=tcp
+```
+* Najskuteczniejszym lekarstwem na "widmowe" rezerwacje portów na Windowsie jest zresetowanie IP oraz szybki restart komputera. Wykonaj w konsoli Administratora:
+```cmd
+netsh int ip reset
+netsh winsock reset
+```
+
+
+* Obsługa Git
 ```bash
 export TAG_VERSION="3.1.4.1"
 git tag -a ${TAG_VERSION} -m "Wersja ${TAG_VERSION} bez log4j"
 git push origin ${TAG_VERSION}
 ```
-
 ```bash
 export BRANCH_VERSION=hgdb-016
 git push origin ${BRANCH_VERSION}
@@ -48,11 +60,13 @@ git push origin ${BRANCH_VERSION}
 git checkout master && git pull && git branch -d ${BRANCH_VERSION}
 ```
 
+* Obsługa Claude
 ```bash
 claude --resume aa3430ea-1399-481a-aba9-9d5786b44249
 ```
 
-Strumień:
+## Strumień:
+
 >016-Widoki
   D039-[Lucene]-Optymalizacja-dostępu-do-IndexReader-a
 049-[CMIS]-Implementacja-API-CMIS
@@ -80,4 +94,6 @@ Strumień:
 211-Aktualizacja-obrazow-Docker-i-wydanie
   D214-Migracja-logowania-na-Logback
  B215-Nowa-komunikacja-IBM-BPM-HgDB
-  D217-Reprezentowanie-użytkowników-w-kontekście
+>217-Reprezentowanie-użytkowników-w-kontekście
+ B218-Czyściciel-starych-wersji-spraw
+ 

@@ -2,6 +2,8 @@
 
 https://github.com/slawascichy/hgdb/issues/217
 
+**Status (2026-10-29): zadanie otwarte ponownie i poprawione.** Role w kontekście to grupy użytkownika (nie role zmapowane); wdrożone na dev, szczegóły w sekcji „Stan implementacji po korekcie (2026-10-29)”. Poniżej wcześniejsze statusy.
+
 **Status (2026-10-28):** podzadanie zadania 016 (Widoki), realizowane na gałęzi `hgdb-016` (bez osobnej gałęzi `hgdb-217`). Etap 0 (rozpoznanie) wykonany, wyniki w sekcji „Wyniki rozpoznania etapu 0”. Weryfikacja kontekstu w REST zaimplementowana i przetestowana na serwerze dev (sekcja „Stan implementacji”); zostają punkty z listy „Do zrobienia”. Zadanie założone z polecenia autora („bardzo ważny temat”). Temat wyszedł przy testach zadania 016.
 
 ## Założenie autora
@@ -180,3 +182,126 @@ Test na serwerze dev dla `types/SlmAddress/find`, `CaseBusinessExtRest/save` i `
 
 - Zadanie 016 (Widoki): kontrola uprawnień odczytu widoków opiera się na rolach z `context`. Testy uprawnień wykonano, podając role w ciele żądania. Poprawność tej kontroli w produkcji zależy od tego zadania.
 - Testy wcześniejszych zadań na serwerze dev (58) wykonywano na tych samych założeniach co do kontekstu.
+
+## Korekta założeń (2026-10-29)
+
+### Koncepcja autora
+
+1. Lista ról w `context` (`userRoles`) to lista **grup/ról użytkownika**.
+2. Lista musi być podzbiorem `TomcatMercuryPrincipal.groups`. Dane do tej listy pozyskuje realm: z LDAP albo z bazy danych (użytkownicy lokalni).
+3. Użytkownicy lokalni mogą nie mieć ustawionych grup. Wtedy ich grupą domyślną jest `mrc-localgroup`.
+4. Automatyczne mapowanie grupy `mrc-localgroup` na rolę `mrc-user`.
+
+### Stan kodu (zweryfikowane 2026-10-29)
+
+| Fakt | Źródło |
+|---|---|
+| `TomcatMercuryPrincipal` ma osobno `roles` (role usługowe, np. `mrc-user`, `mrc-sysadmin`), `groups` i `primaryGroup`. | `TomcatMercuryPrincipal` |
+| `groups` jest ustawiane **tylko w gałęzi LDAP** (`p.setGroups(ldapGroups)` w `TomcatLdapRealm.authenticate`). Dla użytkownika lokalnego `groups` jest `null`. | `TomcatLdapRealm` |
+| Repozytorium lokalne ma tylko `mrc_ldap_int_users` (nazwa, pełna nazwa, hasło, data wygaśnięcia) i `mrc_ldap_int_roles_map` (uczestnik, typ `U`/`G`, rola). Nie ma tabeli ani kolumny z grupami użytkownika lokalnego. | schemat bazy dev |
+| Role usługowe wylicza `findRolesInLocalRepository(użytkownik, grupy LDAP)` z mapowania (`U` po nazwie użytkownika, `G` po grupach LDAP). | `TomcatLdapRealm` |
+| GUI buduje `context.userRoles` z **ról** principala (`user.getRoles()`), a `currentRole` z `primaryGroup`, potem pierwszej roli, potem pierwszej grupy. | `AbstractController` |
+| Weryfikacja z zadania 217 (`RestServicesHelper.verifyContext`, `TomcatLdapRealm.findUserRoles`) porównuje `userRoles` z **rolami zmapowanymi**, a nie z grupami. | zadanie 217, wdrożone 2026-10-28 |
+
+### Rozbieżności i pytania do autora
+
+1. **Z czego składa się zbiór dozwolony: wyłącznie z `groups`, czy `groups` plus role zmapowane?**
+   - Tylko `groups` (ścisła wersja koncepcji): użytkownik lokalny bez zapisanych grup ma `[mrc-localgroup]`, więc `context` z `mrc-user` zostałby odrzucony, a domyślne uprawnienia w bazie dev (`mrc-user` ma `RW` do wszystkich typów) przypisane są do roli `mrc-user`, nie do `mrc-localgroup`. Zmieniłoby to też role procesowe w `igo_da_typeparameterroles` u klientów (nazwy grup zamiast `mrc-user`).
+   - `groups` plus role zmapowane: zgodne z GUI (które wysyła role) i z danymi domyślnymi. Moja rekomendacja.
+2. **Skąd użytkownik lokalny ma grupy?** Dziś nie ma gdzie ich zapisać. Opcje: (a) bez nowego magazynu: każdy użytkownik lokalny ma tylko `mrc-localgroup`; (b) nowa kolumna lub tabela grup użytkowników lokalnych (zmiana schematu); (c) traktować wiersze `U` z `mrc_ldap_int_roles_map` jako grupy użytkownika lokalnego. Punkt 3 koncepcji („jeżeli nie mają ustawionych grup”) zakłada, że ustawienie jest możliwe.
+3. **Skutek automatycznego mapowania `mrc-localgroup` → `mrc-user`:** każdy użytkownik lokalny bez zapisanych grup dostaje rolę `mrc-user`, także ten, któremu administrator celowo jej nie nadał. W bazie dev `admin` i `tester` już ją mają, więc nic się nie zmienia. Czy mapowanie ma obowiązywać zawsze, czy tylko gdy użytkownik nie ma żadnej jawnej roli w `mrc_ldap_int_roles_map`?
+4. **GUI i sesja** (`AbstractController`, `createContextBasedOnSession`) nadal budują kontekst z ról, nie z grup. Weryfikacja dotyczy tylko REST, więc ścieżki GUI się nie zmieniają, ale zasada „role w kontekście = grupy” będzie wtedy różna dla REST i GUI.
+
+### Plan naprawy (po odpowiedziach na pytania 1–3)
+
+| Krok | Zakres |
+|---|---|
+| 1 | `TomcatLdapRealm`: stała `mrc-localgroup`. Nowa metoda grup użytkownika (`findUserGroups`): LDAP → grupy z LDAP; lokalny → zapisane grupy (zgodnie z odpowiedzią na pytanie 2) albo `mrc-localgroup`. `authenticate` ustawia `groups` także dla użytkownika lokalnego. |
+| 2 | Automatyczne mapowanie `mrc-localgroup` → `mrc-user` w jednym pomocniku używanym przez `authenticate` i `findUserRoles` (zakres według pytania 3). |
+| 3 | `RestServicesHelper.verifyContext`: zbiór dozwolony = grupy reprezentowanego użytkownika (plus role zmapowane według pytania 1). Warunek reprezentowania innych bez zmian (rola `mrc-useradmin` uwierzytelnionego użytkownika). Użytkownik bez grup i ról nadal odrzucany. |
+| 4 | Testy: aktualizacja `RestServicesHelperVerifyContextTest` (atrapa realmu z grupami), nowe przypadki: grupa domyślna, grupy LDAP, automatyczne `mrc-user`, podzbiory. |
+| 5 | Dokumentacja EN i PL (`Permissions_mechanism`): role w kontekście to grupy użytkownika, grupa domyślna, mapowanie. Poprawka sekcji decyzji w tym pliku i obserwacji 108. |
+| 6 | Wdrożenie na dev i test REST: `tester` z `[mrc-localgroup]` i z `[mrc-user]` (według pytania 1), `admin` reprezentujący, odmowy. Ścieżki LDAP nie da się sprawdzić na dev (brak dostępu do LDAP), tylko testem jednostkowym z atrapą. |
+
+**Ograniczenia:** wcześniejsze testy REST i dokumentacja z 2026-10-28 opisują stary model (role zmapowane) i wymagają powtórzenia po zmianie. Testy z kontekstem `[mrc-user]` przestałyby przechodzić przy wersji „tylko grupy”.
+
+### Decyzje autora (2026-10-29)
+
+1. Zbiór dozwolony dla `userRoles` w `context` to **wyłącznie `groups`**. Role (usługowe) zostają w `roles`.
+2. Użytkownicy lokalni nie mają magazynu grup. Role lokalnych użytkowników nadaje się bezpośrednio użytkownikowi (wiersze `U` w `mrc_ldap_int_roles_map`). Użytkownicy z LDAP dostają role przez grupy (wiersze `G`) i mogą też dostawać je bezpośrednio (wiersze `U`); dla nich działają oba źródła (potwierdzone w kodzie: `findRolesInLocalRepository` łączy `U` po nazwie użytkownika i `G` po grupach LDAP). Użytkownik lokalny bez grup dostaje grupę domyślną.
+3. Rola `mrc-user` to podstawowa rola systemu (bez niej nie ma logowania). Użytkownicy lokalni są tworzeni po to, żeby mieć dostęp do aplikacji, więc rola `mrc-user` ma im być nadawana automatycznie, zawsze.
+4. Zasada „role w kontekście = grupy użytkownika” ma obowiązywać jednakowo w REST i w GUI.
+5. Przy weryfikacji `currentRole`: gdy jest ustawione, musi być jedną z wartości `userRoles`; gdy nie jest, ustawić `primaryGroup`, jeśli to możliwe.
+6. Nazwa grupy domyślnej użytkownika lokalnego to **`mrc-user`**, a nie `mrc-localgroup`. Powód: `Context` domyślnie dodaje `MRole.DEFAULT_ROLE_NAME` (`mrc-user`) do `userRoles` (konstruktory `Context`, linie 256–257 i 286–287 w `Context.java`). Stała `mrc-localgroup` z poprzedniej wersji planu odpada.
+
+### Fakty z kodu, które z tego wynikają
+
+| Fakt | Skutek |
+|---|---|
+| `new Context()` zawsze zaczyna z `userRoles = {mrc-user}`. Żądanie JSON bez pola `userRoles` zachowuje tę wartość domyślną. | Kontekst bez jawnych ról niesie `mrc-user`, więc `mrc-user` musi być dozwolone dla każdego uwierzytelnionego użytkownika (zobacz pytanie 1 niżej). |
+| Serwer sam zakłada użytkowników i role z kontekstu (`ModifyInfoHelperImpl.getOrCreateUser`/`getOrCreateRole`: tabele `igo_adm_users` i `igo_adm_roles`). Przy pustych rolach rejestruje `mrc-user`, a przy pustym `currentRole` też `mrc-user`. Uprawnienia do danych (`SecurityContext`) liczą się z `userRoles` wprost, pusta lista oznacza brak uprawnień. | `currentRole` nie jest nigdzie sprawdzany względem `userRoles`: reguła z punktu 5 jest nowa. |
+| GUI (`AbstractController.createContext`) buduje `userRoles` z ról principala (`user.getRoles()`), a `currentRole` z `primaryGroup`, potem pierwszej roli, potem pierwszej grupy. REST z sesji (`createContextBasedOnSession`) bierze role z principala, z tokenu OAuth (`createContextBasedOnOAuth`) zakresy tokenu. | Do ujednolicenia (punkt 4): wspólny sposób budowy kontekstu z principala, z grup. Tokenowy kontekst z zakresów służy kontrolerom `@IdentityFromToken` (role usługowe, np. `mrc-sysadmin`) i zostaje. |
+
+### Zaktualizowany plan naprawy
+
+| Krok | Zakres |
+|---|---|
+| 1 | `TomcatLdapRealm`: grupy użytkownika. LDAP: grupy z LDAP. Lokalny: grupa domyślna `mrc-user` (stała w jednym miejscu). `authenticate` ustawia `groups` także dla użytkowników lokalnych. Role lokalnego: wiersze `U` plus `mrc-user` zawsze. Role użytkownika LDAP: wiersze `G` po grupach (jak dotąd). |
+| 2 | `RestServicesHelper.verifyContext`: `userRoles` ⊆ `groups` reprezentowanego użytkownika (z regułą dla `mrc-user`, zobacz pytanie 1). Nowa reguła `currentRole`: ustawione musi należeć do `userRoles`, nieustawione dostaje `primaryGroup`, jeśli jest w `userRoles`. Warunek reprezentowania innych (`mrc-useradmin` w `roles` uwierzytelnionego) bez zmian. |
+| 3 | Ujednolicenie REST i GUI: jeden pomocnik budujący `Context` z principala (nazwa, `userRoles` = grupy, `currentRole` = `primaryGroup` albo pierwsza grupa). `AbstractController` i `createContextBasedOnSession` korzystają z niego. |
+| 4 | Testy: `RestServicesHelperVerifyContextTest` (atrapa z grupami i rolami osobno): grupa domyślna lokalnego, grupy LDAP, `mrc-user` zawsze dozwolone (jeśli takie będzie rozstrzygnięcie), `currentRole` (poza zbiorem, ustawione z `primaryGroup`), reprezentowanie. Testy pomocnika kontekstu dla GUI. |
+| 5 | Dokumentacja EN i PL (`Permissions_mechanism`), poprawka obserwacji 108 i opisu w tym pliku. |
+| 6 | Wdrożenie na dev i test REST i GUI (logowanie `admin`/`tester`, kontekst z sesji). Ścieżki LDAP tylko testem jednostkowym z atrapą (brak dostępu do LDAP). |
+
+### Otwarte pytania
+
+1. **`mrc-user` a użytkownicy LDAP.** Kontekst bez `userRoles` niesie domyślnie `mrc-user`. Dla użytkownika lokalnego to jego grupa domyślna. Użytkownik z LDAP ma grupy z LDAP (np. nazwy grup AD), więc bez `mrc-user` w nich taki kontekst zostałby odrzucony. Czy `mrc-user` ma być zawsze dozwolone jako grupa domyślna każdego uwierzytelnionego użytkownika (moja propozycja, bo logowanie i tak wymaga tej roli)?
+2. **Skutek dla istniejących instalacji z LDAP.** GUI wysyła dziś jako `userRoles` role zmapowane (np. `mrc-user`), a uprawnienia do typów (`igo_da_typeparameterroles`) są zapisane na te nazwy. Po zmianie GUI wyśle nazwy grup, więc wiersze uprawnień trzeba mieć także dla nazw grup (albo je przepisać). Wydanie wymienia cały serwer, ale dane zostają. Czy mamy przygotować notatkę lub skrypt migracji uprawnień na wydanie?
+3. **`currentRole` poza zbiorem:** odrzucać żądanie (`invalid_grant`, moja propozycja, bo to jawny błąd klienta), czy poprawiać po cichu?
+
+### Rozstrzygnięcia z 2026-10-29 (uzupełnienie)
+
+- `mrc-user` jest zawsze dozwolone w `userRoles` dla każdego uwierzytelnionego użytkownika (także z LDAP), bo `Context` nadaje je domyślnie.
+- `currentRole` poza zbiorem `userRoles` jest odrzucane (`invalid_grant`). Nieustawione dostaje grupę główną, jeśli należy do `userRoles`.
+- Użytkownicy z LDAP dostają role usługowe z wierszy `U` (po nazwie) i `G` (po grupach LDAP). Lokalni: wiersze `U` plus zawsze `mrc-user`.
+- Autor: uprawnienia do spraw wynikają z `userRoles`, a weryfikacja kontekstu jest tylko sprawdzeniem zgodności danych z kontekstu z realmem.
+
+## Rewizja decyzji (2026-10-29, po analizie skutków)
+
+Model „tylko grupy” (decyzja 1 powyżej) odrzucono. Powód: użytkownik lokalny miałby wyłącznie grupę `mrc-user`, więc nie mógłby mieć własnych ról procesowych (np. `vw016-addr` z testów maskowania), a użytkownicy LDAP wymagaliby migracji uprawnień z nazw ról na nazwy grup. Autor wskazał, że uprawnienia do spraw wynikają z `userRoles`, a weryfikacja kontekstu ma tylko sprawdzić zgodność danych z kontekstu z realmem. Obowiązujące zasady:
+
+1. `userRoles` ⊆ **suma grup i ról** użytkownika z realmu, plus zawsze `mrc-user` (kontekst nadaje ją domyślnie).
+2. `currentRole` **musi pochodzić z grup**. Ustawione musi należeć do `userRoles` i do grup użytkownika, inaczej `invalid_grant`. Rola, która nie jest grupą (np. `mrc-useradmin`), nie może być obecną rolą. Nieustawione dostaje grupę główną, jeśli należy do `userRoles`.
+3. Reprezentowanie innych, użytkownik bez grup i ról, brak `userName`: bez zmian.
+4. Zasada jest wspólna dla REST i GUI (jeden pomocnik budujący kontekst).
+
+Decyzje 2–6 z sekcji „Decyzje autora (2026-10-29)” (grupa domyślna lokalnego `mrc-user`, role lokalnych przez wiersze `U`, LDAP przez `U` i `G`, `mrc-user` zawsze) pozostają w mocy.
+
+## Stan implementacji po rewizji (2026-10-29)
+
+| Element | Zmiana |
+|---|---|
+| `TomcatLdapRealm` | Stała `LOCAL_USER_GROUP` = `mrc-user`. Użytkownik lokalny dostaje rolę `mrc-user` zawsze oraz grupę i grupę główną `mrc-user`. `authenticate` ustawia `groups` i `primaryGroup` także dla lokalnych. Nowe: `findUserGroups`, `findUserPrimaryGroup` (wspólny parser `parsePrimaryGroup`). `findUserRoles` łączy dla LDAP wiersze `U` i `G` (wcześniej pomijał `U`, gdy użytkownik nie miał grup). |
+| `RestServicesHelper.verifyContext` | `userRoles` ⊆ grupy ∪ role reprezentowanego użytkownika ∪ `{mrc-user}`. `currentRole` ustawione: musi należeć do `userRoles` i do grup. Nieustawione: grupa główna, jeśli jest w `userRoles`. |
+| `RestServicesHelper.applyUserRolesToContext(context, groups, roles, primaryGroup, fallbackRole)` | `userRoles` = grupy ∪ role; `currentRole` = grupa główna albo pierwsza grupa (nigdy sama rola); rola zastępcza (anonimowa) tylko bez grup i ról. |
+| `AbstractController` (GUI) | Kontekst przez ten sam pomocnik: grupy principala `TomcatMercuryPrincipal` i jego role. Principal spoza realmu Mercury nie ma grup, więc ma tylko role i pusty `currentRole`. |
+
+**Poza zakresem ujednolicenia:** `createContextBasedOnSession` i `createContextBasedOnOAuth` zostają przy rolach usługowych (kontrolery `@IdentityFromToken`, np. panel loggera wymaga `mrc-sysadmin`).
+
+### Testy (2026-10-29)
+
+- `RestServicesHelperVerifyContextTest`: 24 testy, wszystkie przechodzą (suma grup i ról, rola cudza odrzucona, `mrc-user` zawsze, reprezentowanie, `currentRole` tylko z grup, pomocnik kontekstu).
+- Test REST na dev (14 przypadków, wszystkie zgodne, jar wdrożony o 12:09): `tester` `[mrc-user]` i bez `userRoles` (200); `tester` z cudzą rolą `[mrc-sysadmin]` (403); `admin` `[mrc-user, mrc-sysadmin]` i `[mrc-useradmin]` (200); `admin` z nieznaną rolą (403); `admin` jako `tester` `[mrc-user]` (200) i `[mrc-sysadmin]` (403); `tester` jako `admin`, nieznany użytkownik (403); brak `userName` (403 `username_required`); `currentRole=mrc-user` (200); `currentRole=mrc-sysadmin`, bo to rola a nie grupa (403); `currentRole` spoza `userRoles` (403).
+- Nie sprawdzono: ścieżki LDAP (brak dostępu na dev, tylko atrapa realmu w teście jednostkowym), GUI w działającej aplikacji (logowanie formularzem), ponownego testu maskowania pól przez REST z rolami procesowymi lokalnych użytkowników.
+
+### Skutki zmiany
+
+1. **Migracja uprawnień nie jest wymagana.** `userRoles` mogą nadal zawierać role zmapowane (np. `mrc-user`), więc wiersze `igo_da_typeparameterroles` zapisane na nazwy ról działają jak dotąd. Role procesowe lokalnych użytkowników (wiersze `U`) działają także w REST.
+2. **`currentRole` z grup.** Klient, który dotąd wysyłał jako `currentRole` samą rolę (nie grupę), dostanie 403. Dla użytkownika lokalnego dozwolone jest `mrc-user`, dla LDAP nazwy jego grup. `currentRole` trafia do pól `createdByRoleName` i `lastModifiedByRoleName`, więc to zmiana widoczna dla integracji. Do wiadomości na wydanie.
+3. **Wydajność:** każde żądanie REST z kontekstem odczytuje z realmu grupy i role (z bazy, dla LDAP także z LDAP) oraz, gdy `currentRole` nie jest ustawione, grupę główną. Cache do rozważenia po pomiarze.
+
+### Do zrobienia
+
+- Test GUI w działającej aplikacji (autor lub wspólnie) i ponowny test maskowania pól przez REST (`mask016.sh`).
+- Zewnętrzni klienci REST z własnym `context` (czy ich `currentRole` jest grupą), cache ról, SOAP i RMI/CMIS, audyt kontekstu systemowego w `mercury-srv`.
+- Notatka na wydanie o punkcie 2 skutków.

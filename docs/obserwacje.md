@@ -213,3 +213,10 @@ Fakty z testu REST na serwerze dev 2026-10-28 i z kodu; szczegóły w `tasks/hgd
 | # | Miejsce | Obserwacja | Propozycja |
 |---|---|---|---|
 | 110 | mercury-lib (`TypeCode.retentionTimeMilis`, `useArchivization`), mercury (`CaseLogic`) | Pole `retentionTimeMilis` („czas, po którym obiekt sprawy danego typu zostanie usunięty, licząc od utworzenia”) nie jest nigdzie egzekwowane: brak wywołań `getRetentionTimeMilis` w kodzie. Predefiniowane typy w `CaseLogic` ustawiają je na 6 lat. Istnieją elementy, na których można oprzeć czyszczenie: `CaseArchivizatorService` (archiwizacja działa dotąd tylko przy usuwaniu spraw dla typów z `useArchivization`, a nie jako mechanizm odciążania tabeli), logika usuwania z `removeValidation` (wersje, `CaseRootVersion`) i wzorzec schedulera `CaseLastUpdatedCleaner` (delay/interval, wysyłka JMS). Nowy wiersz sprawy powstaje tylko przy zmianie typu lub wersji typu (`updateCaseWithHistory`), stary zostaje ze statusem `Z` i wskazaniem `previousVersionId` z nowego. | Czyściciel starych wersji i retencji spraw jako rozszerzenie tych mechanizmów (na żądanie i jako scheduler, domyślnie wyłączony), z trybem próbnym (raport bez usuwania). Osobne zadanie. |
+
+
+## Role w kontekście i grupy użytkowników (zadanie 217, 2026-10-29)
+
+| # | Miejsce | Obserwacja | Propozycja |
+|---|---|---|---|
+| 111 | mercury-gui-core (`TomcatLdapRealm`, `RestServicesHelper`, `AbstractController`) | Po rewizji z 2026-10-29: `userRoles` w `context` to podzbiÃ³r sumy grup i rÃ³l uÅ¼ytkownika, a `currentRole` musi pochodziÄ z grup. UÅ¼ytkownik lokalny ma grupÄ domyÅlnÄ `mrc-user` oraz role z wierszy `U`. Migracja uprawnieÅ z rÃ³l na grupy nie jest wymagana. Klient wysyÅajÄcy jako `currentRole` samÄ rolÄ (nie grupÄ) dostanie 403. | Notatka na wydanie o `currentRole` z grup (zadanie 217, âSkutki zmianyâ). SprawdziÄ integracje, ktÃ³re ustawiajÄ `currentRole`. |
