@@ -1,6 +1,6 @@
 # [16] Widoki
 
-**Status (2026-10-28, koniec dnia):** etapy 0, 1 i 2 zamknięte (poza testem na kopii bazy z widokami zależnymi od innych widoków); etap 3 w rozpoznaniu (sekcja „Etap 3: przegląd”). Podzadanie 217 zamknięte po stronie kodu REST, zadanie 218 (czyściciel starych wersji) założone. Kolejność autora: 016, 049, 191. Plan: `plan-najblizszych-dzialan-2026-10-26.md`
+**Status (2026-10-29, wieczór): implementacja zakończona, gotowe do wydania i zamknięcia.** Etapy 0, 1, 2 i 3 (podgląd i eksport widoków do Excela) zrealizowane, podzadanie 217 zamknięte. Czeka rytuał wydań po stronie autora (sekcja „Zamknięcie zadania”, „Stan zamknięcia”). Znane luki i rzeczy odłożone: obserwacja 118 (test na partycjonowanej `igo_da_cases`), zadanie 219 (wydajność eksportu), zadanie 220 (filtry w eksporcie, not now), zadanie 218 (czyściciel starych wersji).
 
 **Podzadanie:** 217 „Reprezentowanie użytkowników” (`../217-Reprezentowanie-użytkowników-w-kontekście/TASK.md`), realizowane na gałęzi `hgdb-016`. Dotyczy tożsamości i ról w `Context`, od których zależy kontrola uprawnień widoków..
 
@@ -496,3 +496,34 @@ Po poprawkach plik ma poprawne typy komórek (liczby, całkowite, daty z formate
 **Ryzyko etapu 3 na innych silnikach (ocena).** Nowy kod etapu 3 jest w Javie i nie zawiera SQL zależnego od bazy: czyta przez `readViewData`, sprawdzone na czterech bazach w etapie 1. Ryzyko pozostaje w tym, co zależy od sterownika: tekstowa postać kolumn `M_*` (DAO ujednolica ją do ISO przez `toText`, więc zależność od sterownika jest mała) i mapowanie typów kolumn (`mercuryType`). Test na pozostałych bazach wnosiłby więc niewiele ponad to, co sprawdzono; zalecany jest jeden przebieg funkcjonalny eksportu widoku z `skipHeaderFields=false` na Oracle i MSSQL przy okazji wydania.
 
 **Odłożone bez terminu (obserwacja 118): generowanie widoków na bazie z partycjonowaną `igo_da_cases` przez aplikację (przebieg end-to-end); poziom DAO uznany przez autora za wystarczający.** Na poziomie DAO i generatora SQL sprawdzone (granice partycji z katalogu bazy, wykrywanie spraw poza zakresem, plan zapytania z odcięciem partycji w etapie 2), ale nie przez działającą aplikację na bazie utworzonej skryptami `db/postgresql` z partycjonowaniem. Wymaga osobnej bazy (kopii schematu z partycjami) i drugiego Tomcata albo zmiany `search_path`; do decyzji autora.
+
+### Stan zamknięcia (2026-10-29, wieczór)
+
+| Obszar | Stan                                                                                                                                                     |
+|---|----------------------------------------------------------------------------------------------------------------------------------------------------------|
+| Etapy 0–2 (definicje, generowanie, odczyt, uprawnienia) | zrealizowane, sprawdzone na PostgreSQL, MySQL, Oracle i MSSQL na poziomie DAO                                                                            |
+| Etap 3 (podgląd `readViewExcelData`, eksport z prefiksem `[VIEW]`) | zrealizowany; dekodowanie pól (liczby, daty, słowniki, wartości logiczne, LOB) i kolumny `M_*` sprawdzone funkcjonalnie na dev                           |
+| Podzadanie 217 (reprezentowanie użytkowników) | zamknięte                                                                                                                                                |
+| Eksport spraw po zmianie `ExcelRowsList` | ✅ (obserwacja 117) sprawdzony na dev: serwer POI i Tomcat z `poi-toolkit` 4.1.0.2, 3 sprawy `BpmTask` → `COMPLETED`, plik z poprawnymi liczbami i datami |
+| Tłumaczenia OpenAPI (70 kluczy, de/es/fr/ko) | gotowe w trzech katalogach; trafią do `openapi*.json` po wydaniu lib i przebudowie `mercury-ws-app`                                                      |
+| Dokumentacja (docusaurus, EN i PL) | gotowa: „Widoki”, „Permissions mechanism”, „Integracja z LDAP”, `tags.yml`                                                                               |
+| Testy | jednostkowe etapu 3: 12 (`ViewValueConversionTest`, `ViewExportReportRequestTest`) przechodzą; pełny `mvn test` w `mercury` – wynik niżej |
+
+**Luki po decyzjach autora (aktualizacja względem listy wyżej):**
+
+- Dekodowania pól daty, liczby i słownika oraz LOB nie brakuje: sprawdzono je w teście z wieczora 2026-10-29 (sekcja „Testy po decyzjach”).
+- Test generowania widoków na bazie z partycjonowaną `igo_da_cases` przez aplikację: odłożony bez terminu (obserwacja 118); poziom DAO uznany za wystarczający.
+- Test widoków zależnych i blokad w PostgreSQL wykonany, status `INVALID` sprawdzony na MySQL.
+- Eksport widoku z `skipHeaderFields=false` na Oracle i MSSQL: niesprawdzony, zalecany jeden przebieg przy okazji wydania.
+- Wydajność eksportu dużych widoków (200 000 wierszy ok. 15,5 min): zadanie 219. Filtry i sortowanie w eksporcie: zadanie 220 (not now).
+
+**Do wykonania po stronie autora:** kroki 1–6 z tabeli „Kolejność rytuału wydań”. Kroki 2–4 wymagają wydanej wersji `mercury-lib` (3.0.4.19); w `mercury` zmienia się wtedy `mercury.static.version` i przebudowuje `mercury-ws-app`, a katalog `openapi*.json` trafia do osobnego commitu.
+
+**Pełny `mvn test` w `mercury` (2026-10-29, profil `scichy-test`, baza `mercury-db-test`, `-Dmaven.test.failure.ignore=true`, 11:40 min, 24 moduły).** Bez błędów w modułach DAO, Lucene, Logic-Business (`SrvTest`), WS Application (178 testów, w tym `OpenApiResourcesTest`) i pozostałych. Dwa niepowodzenia:
+
+| Test | Opis | Ocena |
+|---|---|---|
+| `WsServerTest.testMERC_0168_Scenarios:739` (WS Server) | „Nowy typ powinien się znajdować w mapie” (pamięć podręczna typów spraw po aktualizacji typu) | Dotyczy typów spraw, nie widoków. Przypuszczenie, że nie wynika z zadania 016 (nie porównywano z czystym `master`) |
+| `AuthTest.testDataSource:220` | Filtr `/rest/services` bez tokena nie rzucił `ServletException` (`assertFalse(success)`) | Dotyczy uwierzytelniania. Możliwy wpływ lokalnej konfiguracji (LDAP na dev, zadanie 217); do sprawdzenia przed PR |
+
+Część scenariuszy `SrvTest` jest wyłączona flagami `test.skip.*` w profilu `scichy-test`, więc wynik nie obejmuje wszystkich scenariuszy. Przebieg od środka reaktora (`-rf`) daje fałszywe błędy `NoClassDefFound`, bo moduły są wtedy brane z `.m2`.
