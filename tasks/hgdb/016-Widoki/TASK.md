@@ -377,3 +377,51 @@ Przegląd bez zmian w kodzie: `poi-toolkit` (model `IExcelData`) i istniejący w
 | Wydanie | `mercury-lib` wymaga wydania (nowe DTO, zmiany interfejsów), potem podbicie wersji w `mercury` i `hgdb-client-open` |
 
 **Na jutro:** (1) decyzje z pytań etapu 3 (szczególnie pkt 1 i 2), (2) implementacja etapu 3, (3) dokończenie etapu 2 (test na kopii bazy, jeśli będzie dostępna), (4) decyzje do zadania 218.
+
+## Etap 3: decyzje autora (2026-10-29)
+
+1. **Wartości w Excelu: dekodowanie jak w ogólnym eksporcie.** Wartość pola z widoku przechodzi przez `AttributeParser.createAttributeValueFromDbValue(...)` i `getClientPresentation(context)` na podstawie definicji pola (`TypeParam` → `AttributeTypeParameter`, `arg3`, `hasMultiValues`) typu wiersza (`type_code`) i nazwy pola (`typeFieldCode`). Wyjątek: pola LOB (pliki). Typ kolumny w Excelu (`DATE`, `DOUBLE`, `LONG`, `STRING`) wynika z typu atrybutu; gdy typy spraw różnią się dla tej samej nazwy pola, kolumna jest tekstowa (propozycja).
+2. **Dwa tory prezentacji:**
+   - **eksport asynchroniczny** do pliku przez istniejący `ExportGenerator` i serwer Iron POI, z adresem pobrania pliku w `ReportExportStatus.DOWNLOAD_URL`,
+   - **stronicowany wynik `IExcelData`** tak jak robi to prezentacja z POI (wzorzec: `CaseSearchExtRest.fieldMetricQuery`, czyli `IExcelData` → `DataUtils.transform2Data` → JSON). Przyda się przyszłym podglądom przed eksportem.
+3. **Zapytanie o widok w eksporcie: w `PARAMS`** (decyzja zależna od długości kolumny, zobacz niżej).
+4. Serwer Iron POI działa na dev (`mercury-server/poi-toolkit-server`, porty 10090 i 10099), więc eksport do pliku da się przetestować.
+
+### Ustalenia z przeglądu kodu (2026-10-29)
+
+| Fakt | Źródło |
+|---|---|
+| Ogólny eksport dekoduje wartość pola przez `AttributeParser` według definicji pola typu, a typ kolumny Excela z `MPoiServerSupport.createHeader` według `AttributeType` | `PoiServerWriter.convertCase`, `MPoiServerSupport.createHeader` |
+| Długie wartości (powyżej 4000 znaków, przechowywane w LOB) rozwiązuje `AttributeParser` (`checkValueStoredAsLOB`); inaczej traktowany jest atrybut typu `AttributeType.LOB` (plik) | `AttributeParser` |
+| REST zwraca `IExcelData` jako JSON `Data` przez `DataUtils.transform2Data` | `CaseSearchExtRest.fieldMetricQuery` |
+| `ICaseSearcherRMI` to wewnętrzna usługa klastra w `mercury` (`hgdb-rmi-server-api`), nie w `mercury-lib` | `ICaseSearcherRMI` |
+| Interfejs odczytu widoków (`readViewData`) jest w `mercury-lib` (`ICaseViewDefinitionAction`), a REST jest generowany do `mercury-ws-app/src/main/generated` | |
+| `ReportExportStatus` ma `DOWNLOAD_URL` na adres pobrania pliku | `ReportExportStatus` |
+
+### Problem: `PARAMS` ma tylko 255 znaków
+
+`igo_da_report_exps.PARAMS` (i `igo_da_report_imps.PARAMS`) to `varchar(255)`, podobnie `DOWNLOAD_URL`. Zapytanie o widok z filtrami i sortowaniem w postaci tekstowej (URL query albo JSON) szybko przekroczy ten limit. Opcje do decyzji autora:
+
+| Opcja | Skutek |
+|---|---|
+| A. Poszerzyć `PARAMS` w `igo_da_report_exps` do 4000 | zmiana schematu na czterech bazach (skrypty w `mercury/db/<baza>`), zmiana encji w `mercury-lib` i wydanie; najprostsze dla eksportu |
+| B. Zostawić `PARAMS` i trzymać tam tylko nazwę widoku oraz odwołanie do zapisanego zapytania | zapytanie musi być gdzieś zapisane (nowa tabela albo wykorzystanie mechanizmu LOB), więcej kodu |
+| C. Ograniczyć eksport widoku do zapytań, które mieszczą się w 255 znakach | tanie, ale rzeczywiste filtry się nie zmieszczą |
+
+### Etap 3: stan implementacji (2026-10-29, gałąź `hgdb-016`, tylko `mercury`, bez zmian w `mercury-lib`)
+
+Decyzja o `PARAMS`: opcja B z prefiksem. Pole `PARAMS` raportu eksportu widoku zawiera `[VIEW]vName=<nazwa widoku>&file=…&…` (tylko nazwa widoku, bez filtrów; zgodne z limitem 255 znaków), a `REPORT_NAME` to nazwa widoku. Eksport obejmuje więc cały widok w zakresie uprawnień użytkownika z raportu. Filtry i sortowanie ma podgląd stronicowany.
+
+| Element | Zmiana |
+|---|---|
+| `ReportServerAppConstants.ReportGeneratorParams` | `VIEW_NAME` (`vName`), `VIEW_PARAMS_PREFIX` (`[VIEW]`) |
+| `ReportExportStatusLogicHelper.prepareReportRequest` | żądanie z `vName` to eksport widoku: `REPORT_NAME` = nazwa widoku, `PARAMS` z prefiksem, bez wymagania zakresu dat, statusu i zapytania Lucene (kryteria spraw przeniesione do `appendCaseCriteria`) |
+| `ReportExportStatusRest.prepareReportRequest` | nowe pole żądania `viewName` (zamiast `typeCode`), domyślna nazwa pliku `<widok>.xlsx` |
+| `ViewExportHeader` (nowa, `org.mercury.business.reports.internal.api`) | nagłówek widoku w modelu POI: kolumny widoku, indeks kolumny `type_code`, pamięć podręczna metadanych pól typów |
+| `MPoiServerSupport` | wspólne `createCaseMetadata(TypeParam)` i `simpleTypeOf(AttributeType)` (wydzielone z `createHeader`, używa ich eksport spraw i widoków) |
+| `IPoiServerWriter` / `PoiServerWriter` | `createViewHeader` (typ kolumny z typu atrybutu pola w typach widoku, przy różnych typach tekst; kolumny inne niż pola z typu kolumny w bazie) i `convertViewPage` (strona widoku → `ExcelFileWriterData`, dekodowanie wartości przez `AttributeParser` według pola typu wiersza, maska `###########`, brak definicji pola i pola LOB bez zmian) |
+| `ExportGenerator` | gałąź `[VIEW]`: strony `readViewData` → `convertViewPage` → zapis w jednej transakcji serwera POI; wspólna `createWriterProperties` |
+| `org.mercury.rest.server.actions.view` (nowe: `CaseViewExtRest`, `ICaseViewExtRest`, `CaseViewExtRestRequests`) | `POST /rest/service/CaseViewExtRest/readViewExcelData` zwraca stronę wyniku widoku jako JSON `Data` (jak `fieldMetricQuery`), z filtrami, sortowaniem i stronicowaniem; klucze OpenAPI `pl` i `en` dopisane, `de/es/fr/ko` czekają na translator |
+| Testy | `ViewExportReportRequestTest` (6 testów: prefiks i `PARAMS`, brak wymogu dat, nazwa widoku ma pierwszeństwo, eksport spraw bez zmian, nagłówek) |
+
+Do sprawdzenia na dev (po zbudowaniu i wdrożeniu): podgląd REST, eksport do pliku przez serwer POI (adres pobrania w `DOWNLOAD_URL`), uprawnienia i maskowanie w pliku, widok z typami o różnych typach pola. Dokumentacja w `docusaurus-hgdb` i tłumaczenia kluczy `de/es/fr/ko` po sprawdzeniu.

@@ -48,7 +48,7 @@ netsh winsock reset
 
 * Obsługa Git
 ```bash
-export TAG_VERSION="3.1.4.1"
+export TAG_VERSION="2.0.0.2"
 git tag -a ${TAG_VERSION} -m "Wersja ${TAG_VERSION} bez log4j"
 git push origin ${TAG_VERSION}
 ```
@@ -64,6 +64,10 @@ git checkout master && git pull && git branch -d ${BRANCH_VERSION}
 ```bash
 claude --resume aa3430ea-1399-481a-aba9-9d5786b44249
 ```
+
+## Dodałem nowe zadanie:
+
+118-Poprawienie-mechanizmów-obsługi-pamięci-podręcznych
 
 ## Strumień:
 
