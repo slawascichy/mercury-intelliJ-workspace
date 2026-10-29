@@ -97,7 +97,7 @@ claude --resume aa3430ea-1399-481a-aba9-9d5786b44249
 211-Aktualizacja-obrazow-Docker-i-wydanie
   D214-Migracja-logowania-na-Logback
  B215-Nowa-komunikacja-IBM-BPM-HgDB
->217-Reprezentowanie-użytkowników-w-kontekście
+  D217-Reprezentowanie-użytkowników-w-kontekście
  B218-Czyściciel-starych-wersji-spraw
 219-Wydajność-generowania-plików-Excel
  

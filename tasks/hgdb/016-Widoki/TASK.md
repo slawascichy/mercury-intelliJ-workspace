@@ -444,3 +444,29 @@ Do sprawdzenia na dev (po zbudowaniu i wdrożeniu): podgląd REST, eksport do pl
 Poprawki wynikłe z testu: `PoiServerLoader.createContext` tworzy użytkownika raportu przez `IModifyInfoHelper.getOrCreateUser`, w eksporcie widoku ostatnia kolumna to `dfc + headerSize - 1`, katalog danych POI w `mercury.properties` dev wskazuje na `poi-toolkit-server`, a adres pobrania w `DOWNLOAD_URL` bierze się z `excel.server.docUrl` (https). Obserwacje 114–116.
 
 Nie sprawdzono: wartości z typami innymi niż tekst (daty, liczby, słowniki z nazwami) w pliku, bo typy testowe mają tylko pola tekstowe; widoku z typami o różnych typach tego samego pola; pól LOB. Zostaje też dokumentacja w `docusaurus-hgdb` i tłumaczenia kluczy OpenAPI `de/es/fr/ko`.
+
+## Zamknięcie zadania (2026-10-29)
+
+### Tłumaczenia kluczy OpenAPI (wykonane przez translator Gemini)
+
+70 kluczy (usługa `ICaseViewDefinitionAction` 11, usługa `ICaseViewExtRest` 5, schematy `schema.View*` i `schema.WsStatusWithView*` 54) dopisano do katalogów `openapi-docs_{de,es,fr,ko}.properties` w trzech miejscach: `mercury-lib/mercury-ws-server-api`, `mercury/mercury-ws-app` i `mercury/mercury-ws-app-rest-generator`. Walidacja (`localizer.py validate`) bez błędów, przegląd niemieckiego (`review`) wykonany. Uwaga na proces: `openapi_docs_sync.py` tłumaczy z krótkich fragmentów generatora (`pl`), które są uboższe niż teksty `en` w katalogach. Pierwszy przebieg dał tłumaczenia wymagające 26 poprawek w przeglądzie niemieckiego, dlatego 70 kluczy przetłumaczono ponownie z `en` (po tym przegląd poprawił 1 klucz). Opisy parametrów w niemieckim zaczynają się dużą literą rzeczownika (poprawione po przeglądzie).
+
+### Kolejność rytuału wydań (do wykonania przez autora)
+
+| Krok | Repozytorium | Działanie |
+|---|---|---|
+| 1 | `mercury-lib` (gałąź `hgdb-016`) | commit katalogów tłumaczeń, wydanie biblioteki (ostatni znacznik 3.0.4.18, testowo używano 3.0.4.19-SNAPSHOT, więc kolejna to 3.0.4.19) |
+| 2 | `mercury` (gałąź `hgdb-016`) | podniesienie `mercury.static.version` w głównym `pom.xml` do wydanej wersji lib, przebudowa `mercury-ws-app` (generator zapisze `openapi*.json` z tłumaczeniami), commit katalogów tłumaczeń i `openapi*.json`, testy |
+| 3 | `hgdb-client-open` | podniesienie zależności od `mercury-lib` i wydanie (nowe DTO widoków w kliencie), jeśli klient ma je udostępniać |
+| 4 | `mercury-cmd` | podniesienie wersji zależności (wydana lib i klient), jeśli narzędzia ich używają |
+| 5 | `docusaurus-hgdb` | commit artykułów „Widoki”, „Permissions mechanism”, „Integracja z LDAP” (EN i PL) i `tags.yml` |
+| 6 | wszystkie powyższe + workspace | push gałęzi `hgdb-016`, PR i merge, `pull` na `master`/`main`, dopiero potem nowa gałąź |
+
+`sccommon` 2.0.0.2 (poprawka `SecurityPassword`) jest już wydany, a wersja w `mercury`, `mercury-lib`, `hgdb-client-open` i `mercury-cmd` podniesiona. `mercury-client` zamrożony i pomijany.
+
+### Luki względem Definicji Gotowości (do potwierdzenia przez autora: zamknięcie ze znanymi lukami albo ich domknięcie przed zamknięciem)
+
+- Nie wykonano testu generowania widoków na kopii bazy z widokami zależnymi od innych widoków (`INVALID`, lock w PostgreSQL) ani na bazie z partycjonowaną tablicą `igo_da_cases`.
+- Etap 3 (podgląd i eksport) sprawdzono tylko na PostgreSQL. Dekodowania pól daty, liczby i słownika w pliku Excel nie sprawdzono w praktyce (typy testowe mają tylko pola tekstowe), pól LOB także.
+- Eksport 200 000 wierszy trwał ok. 15,5 min: analiza wydajności w zadaniu 219.
+- Eksport widoku obejmuje cały widok (bez filtrów i sortowania), zgodnie z decyzją o `PARAMS`; filtry ma podgląd.
