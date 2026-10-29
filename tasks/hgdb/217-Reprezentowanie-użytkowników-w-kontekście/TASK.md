@@ -2,7 +2,7 @@
 
 https://github.com/slawascichy/hgdb/issues/217
 
-**Status (2026-10-29): zadanie otwarte ponownie i poprawione.** Role w kontekście to grupy użytkownika (nie role zmapowane); wdrożone na dev, szczegóły w sekcji „Stan implementacji po korekcie (2026-10-29)”. Poniżej wcześniejsze statusy.
+**Status (2026-10-29): zamknięte do zacommitowania.** Obowiązujący model to „Rewizja decyzji (2026-10-29, po analizie skutków)”: `userRoles` ⊆ suma grup i ról użytkownika (plus zawsze `mrc-user`), a `currentRole` musi pochodzić z grup. Wdrożone na dev i sprawdzone: testy jednostkowe (24), REST z użytkownikami lokalnymi (14 przypadków), REST z prawdziwym katalogiem LDAP (19 przypadków), maskowanie pól widoków z rolami procesowymi lokalnych użytkowników, GUI (autor). Szczegóły w sekcjach „Stan implementacji po rewizji” i „Testy”. Sekcje „Korekta założeń” i „Decyzje autora (2026-10-29)” z modelem „tylko grupy” są historią (odrzucony: lokalny użytkownik nie mógłby mieć własnych ról procesowych). Poza zakresem i otwarte: zewnętrzni klienci REST z własnym `context`, cache ról, SOAP i RMI/CMIS, audyt kontekstu systemowego w `mercury-srv`. Przy okazji znaleziono i naprawiono osobny błąd (obserwacja 113, singleton `SecurityPassword`) oraz opisano dwie konfiguracje LDAP (obserwacja 112). Poniżej wcześniejsze statusy.
 
 **Status (2026-10-28):** podzadanie zadania 016 (Widoki), realizowane na gałęzi `hgdb-016` (bez osobnej gałęzi `hgdb-217`). Etap 0 (rozpoznanie) wykonany, wyniki w sekcji „Wyniki rozpoznania etapu 0”. Weryfikacja kontekstu w REST zaimplementowana i przetestowana na serwerze dev (sekcja „Stan implementacji”); zostają punkty z listy „Do zrobienia”. Zadanie założone z polecenia autora („bardzo ważny temat”). Temat wyszedł przy testach zadania 016.
 
@@ -294,7 +294,9 @@ Decyzje 2–6 z sekcji „Decyzje autora (2026-10-29)” (grupa domyślna lokaln
 - Test REST na dev (14 przypadków, wszystkie zgodne, jar wdrożony o 12:09): `tester` `[mrc-user]` i bez `userRoles` (200); `tester` z cudzą rolą `[mrc-sysadmin]` (403); `admin` `[mrc-user, mrc-sysadmin]` i `[mrc-useradmin]` (200); `admin` z nieznaną rolą (403); `admin` jako `tester` `[mrc-user]` (200) i `[mrc-sysadmin]` (403); `tester` jako `admin`, nieznany użytkownik (403); brak `userName` (403 `username_required`); `currentRole=mrc-user` (200); `currentRole=mrc-sysadmin`, bo to rola a nie grupa (403); `currentRole` spoza `userRoles` (403).
 - Test REST z prawdziwym katalogiem LDAP (kontener OpenLDAP z `mercury-docker/openldap`, 19 przypadków, wszystkie zgodne): `mrcuser` (grupa i rola `mrc-user`) z własnym kontekstem, bez `userRoles` i z `currentRole=mrc-user` (200); cudza grupa `mrc-admin`, cudza rola `mrc-sysadmin`, `currentRole` z cudzej grupy i występowanie jako `mrcmanager` (403). `mrcmanager` (grupa `mrc-admin`, role `mrc-sysadmin`, `mrc-useradmin`, `mrc-user`): grupa, grupa z rolą i rola `mrc-useradmin` w `userRoles` (200), nieznana rola (403), `currentRole=mrc-admin` (200), `currentRole=mrc-sysadmin` bo to rola a nie grupa (403). Reprezentowanie przez `mrcmanager`: jako `mrcuser` `[mrc-user]` i jako lokalny `tester` (200), jako `mrcuser` z grupą `mrc-admin` i jako nieistniejący użytkownik (403). Lokalny `admin` jako `mrcuser` (200), `tester` jako `mrcuser` (403).
 - Test przeprowadzono po poprawce `SecurityPassword` (zobacz obserwację 113): wcześniej pierwsze logowanie użytkownika z LDAP po starcie psuło logowanie użytkowników lokalnych (`invalid_grant`). Po wymianie jara `sccommon-ldap` na 2.0.0.2 tokeny `mrcuser`, `mrcmanager`, `admin` i `tester` działają w dowolnej kolejności.
-- Nie sprawdzono: GUI w działającej aplikacji po zmianach (logowanie formularzem), ponownego testu maskowania pól przez REST z rolami procesowymi lokalnych użytkowników. Wsparcie testowe: realm OAuth i realm z `server.xml` wskazują na lokalny kontener (obserwacja 112).
+- Maskowanie pól widoków przez REST z rolami procesowymi lokalnych użytkowników (2026-10-29, po rewizji modelu; użytkownicy lokalni `vw016a`, `vw016b`, `vw016n` z rolami `vw016-addr`, `vw016-both`, `vw016-none` nadanymi wierszami `U`, widok `Vw016Slm` nad typami `SlmAddress` i `SlmAppMobileDetails`, po 100 000 spraw): `vw016-addr` widzi tylko `SlmAddress`, `city` i `addressGroupId` jawnie, `street` jako `###########`, a `SlmAppMobileDetails` ma 0 wierszy; `vw016-both` widzi oba typy z polami, do których ma uprawnienia; `vw016-none` nie ma widoku na liście i dostaje odmowę (`You do not have sufficient privileges`); `admin` ma pełny dostęp. Własny token lokalnego użytkownika z własną rolą procesową: 200; z cudzą rolą (`vw016-both`, `mrc-sysadmin`): 403. Dane testowe usunięto (widok, definicja, role, uprawnienia, użytkownicy).
+- GUI: sprawdzone przez autora w działającej aplikacji (2026-10-29), działa.
+- Wsparcie testowe: realm OAuth i realm z `server.xml` wskazują na lokalny kontener (obserwacja 112).
 
 ### Skutki zmiany
 
@@ -304,6 +306,5 @@ Decyzje 2–6 z sekcji „Decyzje autora (2026-10-29)” (grupa domyślna lokaln
 
 ### Do zrobienia
 
-- Test GUI w działającej aplikacji (autor lub wspólnie) i ponowny test maskowania pól przez REST (`mask016.sh`).
 - Zewnętrzni klienci REST z własnym `context` (czy ich `currentRole` jest grupą), cache ról, SOAP i RMI/CMIS, audyt kontekstu systemowego w `mercury-srv`.
 - Notatka na wydanie o punkcie 2 skutków.
