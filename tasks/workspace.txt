@@ -100,4 +100,7 @@ claude --resume aa3430ea-1399-481a-aba9-9d5786b44249
   D217-Reprezentowanie-użytkowników-w-kontekście
  B218-Czyściciel-starych-wersji-spraw
 219-Wydajność-generowania-plików-Excel
+ B220-Filtry-i-sortowanie-w-eksporcie-widoków
+ 
+ 
  

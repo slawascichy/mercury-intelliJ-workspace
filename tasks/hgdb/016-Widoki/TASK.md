@@ -470,3 +470,29 @@ Nie sprawdzono: wartości z typami innymi niż tekst (daty, liczby, słowniki z 
 - Etap 3 (podgląd i eksport) sprawdzono tylko na PostgreSQL. Dekodowania pól daty, liczby i słownika w pliku Excel nie sprawdzono w praktyce (typy testowe mają tylko pola tekstowe), pól LOB także.
 - Eksport 200 000 wierszy trwał ok. 15,5 min: analiza wydajności w zadaniu 219.
 - Eksport widoku obejmuje cały widok (bez filtrów i sortowania), zgodnie z decyzją o `PARAMS`; filtry ma podgląd.
+
+### Testy po decyzjach autora (2026-10-29, wieczór)
+
+**Dekodowanie pól w pliku Excel i kolumny `M_*` (funkcjonalnie, mały wolumen).** Sprawy testowe zapisane przez `CaseBusinessExtRest/save`: 3 × `BpmTask` (`Number`, `DateLong`, `Integer`, `Text`, w tym tekst 5200 znaków przechowywany w LOB) i 2 × `CalendarUserEvent` (`Boolean`, `Select`, `Text`), widok `Vw016Typy` z `skipHeaderFields=false`. Test wykrył trzy błędy w etapie 3 i wszystkie naprawiono (`PoiServerWriter`, `ViewExportHeader`):
+
+| Błąd | Skutek | Poprawka |
+|---|---|---|
+| Typy kolumn pól liczono z `baseTypeCodes`, które przy definicji bez tej listy są puste | wszystkie kolumny pól tekstowe (np. `INTEGER` jako tekst) | typy widoku wyznaczane jak przy generowaniu (`searchByParamDefinitionNameList`), gdy listy nie ma |
+| Kolumny `M_*` typu `DATE` miały surową wartość ISO (`2026-10-29T19:32:52.719`) | eksport padał przy `commit` (`Unparseable date`) | daty `M_*` formatowane formatem Excela, liczby w postaci kanonicznej |
+| Wartości liczbowe i daty pól w prezentacji zależnej od lokalizacji (`1234,56`), maska w kolumnie liczbowej | serwer POI parsuje `Double.parseDouble`, więc eksport padłby | kolumny liczbowe dostają liczbę kanoniczną, kolumny dat datę w formacie Excela, maska w kolumnie nietekstowej daje pustą komórkę |
+
+Po poprawkach plik ma poprawne typy komórek (liczby, całkowite, daty z formatem), daty zgodne z danymi (`2026-10-21 10:15:30`, `2026-10-20 18:31:21`), `true` jako `tak`, pełny tekst z LOB (5199 znaków) i daty `M_*` jako daty Excela. Testy jednostkowe `ViewValueConversionTest` (6) i `ViewExportReportRequestTest` (6) przechodzą. Dokumentacja EN i PL zaktualizowana (opis wartości). Ślady po sprawach (w tym automatycznie wygenerowane widoki `T_BpmTask` i `T_CalendarUserEvent`) usunięto.
+
+**Widoki zależne w PostgreSQL (dev, widok `Vw016Typy` i zewnętrzny widok `vw016_dep` na nim).**
+
+| Przypadek | Wynik |
+|---|---|
+| dodanie pola do definicji | sukces (`CREATE OR REPLACE`, 31 kolumn), widok zależny nietknięty i działa |
+| usunięcie pola, od którego zależy widok zewnętrzny | odrzucone, `generationError` wymienia `vw016_dep`, widok zostaje `VALID` ze starymi kolumnami |
+| blokada `ACCESS EXCLUSIVE` trzymana przez inną sesję | **błąd wykryty i naprawiony**: odczyt statusu (`SELECT * FROM <widok> WHERE 1 = 0`) nie miał `lock_timeout` i czekał do 60 s, po czym widok uchodził za `INVALID`, a generowanie wisiało do zwolnienia blokady. Po poprawce (`CaseViewDefinitionDAO.probeView`: `lock_timeout`, odmowa blokady daje `VALID`) status odczytuje się w 1 s, a DDL ponawia próby (4 × 5 s) i kończy komunikatem „widok jest używany przez inną sesję” w `generationError` po ok. 27 s |
+| status `INVALID` | PostgreSQL nie pozwala usunąć obiektu, od którego zależy widok, więc `INVALID` tam praktycznie nie powstaje. Sprawdzone na MySQL (harness DAO, kontener `mercury-mysql`): widok po usunięciu tabeli bazowej = `INVALID`, wszystkie kontrole OK |
+| regresja po zmianie `probeView` (harness DAO na PostgreSQL) | wszystkie kontrole OK (odczyt, filtry, status, zmiana w miejscu, zależne widoki, blokada z ponowieniami, granice partycji) |
+
+**Ryzyko etapu 3 na innych silnikach (ocena).** Nowy kod etapu 3 jest w Javie i nie zawiera SQL zależnego od bazy: czyta przez `readViewData`, sprawdzone na czterech bazach w etapie 1. Ryzyko pozostaje w tym, co zależy od sterownika: tekstowa postać kolumn `M_*` (DAO ujednolica ją do ISO przez `toText`, więc zależność od sterownika jest mała) i mapowanie typów kolumn (`mercuryType`). Test na pozostałych bazach wnosiłby więc niewiele ponad to, co sprawdzono; zalecany jest jeden przebieg funkcjonalny eksportu widoku z `skipHeaderFields=false` na Oracle i MSSQL przy okazji wydania.
+
+**Odłożone bez terminu (obserwacja 118): generowanie widoków na bazie z partycjonowaną `igo_da_cases` przez aplikację (przebieg end-to-end); poziom DAO uznany przez autora za wystarczający.** Na poziomie DAO i generatora SQL sprawdzone (granice partycji z katalogu bazy, wykrywanie spraw poza zakresem, plan zapytania z odcięciem partycji w etapie 2), ale nie przez działającą aplikację na bazie utworzonej skryptami `db/postgresql` z partycjonowaniem. Wymaga osobnej bazy (kopii schematu z partycjami) i drugiego Tomcata albo zmiany `search_path`; do decyzji autora.
