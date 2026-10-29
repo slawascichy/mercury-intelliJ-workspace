@@ -425,3 +425,22 @@ Decyzja o `PARAMS`: opcja B z prefiksem. Pole `PARAMS` raportu eksportu widoku z
 | Testy | `ViewExportReportRequestTest` (6 testów: prefiks i `PARAMS`, brak wymogu dat, nazwa widoku ma pierwszeństwo, eksport spraw bez zmian, nagłówek) |
 
 Do sprawdzenia na dev (po zbudowaniu i wdrożeniu): podgląd REST, eksport do pliku przez serwer POI (adres pobrania w `DOWNLOAD_URL`), uprawnienia i maskowanie w pliku, widok z typami o różnych typach pola. Dokumentacja w `docusaurus-hgdb` i tłumaczenia kluczy `de/es/fr/ko` po sprawdzeniu.
+
+### Etap 3: weryfikacja na dev (2026-10-29)
+
+Środowisko: dev Tomcat z nowym buildem, serwer Iron POI z `mercury-server/poi-toolkit-server`, widok `Vw016Slm` nad typami `SlmAddress` i `SlmAppMobileDetails` (po 100 000 spraw), użytkownicy z rolami procesowymi (wiersze `U`). Dane testowe usunięto po teście (zostały dwa pliki xlsx otwarte w Excelu, do ręcznego usunięcia).
+
+| Przypadek | Wynik |
+|---|---|
+| Podgląd `readViewExcelData` jako `admin` | nagłówek (`m_id`, `type_code`, pola), typy kolumn, `FRAGMENT`, ostatnia strona 33334 przy `pageSize=3`, numeracja wierszy ciągła między stronami, komórki pól niedotyczących typu puste |
+| Podgląd, rola `vw016-addr` | tylko `SlmAddress`, `street` jako `###########`; `SlmAppMobileDetails`: `NO_DATA_FOUND` |
+| Podgląd, rola `vw016-both` | oba typy, pola z uprawnieniami jawnie |
+| Podgląd, rola `vw016-none` | odmowa (`You do not have sufficient privileges`) |
+| Eksport do pliku, `tester` z rolą `vw016-addr` | `COMPLETED`, plik 100 001 wierszy (tylko `SlmAddress`), `street` zamaskowane, nagłówek bez dodatkowej kolumny |
+| Eksport do pliku, `admin` | `COMPLETED` (ok. 15 minut przy 200 000 wierszach z dekodowaniem), plik 200 001 wierszy, oba typy, brak zamaskowanych komórek, adres pobrania `https://localhost:10090/load?...&efn=<plik>` |
+| `PARAMS` raportu | `[VIEW]vName=Vw016Slm&file=...&ps=1000` (w limicie 255 znaków) |
+| `ps` większe niż `mercury.view.maxPageSize` (1000) | eksport kończy się błędem walidacji `Rozmiar strony musi mieścić się w przedziale 1-1000` |
+
+Poprawki wynikłe z testu: `PoiServerLoader.createContext` tworzy użytkownika raportu przez `IModifyInfoHelper.getOrCreateUser`, w eksporcie widoku ostatnia kolumna to `dfc + headerSize - 1`, katalog danych POI w `mercury.properties` dev wskazuje na `poi-toolkit-server`, a adres pobrania w `DOWNLOAD_URL` bierze się z `excel.server.docUrl` (https). Obserwacje 114–116.
+
+Nie sprawdzono: wartości z typami innymi niż tekst (daty, liczby, słowniki z nazwami) w pliku, bo typy testowe mają tylko pola tekstowe; widoku z typami o różnych typach tego samego pola; pól LOB. Zostaje też dokumentacja w `docusaurus-hgdb` i tłumaczenia kluczy OpenAPI `de/es/fr/ko`.

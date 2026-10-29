@@ -67,8 +67,6 @@ claude --resume aa3430ea-1399-481a-aba9-9d5786b44249
 
 ## Dodałem nowe zadanie:
 
-118-Poprawienie-mechanizmów-obsługi-pamięci-podręcznych
-
 ## Strumień:
 
 >016-Widoki
@@ -80,6 +78,7 @@ claude --resume aa3430ea-1399-481a-aba9-9d5786b44249
   D110-CaseLobProperty-More-than-one-row-with-the-given-identifier-was-found
   D115-Usługa-updateCasesParamsByParams-nie-można-zaktualizować-parametru-do-null
   D116-Usługa-updateCasesParamsByParams-nie-działa-prawidłowo
+118-Poprawienie-mechanizmów-obsługi-pamięci-podręcznych
   D119-[Lucene]-Problem-wydajności-systemu-długie-zapytania-Lucene
   D121-Sortowanie-po-wybranych-parametrach-kończy-się-błędem
   D133-Swagger-implementacja
@@ -100,4 +99,5 @@ claude --resume aa3430ea-1399-481a-aba9-9d5786b44249
  B215-Nowa-komunikacja-IBM-BPM-HgDB
 >217-Reprezentowanie-użytkowników-w-kontekście
  B218-Czyściciel-starych-wersji-spraw
+219-Wydajność-generowania-plików-Excel
  
