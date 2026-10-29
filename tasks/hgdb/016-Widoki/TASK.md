@@ -1,6 +1,6 @@
 # [16] Widoki
 
-**Status (2026-10-29, wieczór): implementacja zakończona, gotowe do wydania i zamknięcia.** Etapy 0, 1, 2 i 3 (podgląd i eksport widoków do Excela) zrealizowane, podzadanie 217 zamknięte. Czeka rytuał wydań po stronie autora (sekcja „Zamknięcie zadania”, „Stan zamknięcia”). Znane luki i rzeczy odłożone: obserwacja 118 (test na partycjonowanej `igo_da_cases`), zadanie 219 (wydajność eksportu), zadanie 220 (filtry w eksporcie, not now), zadanie 218 (czyściciel starych wersji).
+**Status (2026-10-29, wieczór): zamknięte, wydane i scalone w `master`:** `mercury-lib` 3.0.4.19 (PR #33), `mercury` 3.0.4.11 (PR #221), commity w `hgdb-client-open`, `mercury-cmd`, `docusaurus-hgdb` i workspace wysłane. Etapy 0, 1, 2 i 3 (podgląd i eksport widoków do Excela) zrealizowane, podzadanie 217 zamknięte. Czeka rytuał wydań po stronie autora (sekcja „Zamknięcie zadania”, „Stan zamknięcia”). Znane luki i rzeczy odłożone: obserwacja 118 (test na partycjonowanej `igo_da_cases`), zadanie 219 (wydajność eksportu), zadanie 220 (filtry w eksporcie, not now), zadanie 218 (czyściciel starych wersji).
 
 **Podzadanie:** 217 „Reprezentowanie użytkowników” (`../217-Reprezentowanie-użytkowników-w-kontekście/TASK.md`), realizowane na gałęzi `hgdb-016`. Dotyczy tożsamości i ról w `Context`, od których zależy kontrola uprawnień widoków..
 

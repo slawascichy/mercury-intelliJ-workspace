@@ -48,8 +48,9 @@ netsh winsock reset
 
 * Obsługa Git
 ```bash
-export TAG_VERSION="2.0.0.2"
-git tag -a ${TAG_VERSION} -m "Wersja ${TAG_VERSION} bez log4j"
+export TAG_VERSION="3.0.4.11"
+git tag -a ${TAG_VERSION} -m "Wersja ${TAG_VERSION}"
+git push origin
 git push origin ${TAG_VERSION}
 ```
 ```bash
@@ -69,7 +70,7 @@ claude --resume aa3430ea-1399-481a-aba9-9d5786b44249
 
 ## Strumień:
 
->016-Widoki
+  D016-Widoki
   D039-[Lucene]-Optymalizacja-dostępu-do-IndexReader-a
 049-[CMIS]-Implementacja-API-CMIS
   D058-Logger-dynamiczne-zmiana-poziomów-logowania
@@ -89,18 +90,18 @@ claude --resume aa3430ea-1399-481a-aba9-9d5786b44249
   D190-Dokumentacja-metadane-typow
 191-Rewizja-wersji-migracja-Java17
   D192-Lokalizacja-opisow-specyfikacji-i-tekstow-stalych
- B193-Analiza-typu-porownanie-wektorowe
- B195-Lokalizacja-interfejsu-Swagger-UI
- B198-Tlumaczenie-opisow-WSDL-na-angielski
- B208-Lokalizacja-interfejsu-Swagger-UI
+   B193-Analiza-typu-porownanie-wektorowe
+   B195-Lokalizacja-interfejsu-Swagger-UI
+   B198-Tlumaczenie-opisow-WSDL-na-angielski
+   B208-Lokalizacja-interfejsu-Swagger-UI
 209-Polecenie-kalibracji-parametrow-indeksu-Lucene
 211-Aktualizacja-obrazow-Docker-i-wydanie
   D214-Migracja-logowania-na-Logback
- B215-Nowa-komunikacja-IBM-BPM-HgDB
+   B215-Nowa-komunikacja-IBM-BPM-HgDB
   D217-Reprezentowanie-użytkowników-w-kontekście
- B218-Czyściciel-starych-wersji-spraw
+   B218-Czyściciel-starych-wersji-spraw
 219-Wydajność-generowania-plików-Excel
- B220-Filtry-i-sortowanie-w-eksporcie-widoków
+   B220-Filtry-i-sortowanie-w-eksporcie-widoków
  
  
  
