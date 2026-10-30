@@ -72,7 +72,7 @@ claude --resume aa3430ea-1399-481a-aba9-9d5786b44249
 
   D016-Widoki
   D039-[Lucene]-Optymalizacja-dostępu-do-IndexReader-a
-049-[CMIS]-Implementacja-API-CMIS
+>049-[CMIS]-Implementacja-API-CMIS
   D058-Logger-dynamiczne-zmiana-poziomów-logowania
   D062-Problem-dodawanie-klucza-głównego-po-utworzniu-typu-bez-pola
   D109-CaseBusiness_changeModel-duplicate-key-value-violates-unique-constraint-igo_da_typecode_case_uk

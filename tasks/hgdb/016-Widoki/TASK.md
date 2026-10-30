@@ -519,11 +519,23 @@ Po poprawkach plik ma poprawne typy komórek (liczby, całkowite, daty z formate
 
 **Do wykonania po stronie autora:** kroki 1–6 z tabeli „Kolejność rytuału wydań”. Kroki 2–4 wymagają wydanej wersji `mercury-lib` (3.0.4.19); w `mercury` zmienia się wtedy `mercury.static.version` i przebudowuje `mercury-ws-app`, a katalog `openapi*.json` trafia do osobnego commitu.
 
-**Pełny `mvn test` w `mercury` (2026-10-29, profil `scichy-test`, baza `mercury-db-test`, `-Dmaven.test.failure.ignore=true`, 11:40 min, 24 moduły).** Bez błędów w modułach DAO, Lucene, Logic-Business (`SrvTest`), WS Application (178 testów, w tym `OpenApiResourcesTest`) i pozostałych. Dwa niepowodzenia:
+**Pełny `mvn test` w `mercury` (2026-10-29/30, profil `scichy-test`, baza `mercury-db-test`, `-Dmaven.test.failure.ignore=true`, ok. 11 min, 24 moduły).** Bez błędów w modułach DAO, Lucene, Logic-Business (`SrvTest`), WS Server, WS Application (178 testów, w tym `OpenApiResourcesTest`) i pozostałych.
 
-| Test | Opis | Ocena |
-|---|---|---|
-| `WsServerTest.testMERC_0168_Scenarios:739` (WS Server) | „Nowy typ powinien się znajdować w mapie” (pamięć podręczna typów spraw po aktualizacji typu) | Dotyczy typów spraw, nie widoków. Przypuszczenie, że nie wynika z zadania 016 (nie porównywano z czystym `master`) |
-| `AuthTest.testDataSource:220` | Filtr `/rest/services` bez tokena nie rzucił `ServletException` (`assertFalse(success)`) | Dotyczy uwierzytelniania. Możliwy wpływ lokalnej konfiguracji (LDAP na dev, zadanie 217); do sprawdzenia przed PR |
+- **`WsServerTest.testMERC_0168_Scenarios`** (test krytyczny): w pierwszym przebiegu (2026-10-29, na bazie po innych zadaniach, 24 typy) padał na `WsServerAbstract.java:739`. Po przeładowaniu danych i uruchomieniu infrastruktury (Ehcache/Terracotta na 9510, ActiveMQ na 51616, serwer POI) przechodzi samodzielnie, w klasie `WsServerTest`, po `SrvTest` i w pełnym przebiegu (2026-10-30). Wcześniejsza porażka zgadza się z podejrzeniem autora o dane testowe; dokładnego stanu bazy, który ją powodował, nie ustalono. Dwa inne nieudane przebiegi 30.10 to brak infrastruktury (Terracotta, a potem ActiveMQ: `Connection refused` przy aktualizacji typu), nie wada testu.
+- **`AuthTest.testDataSource:220`** (moduł `mercury-gui-core`): jedyne niepowodzenie, wynika z zadania 133, nie z 016 (obserwacja 119).
 
-Część scenariuszy `SrvTest` jest wyłączona flagami `test.skip.*` w profilu `scichy-test`, więc wynik nie obejmuje wszystkich scenariuszy. Przebieg od środka reaktora (`-rf`) daje fałszywe błędy `NoClassDefFound`, bo moduły są wtedy brane z `.m2`.
+Część scenariuszy `SrvTest` jest wyłączona flagami `test.skip.*` w profilu `scichy-test`, więc wynik nie obejmuje wszystkich scenariuszy. Przebieg od środka reaktora (`-rf`) daje fałszywe błędy `NoClassDefFound`, bo moduły są wtedy brane z `.m2`. Testy `mercury-ws-server` wymagają działających Terracotty i ActiveMQ.
+
+### Eksport widoku z polami nagłówka (`skipHeaderFields=false`) na Oracle i MSSQL (2026-10-30)
+
+Schematy Mercury w obu bazach były puste (bazy dostępne po naprawie routingu: `devops-box-01:1521`, `pluton:1433`). Założyłem je testem `EjbDaoTest` z `mercury-dao` (profil `scichy`, `-Ddatabse.provider=ORACLE` i `MSSQL`, `hibernate.hbm2ddl.auto=update`), który założył tabele `IGO_DA_*` i załadował dane predefiniowane (16 typów, 18 spraw). `EjbDaoTest` kończy się na obu bazach błędem w `sequenceScenario` (duplikat `IGO_DA_TYPES.ID=2`), tak samo na Oracle i MSSQL, więc to cecha scenariusza, nie bazy.
+
+Sprawdzenie wykonałem harnessem poza repozytoriami (`ViewExportCheck`, katalog scratchpadu sesji): prawdziwy `CaseViewQueryBuilder` z `skipHeaderFields=false` buduje widok na `IGO_DA_CASES` dla typu `AGENT1` (3 pola), `CaseViewDefinitionDAO` tworzy widok, odczytuje kolumny i stronę, a wartości kolumn `M_*` przechodzą przez `PoiServerWriter.presentViewHeaderValue` (ta sama funkcja co w eksporcie).
+
+| Baza | Widok | Kolumny | Odczyt | Kolumny `M_*` (20) |
+|---|---|---|---|---|
+| Oracle 23 (`FREEPDB1`) | `VALID` | 23; liczby jako `NUMBER` (`DECIMAL` -> `DOUBLE`) | 3 wiersze | wszystkie dają wartość do zapisu; daty `2013-06-13T00:00` -> `13-06-2013 00:00:00`, liczby kanoniczne |
+| MSSQL 2019 | `VALID` | 23; liczby jako `bigint` (`INTEGER` -> `LONG`), daty `datetime2` | 3 wiersze | j.w. |
+
+Widoki testowe usunięto. Ograniczenie: sprawdzono warstwę DAO, generator widoku i prezentację wartości; wysyłki pliku do serwera POI i pełnego `ExportGenerator` na tych bazach nie wykonywano (to kod niezależny od bazy).
+
