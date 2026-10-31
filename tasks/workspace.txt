@@ -23,8 +23,9 @@
 1. Nowy portal (opcja) z tłumaczeniem spraw w wersji pl + en + ko
 	018-Numer-inwentaryzacyjny
 	https://github.com/slawascichy/hgdb/issues/18
-2. Stany magazynowe + asystent AI
-3. Moje faktury
+2. Rpozytorium dokumentów
+3. Stany magazynowe + asystent AI
+4. Moje faktury
 	021-Integration-Przelicznik-walut-dla-typów-Currency
 	https://github.com/slawascichy/hgdb/issues/021
 
