@@ -514,3 +514,30 @@ Obserwacja 125 w `docs/obserwacje.md` opisuje zaszyty filtr `isDocumentType=fals
 **Budowanie.** `mercury/pom.xml`: `skipIfEmpty` w wykonaniu `maven-jar-plugin:jar`, żeby `install` rodzica nie zastępował jego `.pom` archiwum JAR (obserwacja 129). `mercury-lib/pom.xml` ma tę samą konfigurację i nie został zmieniony.
 
 **Czego nie sprawdziłem.** `testMERC_0168_Scenarios` (`mercury-ws-server`) po zmianie extractora; pozostałe pominięte scenariusze `SrvTest`.
+
+### Stan na koniec dnia 2026-10-31 i plan na 2026-11-01
+
+**Zrobione (wszystko w `hgdb-049` w `mercury`, zacommitowane przez autora):**
+- Wariant B indeksu w całości: typy `CmisFolder`/`CmisDocument` z CSV (krok 1), pole `mrc_typeIsDocumentType` i `DocumentTypeFilter` (krok 2), pola atrybutów typów dokumentowych w indeksie (krok B-3).
+- Po drodze naprawione błędy, które ujawniły testy: `QueryExtractor.checkGroupOccur` zerował wynik przy klauzuli `MUST_NOT` (obs. 126, krytyczne), statyczna mapa `AttributeTypeParameterFactory` nie była czyszczona po czyszczeniu bazy (obs. 128), `Text` po typie liczbowym kończył się mylącym `rollback-only` (obs. 136), `LuceneFieldsScenario` zależał od `caseBusinessScenario` (obs. 127), `pom.xml` rodzica zastępował swój `.pom` archiwum JAR (obs. 129).
+- Zasada „lepkiej definicji” (obs. 132, 133, 135): wartość mieszcząca się w istniejącej definicji nie tworzy nowej wersji typu. Macierz 7×7: z 34 do 0 wersji samego podtypu. Dokument: `docs/macierz-identyfikacji-typu-atrybutu.md`.
+- Ewidencja zależności scenariuszy testowych: `docs/testy-zaleznosci-scenariuszy.md`.
+
+**Otwarte:**
+- `datasetScenario` pada w zestawie, przechodzi sam (obs. 131): uruchamiać samodzielnie (`test.skip.datasetScenario=true`).
+- `luceneBackupScenario` bywa niestabilny (obs. 134).
+- `mercury-lib/pom.xml` ma tę samą konfigurację `jar` co poprawiony `mercury/pom.xml` (obs. 129): czeka na decyzję.
+- `testMERC_0168_Scenarios` po zmianie „lepkiej definicji” do ponownego uruchomienia przez autora (infrastruktura).
+- Nie zbadane: skutki zasady „lepkiej definicji” dla indeksu Lucene (`STRING` pochłaniające liczby), długie wartości `Text`/`String`, typy spoza macierzy (daty, waluta, listy).
+- Luka kroku B-3: brak testu dokumentu Lucene zbudowanego z zapisanej sprawy typu dokumentowego (do dodania z usługą CMIS). Obserwacje 123 i 124 czekają na decyzje autora.
+- Niezacommitowane w workspace: `README.md`, `docs/obserwacje.md`, `docs/testy-zaleznosci-scenariuszy.md`, `docs/macierz-identyfikacji-typu-atrybutu.md`, ten plik.
+
+**Plan na 2026-11-01 (propozycja, do potwierdzenia):**
+1. Start (autor): commit dokumentacji w workspace oraz `testMERC_0168_Scenarios` i pełny `SrvTest` po „lepkiej definicji”. Tego nie robię sam, bo infrastrukturę uruchamia autor.
+2. Powrót do głównej linii zadania, krok 3 planu etapu 1 (`CmisService`, `mercury-ws-app`, Chemistry 1.1.0). Kolejność:
+   1. Rozpoznanie (bez kodu): zależności Chemistry w POM-ach, miejsce usługi w `mercury-ws-app`, stan `FileShare*`.
+   2. Identyfikacja typów dokumentowych w `CaseBusinessSupport`: dziś typy powstają zawsze z `isDocumentType=false`. Autor chce automatycznej identyfikacji klas dokumentów, więc potrzebna decyzja, po czym klasa dokumentu jest rozpoznawana.
+   3. Szkielet usługi tylko do odczytu: `getRepositoryInfo`, `getTypeDefinition`, `getTypeChildren`, potem `getObject`, `getChildren`. Zapis (`createFolder`, `createDocument`) dopiero po odczycie.
+   4. Test dokumentu Lucene z zapisanej sprawy typu dokumentowego (luka B-3).
+3. Jeśli zostanie czas: obserwacja 134 (stabilność `luceneBackupScenario`), decyzja o `mercury-lib/pom.xml`, obserwacje 123 i 124.
+4. Na koniec etapu: dokumentacja w `docusaurus-hgdb` (gałąź `hgdb-049`, EN i PL). Zakres zaproponować autorowi przed edycją.
