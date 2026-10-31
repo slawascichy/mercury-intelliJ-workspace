@@ -494,3 +494,23 @@ Obserwacja 125 w `docs/obserwacje.md` opisuje zaszyty filtr `isDocumentType=fals
 - OK: `searchCaseScenario`, `searchCaseDocumentScenario`, `securityContextHelperScenario`, `securityContextHelperTypeParamsScenario`.
 - FAILED: `luceneFieldsScenario` („nie znalazłem pola listDates”) i `luceneIndexerScenario` („Spodziewam się konkretnego wyniku”). Oba **padają identycznie bez moich zmian** (baza porównawcza: `git stash -u` zmian kroku 3, ten sam przebieg, `git stash pop`; status repozytorium po przywróceniu identyczny). Są to wcześniejsze porażki, nie skutek zmian. Przyczyny nie badałem (przypuszczenie dla `luceneFieldsScenario`: lista pól budowana raz, przed wstawieniem danych testowych). Runner zatrzymuje się na pierwszej porażce, więc scenariusze po niej nie są uruchamiane.
 - Brak pokrycia: `testMERC_0168_Scenarios` w `mercury-ws-server` (test krytyczny) nie był uruchamiany po zmianach kroku 3.
+
+### Realizacja: błąd wyszukiwania po kroku 2, naprawa extractora i porządki testów (2026-10-31, `hgdb-049` w `mercury`)
+
+**Korekta wcześniejszego wniosku.** W sekcji „Regresja po zmianach kroku 3” napisałem, że `luceneIndexerScenario` pada identycznie bez moich zmian. To było nieprecyzyjne: porównanie przez `git stash -u` nie obejmowało commitów kroku 2, w których jest `DocumentTypeFilter`. Porażka `luceneIndexerScenario` była skutkiem mojego filtra.
+
+**Błąd (krytyczny, naprawiony).** Zapytanie `(A OR B) AND NOT (pole:x OR pole:y)` zwracało 0 trafień w `luceneIndexerScenario` (`LuceneIndexerScenario.java:1062`). Z `Scope.ALL` (filtr wyłączony) scenariusz przechodził.
+- Przyczyna: `QueryExtractor.extractGroup` przetwarza klauzule proste przed zagnieżdżonymi, a `checkGroupOccur` (`firstIsMustNot`) uznawał cały prefiks za wykluczający, gdy pierwsza klauzula była `MUST_NOT`. Mój `-mrc_typeIsDocumentType:true` był klauzulą prostą i trafiał na początek.
+- Ten sam błąd miały już zapytania użytkownika z pojedynczą negacją, np. `(A OR B) AND NOT (pole:x)` (obserwacja 126).
+- Naprawa: `QueryExtractor.checkGroupOccur`, prefiks jest wykluczający tylko wtedy, gdy wszystkie klauzule są `MUST_NOT` (`allMustNot`). `DocumentTypeFilter` zostaje bez zmian.
+- Testy: `DocumentTypeFilterTest` (`testNegatedGroupKeepsItsMeaning`, `testSingleNegatedCriterionKeepsItsMeaning`, 3 zakresy × 3 tryby optymalizatora). Nowy test pada na starym extractorze (0 zamiast 3). Moduł `mercury-lucene-indexes`: 118 testów, 0 porażek, 10 pominiętych.
+- Regresja `SrvTest` na `mercury-db-test`: `luceneIndexerScenario`, `searchCaseScenario`, `searchCaseDocumentScenario`, `luceneConfigScenario` OK.
+
+**Porządki testów.**
+- `LuceneFieldsScenario` ładuje sam `TestMrcObject.single.v2.xml` (obserwacja 127). Przebiegł OK. Pełnej niezależności od poprzednich scenariuszy nie wykazałem (definicje typów przeżywają czyszczenie schematu).
+- Nowa klasa `LuceneIndexerOnlyTest` uruchamia tylko `LuceneIndexerScenario` (poza `SrvTest`).
+- `forceAddPKScenario` pada w pełnym przebiegu `SrvTest` (`expected:<2> but was:<3>`), osobno przechodzi (obserwacja 128, przyczyna nieustalona).
+
+**Budowanie.** `mercury/pom.xml`: `skipIfEmpty` w wykonaniu `maven-jar-plugin:jar`, żeby `install` rodzica nie zastępował jego `.pom` archiwum JAR (obserwacja 129). `mercury-lib/pom.xml` ma tę samą konfigurację i nie został zmieniony.
+
+**Czego nie sprawdziłem.** `testMERC_0168_Scenarios` (`mercury-ws-server`) po zmianie extractora; pozostałe pominięte scenariusze `SrvTest`.
