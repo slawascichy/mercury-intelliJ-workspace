@@ -469,3 +469,28 @@ Ta decyzja **zastępuje** wcześniejszą definicję „folder `CmisFolder` i pli
 2. Stare ścieżki modelu 2.0 (`CaseIndexer.searchIndex`, `buildSimpleQueryClause`, `createOneQuery`, oznaczone `@Deprecated`) nie dostały filtra, zgodnie z zasadą, że model 2.0 jest tylko wsteczny.
 3. Nie sprawdzono na pełnym indeksie (mapper produkcyjny z Springiem): że pole `mrc_typeIsDocumentType` trafia do dokumentu Lucene i że wyszukiwanie spraw na indeksie z dokumentami działa end-to-end. Do zrobienia w testach `mercury-srv` (scenariusze Lucene na bazie testowej).
 4. Atrybuty (pola `Cmis*`) typów dokumentowych: mapa atrybutów „ForCasesOnly” je pomija, więc wyszukiwanie po tych polach wymaga osobnej zmiany.
+
+### Realizacja: wariant B, krok 3, pola atrybutów typów dokumentowych w indeksie (2026-10-31, `hgdb-049` w `mercury`, niezacommitowane)
+
+Cel: pola typów dokumentowych (np. `CmisMimeType`) są znane parserowi zapytań i indeksowaniu, bez pętli `request4RefreshLuceneFields()`. Wybrane warianty (decyzje autora): zapytania dynamiczne w DAO zamiast zmian w `mercury-lib` i jedna lista pól (suma spraw i dokumentów, wariant B-1).
+
+**Zmiany (wszystko w `mercury`):**
+
+| Moduł | Zmiana |
+|---|---|
+| `mercury-dao-api`, `mercury-dao` | `IParamDefinitionDAO`/`ParamDefinitionDAO`: `getAttrsForIndexAllVersions` (suma definicji z `QgetForCasesOnlyAllVersions` i `QgetForDocumentsOnlyAllVersions`, bez powtórzeń po nazwie i wersji) oraz `findAllVersionsByTypeId` (zapytanie dynamiczne bez filtra rodzaju typu) |
+| `mercury-dao-api`, `mercury-dao` | `ITypeParamDAO`/`TypeParamDAO`: `findByParamDefinitionNameWithOutCache` (zapytanie dynamiczne bez filtra rodzaju typu) |
+| `mercury-dao` | `SecurityContextHelper.getBaseInfo` używa nowej metody zamiast `QsearchByParamDefinitionName` (w `mercury-lib` z filtrem `isDocumentType=false`); to trzecie źródło, którego nie przewidziałem w rozpoznaniu: bez tej zmiany lista pól typu `CmisDocument` miała tylko 3 pola wspólne z folderem |
+| `mercury-srv` | `CaseAttributesSecretaryAction` używa `getAttrsForIndexAllVersions`; `CaseAttributtesManager` używa `findAllVersionsByTypeId` |
+
+**Testy:**
+- `EjbDaoTest` (na `mercury-db-test`): nowy `DocumentTypeAttributesScenario`, w tym `CmisFolder` 3 definicje i `CmisDocument` 12 definicji, stare zapytanie „tylko sprawy” nie zwraca definicji dokumentu, a lista pól indeksu zawiera pola obu typów bez powtórzeń.
+- `DocumentTypeFieldsTest` w `mercury-srv` (osobna klasa z jednym scenariuszem `DocumentTypeFieldsScenario`, poza `SrvTest`): lista pól parsera i lista pól typu `CmisDocument` w kontekście systemowym zawierają wszystkie 11 pól dokumentowych. Test wykrył brakujące trzecie źródło (porażka z 3 polami).
+- Czego nie ma: dokumentu Lucene zbudowanego z zapisanej sprawy typu dokumentowego. `CaseMapper.convert2Document` pobiera sprawę z bazy po id (`caseDAO.findForIndex`), więc test wymaga zapisanej sprawy; do dodania razem z usługą CMIS (krok 3 planu etapu 1). Nie sprawdziłem też w tym teście, że `request4RefreshLuceneFields()` nie jest wywoływane; na tym etapie sprawdzono tylko, że wszystkie źródła list pól zawierają pola dokumentowe.
+
+Obserwacja 125 w `docs/obserwacje.md` opisuje zaszyty filtr `isDocumentType=false` w `mercury-lib`.
+
+**Regresja po zmianach kroku 3 (2026-10-31).** Lokalny profil `scichy-test` pomija większość scenariuszy `SrvTest` (`test.skip.<nazwa>=true` w `mercury-srv/src/test/resources-filtered/properties/scichy-test/test.properties`; parametr `-D` nie nadpisuje pliku). Za zgodą autora włączyłem tymczasowo sześć scenariuszy i przywróciłem plik z kopii (bajt w bajt):
+- OK: `searchCaseScenario`, `searchCaseDocumentScenario`, `securityContextHelperScenario`, `securityContextHelperTypeParamsScenario`.
+- FAILED: `luceneFieldsScenario` („nie znalazłem pola listDates”) i `luceneIndexerScenario` („Spodziewam się konkretnego wyniku”). Oba **padają identycznie bez moich zmian** (baza porównawcza: `git stash -u` zmian kroku 3, ten sam przebieg, `git stash pop`; status repozytorium po przywróceniu identyczny). Są to wcześniejsze porażki, nie skutek zmian. Przyczyny nie badałem (przypuszczenie dla `luceneFieldsScenario`: lista pól budowana raz, przed wstawieniem danych testowych). Runner zatrzymuje się na pierwszej porażce, więc scenariusze po niej nie są uruchamiane.
+- Brak pokrycia: `testMERC_0168_Scenarios` w `mercury-ws-server` (test krytyczny) nie był uruchamiany po zmianach kroku 3.
