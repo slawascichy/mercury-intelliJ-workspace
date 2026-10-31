@@ -63,14 +63,16 @@ dla wybranego podzbioru metod, a przed wydaniem trzeba rozstrzygnąć, czy endpo
 
 Tylko odczyt kodu. Nic nie zmieniono w kodzie ani w konfiguracji. Przypuszczenia są oznaczone.
 
-### Definicje robocze (autor, 2026-10-30)
+### Definicje robocze (autor, zmiana z 2026-10-31)
 
 - **Sprawa**: obiekt sprawy z typem, który ma `isDocumentType=false`.
-- **Dokument**: obiekt sprawy z typem, który ma `isDocumentType=true`. W tym znaczeniu dokumentem jest zarówno folder (`CmisFolder`), jak i plik (`CmisDocument`). Poniżej „folder” i „dokument plikowy” oznaczają te dwa typy.
+- **Folder**: (`CmisFolder`) obiekt sprawy z typem, który ma `isDocumentType=false`, tożsamy ze zwykłą sprawą.
+- **Dokument**: obiekt sprawy z typem, który ma `isDocumentType=true`. 
 
-### Ustalenia autora (2026-10-30)
 
-1. Folder i Dokument są sprawami, a definicje ich typów mają `isDocumentType=true`.
+### Ustalenia autora (zmiana z 2026-10-31)
+
+1. Folder i Dokument są sprawami, a definicje ich typów mają odpowiednio `isDocumentType=false` (dla folderu) oraz `isDocumentType=true` dla dokumentu.
 2. Typy Folder i Dokument trzeba zdefiniować jako predefiniowane, analogicznie jak `BpmBPDInstance` i `BpmTask`.
 3. Obsługiwane wiązania i wersje CMIS są już ustalone w `web.xml`.
 4. Foldery nie są katalogami na dysku.
@@ -82,7 +84,7 @@ Tylko odczyt kodu. Nic nie zmieniono w kodzie ani w konfiguracji. Przypuszczenia
 10. Tabela proponowanych pól typów jest dobrym punktem wyjścia (odpowiedź „Tak”).
 11. Plik czytamy w kontekście systemowym po sprawdzeniu uprawnień sprawy (omija `checkPrivileges` z rolą twórcy).
 12. `CN001RequiredNodeNotAvailableException` wystarcza w pierwszym wydaniu: to czasowa niedostępność strumienia pliku.
-13. Mount point to identyfikator repozytorium. Foldery to obiekty spraw z typem `isDocumentType=true`; wewnętrznie nic się nie zmienia, wykorzystujemy istniejące mechanizmy; przy prezentacji `#` zamieniamy na `/`.
+13. Mount point to identyfikator repozytorium. Foldery to obiekty spraw z typem `isDocumentType=false` (zmiana z 2026-10-31; wcześniej `true`); wewnętrznie nic się nie zmienia, wykorzystujemy istniejące mechanizmy; przy prezentacji `#` zamieniamy na `/`.
 14. Dla spraw typu dokument powstaje indeks Lucene w drzewie „Document”. CMIS-QL tłumaczymy na Lucene, na początek podstawowe funkcje niezbędne do wyszukiwania dokumentów.
 15. Role takie same jak w sprawach.
 16. Limit pliku konfigurowalny w `mercury.properties`, domyślnie 10 MB.
@@ -232,6 +234,7 @@ Przejścia: `createDocument` -> `A` (wersja 1.0); `checkOut` -> nowa wersja `O` 
 
 ### Wyszukiwanie: indeks „Document” i CMIS-QL (etap 2)
 
+- **Zastąpione wariantem B (2026-10-31):** osobny indeks „Document” opisany niżej został porzucony. Sprawy i dokumenty są w jednym indeksie „Case”, dokument ma pole `mrc_typeIsDocumentType`, a wyszukiwanie zawęża `DocumentTypeFilter` (sprawy domyślnie, dokumenty na żądanie). Szczegóły w sekcjach „Wariant B” i „Realizacja: wariant B” na końcu dokumentu. Opis poniżej zostaje jako zapis rozważanej wersji.
 - Indeksy Lucene są dziś nazwane od encji (`Case`, `CaseDocument`, `Comment`, …); „Case” obsługuje `CaseMapper`. Nowy indeks „Document” dla dokumentów (ustalenie 14) wymaga: kierowania spraw z typem `isDocumentType=true` do osobnego indeksu zamiast „Case” (do zbadania w `CaseMapper` i indeksatorach), przebudowy po wdrożeniu i zgodności z modelem wyszukiwania 3.0. Zdecyduj, czy indeks ma powstać już w etapie 1, żeby dokumenty były indeksowane od początku (przypuszczenie: unikniemy późniejszej przebudowy).
 - Proponowany podzbiór CMIS-QL na start: `SELECT` z `cmis:document` i `cmis:folder` (oraz typów pochodnych), `WHERE` z `=`, `<>`, `<`, `>`, `<=`, `>=`, `LIKE`, `IN`, `IS NULL`, `AND`, `OR`, `NOT`, `IN_FOLDER(id)`, `IN_TREE(id)`, `ORDER BY`; bez `JOIN`; `CONTAINS` tylko na metadanych (treść plików nie jest indeksowana, przypuszczenie).
 
@@ -327,7 +330,7 @@ Wcześniejsze ustalenia (typy `CmisFolder` i `CmisDocument` z CSV, rodzaj `BaseD
 | Krok | Zakres | Repozytorium |
 |---|---|---|
 | 1 | Typy predefiniowane z CSV: rodzaj `BaseDocuments`, kody `CmisFolder` i `CmisDocument`, `TypeCase`, `ParamDefinition`, `TypeParam`, `Type2Type`, flaga `isDocumentType` w loaderze `TypeCaseLoader`, wyliczenie `TypeCaseName`; test ładowania | `mercury` (`mercury-entities-ids`) |
-| 2 | Indeks Lucene „Document”: kierowanie spraw z `isDocumentType=true` do osobnego indeksu, mapper i indeksator, zgodność z modelem 3.0 | `mercury` (`mercury-lucene-indexes`) |
+| 2 | ~~Indeks Lucene „Document”: osobny indeks~~ **Zastąpione wariantem B (2026-10-31):** jeden indeks „Case”, pole `mrc_typeIsDocumentType` dla dokumentów, filtr zakresu wyszukiwania (`DocumentTypeFilter`); zrobione w dwóch częściach (pole w `TypeCaseMapper`, filtr w `QueryExplainPlan` i `DateMetricQuery`), luki w sekcji „Realizacja: wariant B, krok 2” | `mercury` (`mercury-lucene-indexes`) |
 | 3 | Warstwa dostępu CMIS (`CmisService` oparte o logikę Mercury): repozytorium i typy (`getRepositoryInfo`, `getTypeDefinition`, `getTypeChildren`), obiekty (`getObject`, `getObjectByPath`, `getChildren`, `createFolder`, `createDocument`, `updateProperties`, `deleteObject`), treść (`getContentStream`, `setContentStream`) przez `IFileIndexLogicInternal` w kontekście systemowym po sprawdzeniu uprawnień sprawy | `mercury` (`mercury-ws-app`) |
 | 4 | Reguły: unikalność `cmis:name`, rozwiązywanie ścieżek z nazw, limit rozmiaru (`getMaxContentSize`), mapowanie `CN001` i `FI001` na wyjątki CMIS | `mercury` |
 | 5 | Uwierzytelnianie i SSO: filtr przed serwletami CMIS (Bearer jak `OAuthFilter`, Basic w tym samym realmie), ten sam `Context` (model zadania 217), wzorce ścieżek CMIS w konfiguracji OAuth | `mercury` (`mercury-ws-app`) |
@@ -346,7 +349,7 @@ Zrobione w `mercury-entities-ids` (niezacommitowane):
 |---|---|
 | Rodzaj typu | `dict/TypeKind.csv`: `BaseDocuments` (klucz zasobu `typeKind.baseDocuments.description`) |
 | Kody typów | `attr/TypeCode.csv`: `CmisFolder`, `CmisDocument`; wyliczenia `TypeCodeName` i `TypeCaseName` rozszerzone o te nazwy |
-| Typy | `attr/TypeCase.csv`: nowa kolumna `IS_DOCUMENT_TYPE`; wiersze `-6 CmisFolder` i `-7 CmisDocument` (wersja 1, rodzaj `BaseDocuments`, `isDocumentType=true`, nieedytowalne) |
+| Typy | `attr/TypeCase.csv`: nowa kolumna `IS_DOCUMENT_TYPE`; wiersze `-6 CmisFolder` i `-7 CmisDocument` (wersja 1, rodzaj `BaseDocuments`, nieedytowalne; `isDocumentType`: `-7 CmisDocument` = `true`, `-6 CmisFolder` = `false` po korekcie z 2026-10-31, przy pierwszym zapisie było `true`) |
 | Loader | `TypeCaseLoader`: czyta kolumnę `IS_DOCUMENT_TYPE` (indeks 11); gdy jej brak, ustawia `false` (sprawa) |
 | Definicje pól | `attr/ParamDefinition.csv`: 12 definicji (`CmisName`, `CmisTitle`, `CmisDescription`, `CmisAuthor`, `CmisMimeType`, `CmisFileName`, `CmisContentSize`, `CmisContentStreamId`, `CmisVersionLabel`, `CmisCheckinComment`, `CmisIsMajorVersion`, `CmisIsImmutable`) |
 | Pola typów | `attr/TypeParam.csv`: `CmisFolder` 3 pola (nazwa wymagana, tytuł, opis), `CmisDocument` 12 pól (jak w tabeli pól typów; `CmisContentStreamId` bez indeksowania) |
@@ -391,14 +394,14 @@ Kroki 3–7 planu (CmisService, reguły, filtr SSO, usunięcie `FileShare*`, tes
 
 Autor wybrał wariant B (jeden indeks „Case” plus filtr). Ustalone w kodzie `mercury`:
 
-- **Pole nie jest dziś indeksowane.** `TypeCase.isDocumentType` nie ma adnotacji `@LuceneSeracherField` (mają ją tylko `id`, nazwa, opis i `accountNumber`), więc w indeksie nie ma pola „czy dokument”. Adnotacja leży w `mercury-lib` (inne repozytorium), więc nie dotykamy jej. Wzorzec obejścia już istnieje: `TypeCaseMapper` dodaje ręcznie pole `sourceOfObject` (`getLuceneFields` + `convert2Document`). Tak samo można dodać pole `mrc_type.isDocumentType` (StringField, tylko dla dokumentów).
+- **Pole nie jest dziś indeksowane.** `TypeCase.isDocumentType` nie ma adnotacji `@LuceneSeracherField` (mają ją tylko `id`, nazwa, opis i `accountNumber`), więc w indeksie nie ma pola „czy dokument”. Adnotacja leży w `mercury-lib` (inne repozytorium), więc nie dotykamy jej. Wzorzec obejścia już istnieje: `TypeCaseMapper` dodaje ręcznie pole `sourceOfObject` (`getLuceneFields` + `convert2Document`). Tak samo można dodać pole `mrc_typeIsDocumentType` (StringField, tylko dla dokumentów).
 - **Istniejące indeksy nie wymagają przebudowy.** Dotychczas indeksowane obiekty to sprawy. Filtr „brak pola `isDocumentType:true`” (`MUST_NOT`) przepuszcza je bez reindeksu. Pole dostają tylko nowe dokumenty.
 - **Brak jednego miejsca na filtr.** Zapytania o sprawy powstają w kilku miejscach: `QueryExplainPlan` (model 3, zapytanie Lucene od użytkownika), `FieldMetricQuery`, `DateMetricQuery`, `CaseIndexer.createOneQuery` i `buildSimpleQueryClause` (stare ścieżki, model 2), `CaseSearcher` (4 użycia indeksu „Case”), `CaseSearchExtRest`. `SecurityQueryHelper` sprawdza tylko uprawnienia do pól, nie dokłada klauzul.
 - **Uprawnienia typów już zawężają wyniki.** `CaseIndexer.checkPrivilegesForParams` dokłada obowiązkowe warunki po kodzie i id typu, ale tylko gdy użytkownik poda typ. Użytkownik z prawem do wszystkich typów (`isAllRO`) szuka bez typu, więc bez filtra zobaczy też dokumenty.
 - **Typy w indeksie są już rozróżnialne po kodzie.** Pola `mrc_type.codeValue`/`codeName` istnieją, więc alternatywą do pola logicznego jest filtr po zbiorze kodów typów dokumentowych (`IDocumentTypesManager`), ale zbiór zmienia się z typami (wersje, nowe typy), więc pole jest trwalsze (przypuszczenie).
 
 **Proponowane kroki wariantu B (do zatwierdzenia):**
-1. Indeksowanie: pole `mrc_type.isDocumentType` w `TypeCaseMapper` (zwykły dopisek jak `sourceOfObject`), test jednostkowy mappera bez bazy.
+1. Indeksowanie: pole `mrc_typeIsDocumentType` w `TypeCaseMapper` (zwykły dopisek jak `sourceOfObject`), test jednostkowy mappera bez bazy.
 2. Jedna metoda w `CaseIndexer` budująca klauzulę „tylko sprawy”, wywołana w `QueryExplainPlan`, metrykach i ścieżkach `CaseSearcher`/`CaseSearchExtRest`; flaga w kontekście zapytania pozwala CMIS szukać „tylko dokumenty”.
 3. Testy: istniejące scenariusze wyszukiwania nie zmieniają wyników (dokumentów brak), nowy test: sprawa i dokument w jednym indeksie, wyszukiwanie spraw pomija dokument, wyszukiwanie dokumentów pomija sprawę.
 
@@ -417,7 +420,7 @@ Ta decyzja **zastępuje** wcześniejszą definicję „folder `CmisFolder` i pli
 
 **Skutki do zrealizowania (propozycje, jeszcze nie wykonane):**
 1. `CmisFolder` (typ `-6`) ma mieć `isDocumentType=false`. Dotyczy to `TypeCase.csv` i jego lustra w `mercury-entities-ids/resources` i `mercury-srv/resources`, oraz testu `PredefinedDocumentTypesTest` (dziś oczekuje `TRUE` dla folderu). Zmiana jest już zacommitowana w kroku 1 (`d102994af`), więc to nowa zmiana w gałęzi `hgdb-049`.
-2. Wariant B upraszcza się: foldery zostają w „Case” bez filtra, filtrować trzeba tylko dokumenty (pole `mrc_type.isDocumentType` i klauzula „tylko sprawy” w wyszukiwaniu spraw).
+2. Wariant B upraszcza się: foldery zostają w „Case” bez filtra, filtrować trzeba tylko dokumenty (pole `mrc_typeIsDocumentType` i klauzula „tylko sprawy” w wyszukiwaniu spraw).
 3. Automatyczna identyfikacja typów: dla spraw działa już dziś (`CaseBusinessSupport` ustawia `isDocumentType=false`). Brakuje ścieżki, w której ten sam mechanizm tworzy typy z `isDocumentType=true` (dokumenty).
 4. Każda sprawa w drzewie `CaseCatalog` pod mount pointem jest folderem CMIS. Folder musi mieć `cmis:name`, więc dla dowolnej sprawy trzeba ustalić źródło nazwy (np. pole `CmisName`, jeśli typ je ma; w przeciwnym razie wartość zastępcza). Do decyzji.
 5. Dokument nie może mieć dzieci w katalogu. Dodawanie węzła pod dokumentem trzeba odrzucać.
@@ -445,7 +448,24 @@ Ta decyzja **zastępuje** wcześniejszą definicję „folder `CmisFolder` i pli
 
 ### Realizacja: wariant B, krok 1, pole `isDocumentType` w indeksie (2026-10-31, `hgdb-049` w `mercury`, niezacommitowane)
 
-- `TypeCaseMapper` (`mercury-lucene-indexes`): stałe `IS_DOCUMENT_TYPE` (`isDocumentType`), `IS_DOCUMENT_TYPE_VALUE` (`true`), pole zadeklarowane w `getLuceneFields()` (StringField, bez zapisu, bez rozróżniania wielkości liter, wzorzec jak `sourceOfObject`). `convert2Document` dodaje pole tylko dla typów z `isDocumentType=true`. Brak pola oznacza sprawę, więc istniejące indeksy nie wymagają przebudowy. W indeksie pole nazywa się `mrc_type.isDocumentType` (prefiks typu w modelu 3; sprawdzone w teście z prefiksem `mrc_type`, nie na pełnym indeksie).
+- `TypeCaseMapper` (`mercury-lucene-indexes`): stałe `IS_DOCUMENT_TYPE` (`isDocumentType`), `IS_DOCUMENT_TYPE_VALUE` (`true`), pole zadeklarowane w `getLuceneFields()` (StringField, bez zapisu, bez rozróżniania wielkości liter, wzorzec jak `sourceOfObject`). `convert2Document` dodaje pole tylko dla typów z `isDocumentType=true`. Brak pola oznacza sprawę, więc istniejące indeksy nie wymagają przebudowy. W indeksie pole nazywa się `mrc_typeIsDocumentType` (prefiks typu w modelu 3; sprawdzone w teście z prefiksem `mrc_type`, nie na pełnym indeksie).
 - Nowy test `TypeCaseMapperDocumentTypeTest` (4 testy): pole zadeklarowane, dokument ma pole z wartością `true`, sprawa (`false`) i typ bez flagi (`null`) pola nie mają. Wynik 4/4; `CaseMapperTest` i `CaseMapperStoreTest` też przechodzą.
 - Pełny przebieg testów modułu `mercury-lucene-indexes` (110 testów) dał 62 niepowodzenia w klasach wymagających Ehcache/Terracotty (`localhost:9510`: „Connection refused”). Infrastruktura nie była uruchomiona, więc nie ocenia to zmiany. Do powtórzenia po starcie Terracotty.
 - Plik `TypeCaseMapper.java` ma w indeksie LF (po edycji narzędziem wróciłem do LF).
+
+**Korekta nazwy pola (2026-10-31):** w indeksie pole nazywa się `mrc_typeIsDocumentType` (nie `mrc_type.isDocumentType`). `EntityHelper.addPrefixName` skleja prefiks z nazwą pisaną wielką literą (jak `mrc_typeCodeValue`). Wcześniejsze wpisy poprawiono.
+
+### Realizacja: wariant B, krok 2, zawężanie wyszukiwania do spraw lub dokumentów (2026-10-31, `hgdb-049` w `mercury`, niezacommitowane)
+
+- `CaseMapper`: stała `LUCENE_TYPE_IS_DOCUMENT_TYPE` (`mrc_typeIsDocumentType`), dopisana do pól specjalnych.
+- Nowa klasa `org.mercury.lucene.query.DocumentTypeFilter`: zakres wyszukiwania `Scope` (`CASES` domyślnie, `DOCUMENTS`, `ALL`) w parametrze żądania `org.mercury.lucene.query.scope` (`setScope(context, scope)`); `apply(context, query)` dopisuje do sparsowanego zapytania klauzulę `MUST_NOT` (sprawy) albo `MUST` (dokumenty) na polu `mrc_typeIsDocumentType:true`. Zapytanie, które samo wymienia to pole, zostaje bez zmian.
+- Podpięcie: `QueryExplainPlan.prepareSubPlan` (po sprawdzeniu uprawnień, przed `QueryExtractor`; obejmuje też plan rodzica przy JOIN) oraz `DateMetricQuery.prepare`. `CaseSearcher` i `CaseSearchExtRest` korzystają z tych ścieżek.
+- **Ważne ustalenie:** filtr jako tekst `+(A AND B) -pole:wartość` daje 0 wyników, bo `QueryExtractor` traktuje zagnieżdżone `BooleanQuery` jak zapytania do spraw zależnych. Dlatego warunek jest dopisywany do głównego `BooleanQuery` (bez zagnieżdżania). Dla dokumentów i zapytania z samymi klauzulami `SHOULD` (np. `A OR B`) zapytanie jest zagnieżdżane, bo dopisanie `MUST` uczyniłoby `SHOULD` opcjonalnymi; ten wariant jest pokryty testem.
+- Test `DocumentTypeFilterTest` (6 testów, indeks w pamięci, trzy tryby optymalizatora `cost`/`rootFirst`/`none`): rozdzielenie spraw i dokumentów, łączenie z innymi kryteriami, zapytania `OR`, zapytanie z jawnym polem, przypadki brzegowe. Pole dokumentu jest dodawane do parsera w teście, bo fixture `LuceneSearchableFields.json` go nie zawiera (produkcyjny mapper deklaruje je przez `TypeCaseMapper`).
+- Wynik: moduł `mercury-lucene-indexes` 116 testów, 0 niepowodzeń, 10 pominiętych (przy działającej Terracotcie).
+
+**Luki (świadomie nie ruszone):**
+1. `FieldMetricQuery` (statystyki wartości pola) enumeruje terminy całego indeksu, więc zliczy też dokumenty. Wymaga osobnego rozwiązania (zliczanie przez zapytanie z filtrem).
+2. Stare ścieżki modelu 2.0 (`CaseIndexer.searchIndex`, `buildSimpleQueryClause`, `createOneQuery`, oznaczone `@Deprecated`) nie dostały filtra, zgodnie z zasadą, że model 2.0 jest tylko wsteczny.
+3. Nie sprawdzono na pełnym indeksie (mapper produkcyjny z Springiem): że pole `mrc_typeIsDocumentType` trafia do dokumentu Lucene i że wyszukiwanie spraw na indeksie z dokumentami działa end-to-end. Do zrobienia w testach `mercury-srv` (scenariusze Lucene na bazie testowej).
+4. Atrybuty (pola `Cmis*`) typów dokumentowych: mapa atrybutów „ForCasesOnly” je pomija, więc wyszukiwanie po tych polach wymaga osobnej zmiany.
