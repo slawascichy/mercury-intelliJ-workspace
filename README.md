@@ -184,6 +184,8 @@ Używaj ich do pomiarów (zadanie 119), obok indeksu wygenerowanego testem `Luce
   [docusaurus-hgdb](docs/moduly/docusaurus-hgdb.md)
 - [Wydanie 3.0.4.2 – zmiana formatu XML i kontrola wersji węzłów](docs/wydanie-3.0.4.2.md)
 - [Obserwacje z analizy i kandydaci do udoskonaleń](docs/obserwacje.md)
+- [Ewidencja zależności i konfliktów scenariuszy testowych](docs/testy-zaleznosci-scenariuszy.md)
+- [Macierz identyfikacji typu atrybutu (wersje typów i definicji)](docs/macierz-identyfikacji-typu-atrybutu.md)
 
 ## Licencja
 
