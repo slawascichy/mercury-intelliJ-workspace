@@ -35,6 +35,23 @@
 # Obsługa zadań
 ####################
 
+Kroki dla Apache Chemistry CMIS Workbench (wersja 1.1.0, wymaga Javy):
+1. Pobranie
+- chemistry-opencmis-workbench-1.1.0-bin.zip ze strony Apache Chemistry (archiwum wydań OpenCMIS). https://archive.apache.org/dist/chemistry/opencmis/1.1.0/
+- Rozpakuj i uruchom workbench.bat (Windows).
+2. Okno logowania (zakładka „Connection”)
+Wybierz ręcznie wiązanie Browser, bo jest sprawdzone curl-em:
+- Binding: Browser
+- Browser URL: http://127.0.0.1:8080/mercury-ws-app/browser
+- Authentication: Standard
+- Username / Password: admin / admin (dane testowe dev)
+- Compression / Cookies: bez zmian.
+Kliknij Load Repositories. Powinno pojawić się repozytorium documents. Zaznacz je i kliknij Connect.
+3. Wiązanie Atom (opcjonalnie)
+- Binding: AtomPub, ATOM Pub URL: http://127.0.0.1:8080/mercury-ws-app/atom11 (albo /atom dla CMIS 1.0).
+- Pozostałe pola bez zmian.
+####################
+
 * Problem z uruchomieniem Active MQ
 * Sprawdź, co dokładnie blokuje port (np. port 61616)
 ```cmd
@@ -79,6 +96,7 @@ claude --resume aa3430ea-1399-481a-aba9-9d5786b44249
   D109-CaseBusiness_changeModel-duplicate-key-value-violates-unique-constraint-igo_da_typecode_case_uk
   D110-CaseLobProperty-More-than-one-row-with-the-given-identifier-was-found
   D115-Usługa-updateCasesParamsByParams-nie-można-zaktualizować-parametru-do-null
+>114-Obsługa-indeksowania-przez-dedykowanych-sekretarz-indeksu
   D116-Usługa-updateCasesParamsByParams-nie-działa-prawidłowo
 118-Poprawienie-mechanizmów-obsługi-pamięci-podręcznych
   D119-[Lucene]-Problem-wydajności-systemu-długie-zapytania-Lucene
@@ -101,7 +119,7 @@ claude --resume aa3430ea-1399-481a-aba9-9d5786b44249
    B215-Nowa-komunikacja-IBM-BPM-HgDB
   D217-Reprezentowanie-użytkowników-w-kontekście
    B218-Czyściciel-starych-wersji-spraw
-219-Wydajność-generowania-plików-Excel
+219-Wydajność-generowania-plików-ExcelOpcja
    B220-Filtry-i-sortowanie-w-eksporcie-widoków
  
  
