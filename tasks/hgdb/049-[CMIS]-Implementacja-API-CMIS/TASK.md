@@ -667,3 +667,40 @@ Obserwacja 125 w `docs/obserwacje.md` opisuje zaszyty filtr `isDocumentType=fals
 **Testy:** `MercuryCmisContentTest` (11, mechanizm plików i biznes podstawione): zapis i opis treści, domyślna nazwa i typ MIME, blokada pól treści, limit (deklarowany i rzeczywisty), typ bez pól treści, brak sieroty po błędzie zapisu, odczyt i zakresy, mapowanie błędów (brak treści, brak pliku, węzeł niedostępny), zastąpienie i usunięcie treści, usunięcie dokumentu. Razem 44 testy CMIS w `mercury-ws-app` bez błędów. Scenariusz `CmisContentFileScenario` (`CmisContentFileTest`, baza testowa, 1 z 1) sprawdza na prawdziwej logice ścieżkę, na której opiera się treść: `saveFile`, `findFileByFileName`, `find` po identyfikatorze, `copy2OutputStream`, `deleteFile`. Nowy klucz profilu: `test.skip.package.CmisContentFileTest=true` (w `scichy-test` dodany; w `scichy` dopisuje autor).
 
 **Nie sprawdzone:** zapis i odczyt między węzłami klastra, rzeczywiste uprawnienia użytkownika do sprawy, duże pliki (pamięć), daty modyfikacji treści, `checkOut`/`checkIn`.
+
+### Pierwszy test na działającym serwerze dev (2026-11-01, `http://127.0.0.1:8080/mercury-ws-app`)
+
+Użytkownik testowy: domyślny administrator (dane podał autor). Badane `curl`-em przez wiązanie Browser (JSON) i Atom.
+
+**Zweryfikowane na serwerze:**
+- Start: w dzienniku `Utworzono folder główny 'CmisFolder.5783302' repozytorium CMIS 'documents'`; brak błędów autowiringu `webService.xml`.
+- Bez uwierzytelnienia `/atom`, `/atom11`, `/browser`: 401 z `WWW-Authenticate: Basic realm="CMIS"`; `/cmisws10`, `/cmisws11` (GET): 200 (strona opisowa usługi). Błędne dane Basic i śmieciowy Bearer: 401. Przy wyłączonym LDAP realm zwracał `null` (log `CommunicationException`), więc 401; po starcie LDAP Basic działa.
+- Basic (admin) w realmie klienta `GIUPortalClient`: dokument usługi Atom (`documents`, kolekcja główna z id folderu głównego) oraz lista repozytoriów wiązania Browser z poprawnym `rootFolderId`.
+- Typy: dwa typy bazowe; pod `cmis:folder`: `CalendarUser*`, `CmisFolder`, `BpmBPDInstance`, `BpmTask`, `MrcUnknownBusinessObject`; pod `cmis:document`: `CmisDocument`; definicja typu `CmisDocument` zwracana z właściwościami.
+- `children` folderu głównego po identyfikatorze: pusta lista (poprawnie).
+
+**Błędy znalezione i naprawione w kodzie (wymagają ponownego wdrożenia WAR):**
+1. `getObject` kończył się błędem `failed to lazily initialize a collection of role ...TypeCase.typeParams`: pola typu dołączonego do sprawy są ładowane leniwie, a poza transakcją nie da się ich odczytać. Naprawa: `MercuryCmisObjectManager.fullType` pobiera pełny typ (`ITypeCaseLogic.find(context, id, true)`) przy wczytaniu sprawy, dzieci i rodziców; `MercuryCmisObjectWriter` robi to samo dla typu z `findLastVersionByTypeCode`. Ten sam błąd groził zapisowi i treści.
+2. Adres `.../browser/documents/root?cmisselector=children` (bez `objectId`) kończył się „Not supported!”, bo wiązanie szuka obiektu po ścieżce `/`, a `getObjectByPath` nie był zaimplementowany. Dodane: `getObjectByPath` (ścieżka z nazw CMIS od folderu głównego, `/` to folder główny) i `cmis:path` folderu w `getObject` (liczone przez przejście w górę drzewa; dla listy dzieci nie jest liczone).
+3. Informacja o repozytorium deklarowała `capabilityContentStreamUpdatability: none`, mimo obsługi `setContentStream`; zmienione na `ANYTIME`.
+
+**Uwagi z testu:** opis typów (`description`) pokazuje niewyrenderowany znacznik zasobu (`${cmis.document.typeCase.description}`); nazwa wyświetlana to kod typu. Do poprawy przez wyrenderowanie kluczy zasobów w `MercuryCmisTypeManager`. Wywołania z błędnym tokenem Bearer zapisują w dzienniku ostrzeżenie ze stack trace (kod wspólny z REST, `RestServicesHelper.createContextBasedOnOAuth`).
+
+**Testy po zmianach:** 45 testów CMIS w `mercury-ws-app` bez błędów (nowy: ścieżki i `cmis:path`).
+
+## Refaktor do warstwy biznesowej i poprawki klastrowe (2026-11-01)
+
+Logika domenowa CMIS przeniesiona z `mercury-ws-app` do `mercury-srv`, do wspólnego pakietu `org.mercury.business.cmis` (wzór `ITypeCodeBusiness`; skan `logic-context.xml`, więc działa w węźle jednowęzłowym i klastrowym).
+
+**Podział warstw:**
+- `mercury-srv`: `ICmisRepositoryBusiness` (`internal/api`) i `CmisRepositoryBusiness` (`@Service`) – inicjalizacja repozytoriów, nawigacja, ścieżki, zapis, unikalność nazw, usuwanie, treść plików. Pomocnicze: `CmisServerConfig`, `CmisBusinessException` (rodzaje: NOT_FOUND, INVALID_ARGUMENT, CONSTRAINT, NAME_CONSTRAINT, CONTENT_ALREADY_EXISTS, NOT_SUPPORTED, UNAVAILABLE, FAILURE), `CmisContent`, `CmisCaseUtils`. Usunięty `org.mercury.cmis.CmisRepositoryInitializer`.
+- `mercury-ws-app` (adapter protokołu): `MercuryCmisService`, `MercuryCmisObjectMapper`, `CmisExceptionMapper`, `MercuryCmisRepositoryManager`, `MercuryCmisServiceFactory`, `MercuryCmisLifecycleBean`, `MercuryCmisTypeManager`, uwierzytelnianie. Usunięte: `MercuryCmisObjectManager`, `MercuryCmisObjectWriter`, `MercuryCmisContentManager`.
+
+**Poprawki klastrowe:**
+1. Metody biznesu ustawiają flagę kierowania (`NodeStatusMonitor.PROP_METHOD_REMOTE_ACCESS`) i `setDirectRequest(false)` przed wywołaniami `caseBusiness`/`caseLogic`.
+2. Folder główny tworzy tylko węzeł z prawem zapisu (`!isClustered || rola != RO`). Gdy dwa węzły utworzą go równocześnie, zostaje folder o najmniejszym id, a własny jest usuwany.
+3. Korzeń repozytorium jest wyszukiwany po kodzie inwentaryzacyjnym `CMIS-ROOT:<repo>`, nie trzymany w pamięci startowej (węzeł bez zapisu znajduje go przy pierwszym użyciu).
+
+**Testy:** `CmisRepositoryBusinessTest` (28, jednostkowe), `CmisRepositoryDbTest` (scenariusz na `mercury-db-test`, OK), w `mercury-ws-app`: `MercuryCmisServerTest`, `MercuryCmisAdapterTest` (nowy: odwzorowanie obiektów, stronicowanie, przekazywanie właściwości i treści, mapowanie błędów), `HttpCmisAuthenticatorTest` – razem 23 testy bez błędów. Nowy klucz profilu: `test.skip.package.CmisRepositoryDbTest` (stare `CmisRepositoryInitializerTest`, `CmisContentFileTest` nieaktualne).
+
+**Niezweryfikowane (przypuszczenia):** zachowanie w klastrze (routing, wyścig korzenia, pliki między węzłami), autowiring `ICmisRepositoryBusiness` w `webService.xml` na działającym Tomcacie, uprawnienia użytkownika przy odczycie. Wymaga ponownego wdrożenia WAR i powtórzenia testu `curl` na dev.
