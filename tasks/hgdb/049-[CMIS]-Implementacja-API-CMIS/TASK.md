@@ -827,3 +827,52 @@ Znalezione i naprawione:
 2. **`hasMoreItems`** przy niepełnej stronie zwracało `false` (porównanie z liczbą pobranych wierszy). Teraz z liczby wszystkich trafień (gdy znana). Scenariusz: strona 1 z 2 ma `hasMoreItems`, ostatnia nie.
 3. **Usunięte obiekty zostawały w indeksie:** `ICaseBusiness.remove` zapisuje w buforze wpis `R`, ale nie budzi sekretarza indeksu (po zatwierdzeniu transakcji nikt tego nie robi w tej ścieżce), więc wpis czekał do następnego wybudzenia (autor potwierdził wpisy `R` w buforze, po wybudzeniu obiekty zniknęły z indeksu). Dodane `LucCaseSaveBufferLogicHelper.wakeupIndexSecretary` wołane po usunięciu w `CmisRepositoryBusiness.deleteObject` (także `deleteTree`). To zachowanie dotyczy każdego usunięcia spraw tą ścieżką (przypuszczenie: poza CMIS też), do rozważenia w zadaniu 114.
 Scenariusz bazy sprawdza teraz także, że usunięte dokumenty (`deleteObject`, `deleteTree`) i foldery znikają z indeksu.
+
+## Stan na koniec dnia 2026-11-01 i plan na 2026-11-02
+
+### Zrobione dziś (wszystko niezacommitowane, poza zatwierdzonymi wcześniej przez autora porcjami)
+- **Refaktor warstw:** logika CMIS w `mercury-srv` (`org.mercury.business.cmis`), adapter protokołu w `mercury-ws-app`; poprawki klastrowe (flaga kierowania, folder główny tylko na węźle z zapisem i rozstrzyganie wyścigu, wyszukiwanie korzenia po kodzie).
+- **Dev (zweryfikowane `curl`/Workbench):** tworzenie, odczyt, zmiana nazwy, treść, `deleteTree`, dozwolone działania (Delete w Workbench), nazwa w `inventoryCode` dla typów bez `CmisName`, pola z reguły unikalności jako `required`, opisy typów z kluczy zasobów, zapytania CMIS-QL (wynik, alias, `IN_FOLDER`, `IN_TREE`, `CONTAINS`, `ORDER BY`, stronicowanie, błędy), usuwanie z indeksu po `deleteTree`.
+- **Uprawnienia:** uprawnienia do typów (odczyt, lista, tworzenie, `permissionDenied`), role repozytorium `mercury.cmis.repositories.<id>.roles`.
+- **Indeks Lucene:** pola `mrc_mountPoints`, `mrc_mountPointParents`, `mrc_isLatestVersion`, odświeżanie po zmianie katalogu (`Case2CaseLogic`), reguła `custom_` dla kolizji nazw.
+- **CMIS-QL:** parser Chemistry, model, tłumacz na Lucene, `query()`, lista `SELECT` jako `Context.viewDefinition` z wynikiem wprost z indeksu (`ICaseSearcher.searchIndexRows`).
+- **Poprawki z testu na dev:** `queryName` w wyniku, `hasMoreItems`, wybudzenie sekretarza po usunięciu (usunięte obiekty zostawały w indeksie).
+- **Dokumentacja:** sekcja CMIS w `docusaurus-hgdb` (EN, PL) i artykuł o Workbench; obserwacja 137; zapis kroków w tym pliku.
+- **Do ręcznego domknięcia:** klucz `test.skip.package.CmisRepositoryDbTest=true` w profilu `scichy`; commit w `mercury`, w workspace, w `docusaurus-hgdb`, `mercury-cmd`, `mercury-docker`; pliki w katalogu roboczym przełączają się między LF a CRLF (index jest LF), więc przed większą edycją sprawdzaj `git ls-files --eol`.
+
+### Plan na 2026-11-02
+**A. Porządek (rano, ~0,5 h)**
+1. Klucz `CmisRepositoryDbTest` w profilu `scichy`; commity (Claude nie commituje, zgłasza); WAR i indeks na dev są już aktualne.
+2. Dopisać do TASK.md wynik testu poprawek 2 i 3 na dev (stronicowanie i usuwanie bez ręcznego wybudzenia: potwierdzone).
+
+**B. Zadanie 114 w gałęzi `hgdb-049` (główny blok, ~3–4 h)**
+Założenia autora (zapisane w pamięci `bufor-sekretarza-indeksu-zasady`): bufor ma być lekki, bez indeksów w tabeli, bez wyszukiwania przy zapisie, optymalizacja po stronie aplikacji; backup indeksu zamraża zapis do indeksu, a po backupie dane są dociągane z wpisów archiwalnych bufora (`ArchCaseSaveBuffer`), więc każda nowa linia musi zostawiać wpisy archiwalne i trzymać SCN.
+1. **Pomiar (najpierw):** import dużej paczki w jednym wątku na `mercury-db-test`, opóźnienie pojedynczej zmiany bieżącej, rozmiar bufora w czasie, czy wąskim gardłem jest sekretarz (jeden wątek, paczki), czy główna pula wątków przy zapisie wpisów (`updateIndexByCases` czeka na wynik).
+2. **Wybór wariantu (po pomiarze), oceniane względem założeń autora:**
+   - *A. Zasilanie partiami (bez zmiany schematu):* zadanie w tle (przebudowa indeksu, odświeżanie po zmianie punktu zamontowania) dodaje do bufora małe partie tylko przy niemal pustym buforze; przebieg po kluczu głównym `Case` (indeks PK), pominięcie spraw zmienionych od startu (`lastModifyDate`), bez zapytań do bufora. Zawiera narzędzie do przebudowy indeksu (admin REST), czyli to, co dziś robi autor ręcznie.
+   - *B. Druga tabela bufora (linia hurtowa) bez zmian w głównej:* główny bufor zostaje mały i bez indeksów; import (znacznik w kontekście) pisze do osobnej tabeli; sekretarz jeden, bierze najpierw główny, z kwotą hurtowy; ten sam SCN i to samo archiwum. Koszt: DDL na 5 baz, encja i DAO, komunikaty klastra.
+   - *C. Kolumna `PRIORITY` + `ORDER BY`:* odradzam bez indeksu (przy dużym imporcie skan i sortowanie całej tabeli); zostaje, tylko jeśli pomiar pokaże, że tabela hurtowa nie rośnie.
+   - *D. Kolejki (ActiveMQ) zamiast bufora hurtowego:* tylko jeśli backup obsłuży wiadomości (wpisy archiwalne przy przetwarzaniu); większy zakres, na koniec.
+3. **Implementacja wybranego wariantu** z testami (scenariusz na `mercury-db-test`: import + zmiana bieżąca, backup/dociąganie), opis w TASK.md i w obserwacjach (usunięcie sprawy nie budzi sekretarza, dotyczy też REST).
+
+**C. CMIS – dopięcie etapu 2 (~2 h)**
+1. Test zapytań w Workbench (zakładka Query) i klientem Atom; zwykły użytkownik `mrc-user`: dostęp do repozytorium, role (`.roles`), odczyt, tworzenie, zapytania (potrzebuję użytkownika; hasło wpisze autor).
+2. Decyzja: uprawnienia do pól (`readableParams`) w wyniku zapytań i obiektów (dziś tylko do typu).
+3. Dokumentacja: `deleteTree`, dozwolone działania, `deleteTree` i wybudzenie sekretarza w ograniczeniach; klucze `cmis.*` do tłumaczeń (translator Gemini).
+
+**D. Klaster (jeśli czas, ~1 h)** scenariusz w `mercury-srv-slave` (Tomcat uruchamia autor): folder główny na obu węzłach, zapis na węźle RW, odczyt na drugim, treść pliku, zapytanie przez drugi węzeł; wynik: lista ryzyk.
+
+**E. Kolejne etapy (nie jutro):** etap 3 (`checkOut`/`checkIn`, `createDocumentFromSource`, `cmis:isLatestVersion` z wersji), `Context.viewDefinition` w innych usługach wyszukiwania, obserwacje 123/124/134 i decyzja o `mercury-lib/pom.xml`.
+
+### Zadanie 114: wariant E – Kafka (pomysł autora, 2026-11-01)
+Kafki nie ma dziś w żadnym repozytorium (`mercury-srv` ma klienta ActiveMQ). Do oceny po pomiarze, razem z wariantami A–D:
+- **Zalety:** kolejność zmian jednej sprawy przez partycjonowanie po `matterId`; osobne tematy dla linii bieżącej i hurtowej (niezależni konsumenci); grupy konsumentów i offsety upraszczają klaster; wstrzymanie konsumenta w czasie backupu indeksu i dociąganie po nim bez osobnej tabeli; kompaktowanie logu po `matterId` jako odpowiednik optymalizacji pakietu.
+- **Wady:** utrata atomowości zapisu zmiany sprawy i wpisu (dziś jedna transakcja bazy); publikacja po zatwierdzeniu grozi zgubioną lub zdublowaną zmianą, więc potrzebny bufor jako skrzynka nadawcza (outbox), czyli powrót do dzisiejszego rozwiązania; nowy komponent w pakiecie instalacyjnym, obrazach Docker, Helm i utrzymaniu u klientów on-prem; przebudowa SCN, backupu, archiwum i komunikatów klastra, wbrew zasadzie „lekko i przyjemnie”.
+- **Wstępna rekomendacja:** bufor w bazie zostaje źródłem prawdy; kolejka (ActiveMQ, który już jest w stosie, albo Kafka) tylko dla linii hurtowej i tylko jeśli pomiar i skala wdrożeń to uzasadnią. Pytanie do autora: jakiej skali importu oczekujemy u klientów (liczba spraw w jednej paczce)?
+
+### Zadanie 114: skala importów 100 tys.–1 mln spraw (autor, 2026-11-01)
+- Przy takiej skali izolacja linii bieżącej od importu jest konieczna (jeden wątek sekretarza, kolejność zapisu: przy ok. 200 wpisów/s milion wpisów to ok. 80 min; liczba robocza, do zmierzenia).
+- Wąskie gardło to przetwarzanie wpisu (`convert2Document` z zapytaniami do bazy i zapis do indeksu), nie transport; Kafka ani ActiveMQ go nie przyspieszą. Do oceny: równoległa konwersja w paczce (`CaseIndexerBusinessUpdateCallable`) i osobna linia dla importu.
+- Bufor bez indeksów przy milionie wierszy: koszt wyboru pierwszych N wierszy `scn IS NULL` zależy od liczby martwych wpisów do pominięcia (PostgreSQL: odśmiecanie); przemawia za osobną tabelą hurtową (wariant B), żeby tabela bieżąca została mała.
+- **Wariant F (do zbadania):** dla bardzo dużych paczek zamiast zasilać bufor, pełna przebudowa indeksu z bazy w tle (`MLuceneIndexer`: katalogi `index`/`index2`, wątki, SCN, zamiana), a zmiany bieżące dociągane z bufora po zamianie jak po backupie. Opłacalne tylko, gdy import to duża część zbioru.
+- **Pomiary na początek:** wpisów/s (jeden wątek i konwersja równoległa), czas i rozmiar skanu bufora przy 1 mln wierszy, opóźnienie pojedynczej zmiany bieżącej w trakcie importu.
