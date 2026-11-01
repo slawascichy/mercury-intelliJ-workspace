@@ -616,3 +616,38 @@ Obserwacja 125 w `docs/obserwacje.md` opisuje zaszyty filtr `isDocumentType=fals
 **Czego brak (świadomie):** `cmis:path` poza folderem głównym, `getObjectByPath`, filtr właściwości, dozwolone akcje, treść dokumentu (`contentStream*`), uprawnienia sprawy (przypuszczenie: `ICaseLogic.find` stosuje uprawnienia kontekstu, nie sprawdzone), daty z pól typu.
 
 **Testy:** `MercuryCmisObjectManagerTest` (10, logika podstawiona przez `Proxy`, bez bazy): folder główny, folder, dokument, wersje, nazwa zastępcza, obiekt spoza repozytorium, dzieci bezpośrednie ze stronicowaniem, rodzice, dokument nie jest folderem. Razem z `MercuryCmisServerTest` 19 z 19. Nie sprawdzone na bazie ani przez klienta CMIS (np. Workbench): semantyka głębokości krawędzi wynika z odczytu zapytań, a nie z uruchomienia.
+
+### Realizacja: krok 3, zapis obiektów (2026-11-01, `hgdb-049` w `mercury`, niezacommitowane)
+
+**Zakres:** `MercuryCmisObjectWriter` (`mercury-ws-app`) i podpięcie w `MercuryCmisService`: `createFolder`, `createDocument` (bez treści), `updateProperties`, `deleteObject`. Stan git na początku: wszystkie repozytoria (workspace, `mercury`, `mercury-lib`, `mercury-cmd`, `mercury-docker`) czyste, zatwierdzone przez autora.
+
+**Zasady:**
+- Typ: `cmis:folder` i `cmis:document` odwzorowują się na predefiniowane `CmisFolder` i `CmisDocument`; inny typ musi istnieć, mieć właściwą rolę (`isDocumentType`) i pole `CmisName`, bo tylko tam zapisujemy `cmis:name` (inaczej `CmisConstraintException`).
+- Nazwa (`cmis:name`) jest wymagana i unikalna wśród bezpośrednich dzieci folderu (`CmisNameConstraintViolationException`); ta sama nazwa w innym folderze jest dozwolona. Przy zmianie nazwy obiekt nie koliduje sam ze sobą.
+- Tworzenie: XML z nagłówkiem (kod typu, `isDocumentType` zgodnie z rolą, status `A`) i **wszystkimi polami typu** (puste, gdy brak wartości), deklarowany typ pola z definicji; zapis `ICaseBusiness.save` w kontekście użytkownika, potem krawędź od folderu nadrzędnego (`ICase2CaseLogic.insert` z punktem zamontowania = repozytorium). Pełny komplet pól chroni przed nową wersją typu.
+- `updateProperties`: zmiana tylko podanych pól przez `ICaseBusiness.updateCaseParamsByParams`; folder główny nie podlega zmianie.
+- `deleteObject`: folder główny i niepusty folder nie mogą być usunięte (`CmisConstraintException`); usuwany jest węzeł z punktu zamontowania, potem sprawa (`ICaseBusiness.remove`).
+- Właściwości typu data i czas dają `CmisNotSupportedException` (jeszcze bez odwzorowania zapisu dat). `createDocument` z treścią dostaje `CmisNotSupportedException`; polityki, ACL, `checkOut`/`checkIn` nie są obsługiwane.
+
+**Niezweryfikowane (logika i biznes podstawione, bez bazy):** zachowanie `ICaseBusiness.save` z `isDocumentType` w nagłówku na typie edytowalnym, kolejność „usuń węzeł z katalogu, potem sprawę” (czy `remove` czyści też krawędzie i archiwizuje), semantyka `ICase2CaseLogic.insert` dla `Case2Case` zbudowanego z wczytanych spraw, uprawnienia kontekstu użytkownika przy zapisie.
+
+**Testy:** `MercuryCmisObjectWriterTest` (10) + wcześniejsze: `MercuryCmisServerTest` (9) i `MercuryCmisObjectManagerTest` (10), razem 29 z 29.
+
+### Realizacja: krok 5, uwierzytelnianie Basic i token Bearer (2026-11-01, `hgdb-049` w `mercury`, niezacommitowane)
+
+**Mechanizm:** `HttpCmisAuthenticator` (`mercury-ws-app`) zastępuje `DenyAllCmisAuthenticator` (usunięty). Fabryka wywołuje go przy każdym `getService`; wszystkie wiązania (Atom, Browser, SOAP) idą tą samą drogą, bo uwierzytelniacz czyta nagłówek `Authorization` z `HttpServletRequest` w `CallContext`.
+- **Bearer:** `RestServicesHelper.createContextBasedOnOAuth` z fabryką OAuth jak w REST (`mercury.rest.security.oauthFactoryName`, domyślnie `mercuryDbOAuthFactory`). Rola i użytkownik pochodzą z tokenu, więc jeden token działa dla spraw i dokumentów (SSO).
+- **Basic:** nazwa i hasło (z `CallContext`, a gdy ich brak, z nagłówka) są sprawdzane w realmie wskazanego klienta OAuth, czyli w tym samym realmie, który sprawdza hasło przy wydawaniu tokena (`RestServicesHelper.authenticateInOAuthRealm`, nowa metoda w `mercury-gui-core`). Klienta wskazują parametry `mercury.cmis.security.oauthClientId` i `mercury.cmis.security.oauthClientSecret`; bez nich Basic jest wyłączone, a Bearer działa.
+- Kontekst z `Principal`: nowa metoda `RestServicesHelper.createContextBasedOnPrincipal` (dawna treść `createContextBasedOnSession`, która teraz ją wywołuje).
+- Brak lub błędne dane: `CmisUnauthorizedException` (HTTP 401).
+
+**Inne zmiany:** z `web.xml` usunięte `/cmisws10/*` i `/cmisws11/*` z filtra `RemoteBasicAuthFilter` (stały sekret usługi nie jest uwierzytelnianiem użytkowników); `mercury-ws-app/pom.xml` ma zależność `tomcat-catalina` (`provided`), bo realm używa `GenericPrincipal`; szablony `mercury.properties` (4 pliki) dostały zakomentowane parametry klienta (bez wartości).
+
+**Ograniczenia i ryzyka (przypuszczenia, bez uruchomienia na Tomcacie):**
+- Ścieżki `/atom/*`, `/browser/*` i `/cmis-endpoints.json` nie mają `security-constraint` (obserwacja 87): usługa jest zamknięta przez fabrykę (401 bez uwierzytelnienia), a `cmis-endpoints.json` jest nadal publiczny (tylko opis punktów dostępu).
+- Wiązanie Browser używa `TokenCallContextHandler` (własne tokeny Chemistry po pierwszym uwierzytelnieniu); jego współpraca z naszym nagłówkiem nie była sprawdzana.
+- Wiązanie SOAP: czy `CmisWebServicesServlet` przekazuje nagłówek Basic w `CallContext` bez dodatkowego handlera, do sprawdzenia klientem.
+- Każde żądanie Basic odpytuje realm (LDAP lub baza); brak pamięci podręcznej.
+- Token Bearer niesie role z zakresu (`scope`); weryfikacja kontekstu jak w `ContextVerificationAdvice` nie jest powtarzana.
+
+**Testy:** `HttpCmisAuthenticatorTest` (5: Basic z podstawionym weryfikatorem, brak i błędne dane, Bearer z nieznanym tokenem, Basic wyłączone bez klienta, rozbieranie nagłówka z dwukropkiem w haśle); razem 33 testy CMIS w `mercury-ws-app` bez błędów. Nie sprawdzone: prawdziwy token i prawdziwy realm (wymaga serwera i klienta OAuth).
