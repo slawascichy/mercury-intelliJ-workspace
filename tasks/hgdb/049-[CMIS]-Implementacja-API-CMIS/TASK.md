@@ -541,3 +541,11 @@ Obserwacja 125 w `docs/obserwacje.md` opisuje zaszyty filtr `isDocumentType=fals
    4. Test dokumentu Lucene z zapisanej sprawy typu dokumentowego (luka B-3).
 3. Jeśli zostanie czas: obserwacja 134 (stabilność `luceneBackupScenario`), decyzja o `mercury-lib/pom.xml`, obserwacje 123 i 124.
 4. Na koniec etapu: dokumentacja w `docusaurus-hgdb` (gałąź `hgdb-049`, EN i PL). Zakres zaproponować autorowi przed edycją.
+
+### Decyzja o identyfikacji typów dokumentowych i pole `isDocumentType` w nagłówku (2026-11-01)
+
+**Decyzja (autor):** `isDocumentType` trafia do nagłówka sprawy (`CaseHeader`, zmiana w `mercury-lib`, gałąź `hgdb-049`). Brak wartości albo `false` oznacza sprawę (folder), `true` oznacza dokument. Serwer CMIS ustawia pole, zanim obiekt trafi do warstwy biznesowej. Testy `testMERC_0168_Scenarios` i `SrvTest` po „lepkiej definicji” przeszły (potwierdzenie autora).
+
+**Zrobione w `mercury-lib` (gałąź `hgdb-049`, niezacommitowane, kompilacja `mercury-srv-api` z `-am` bez błędów):** pole `Boolean isDocumentType` w `ICaseHeader`, `CaseHeader`, `MrcCaseHeader`, `MercuryHeader`; element `isDocumentType` w wyliczeniu `MrcCaseHeaderField` (typ `BOOLEAN`); obsługa w `MrcDataUtils` (`createCaseBaseInfo`, `CaseBaseInfo.getIsDocumentType()`, nagłówek z encji ustawia pole tylko dla dokumentów), `MrcObjectUtils` (`extractCaseFromHeader`, kopiowanie, `caseHeaderHashCode`) i w `hgdb-mrc-object-3.0.xsd`.
+
+**Do zrobienia w `mercury` (wymaga zainstalowanej nowej wersji `mercury-lib` w `.m2`):** `CaseBusinessSupport` (linie ~818, ~869, ~1351 ustawiają dziś zawsze `false`: ma brać wartość z nagłówka), przegląd użyć `MrcCaseHeaderField.values()` i `switch` po tym wyliczeniu (`RestVariableBuilder`, `CaseHeaderSchema`, `CaseViewQueryBuilder`, `CaseBusiness`, raporty POI, GUI `CaseHeaderSection`), testy.
