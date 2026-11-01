@@ -704,3 +704,26 @@ Logika domenowa CMIS przeniesiona z `mercury-ws-app` do `mercury-srv`, do wspól
 **Testy:** `CmisRepositoryBusinessTest` (28, jednostkowe), `CmisRepositoryDbTest` (scenariusz na `mercury-db-test`, OK), w `mercury-ws-app`: `MercuryCmisServerTest`, `MercuryCmisAdapterTest` (nowy: odwzorowanie obiektów, stronicowanie, przekazywanie właściwości i treści, mapowanie błędów), `HttpCmisAuthenticatorTest` – razem 23 testy bez błędów. Nowy klucz profilu: `test.skip.package.CmisRepositoryDbTest` (stare `CmisRepositoryInitializerTest`, `CmisContentFileTest` nieaktualne).
 
 **Niezweryfikowane (przypuszczenia):** zachowanie w klastrze (routing, wyścig korzenia, pliki między węzłami), autowiring `ICmisRepositoryBusiness` w `webService.xml` na działającym Tomcacie, uprawnienia użytkownika przy odczycie. Wymaga ponownego wdrożenia WAR i powtórzenia testu `curl` na dev.
+
+## Dokumentacja w docusaurus-hgdb (2026-11-01)
+
+Nowa sekcja „CMIS” (gałąź `hgdb-049`, niezacommitowana), EN w `docs/007_CMIS/`, PL w `i18n/pl/docusaurus-plugin-content-docs/current/007_CMIS/`:
+- `index.mdx`: odwzorowanie CMIS na Mercury, parametry `mercury.cmis.*`, adresy wiązań (`/browser`, `/atom11`, `/atom`), uwierzytelnianie Bearer i Basic.
+- `001_Workbench.mdx`: instalacja Workbencha, połączenie (Browser i AtomPub), scenariusz testowy, ograniczenia.
+- Dodane: tag `cmis` (`docs/tags.yml`, PL `tags.yml`) i etykieta kategorii w `i18n/pl/.../current.json`.
+- Sekret klienta OAuth nie jest opisany (strona wymienia tylko nazwy parametrów).
+- Weryfikacja: `docusaurus build` dla `en` i `pl` przechodzi (ostrzeżenie o braku daty git dla nowych plików jest oczekiwane). Zawartość scenariusza Workbench nie została jeszcze sprawdzona klientem; autor testuje go sam.
+- Nieopisane: wiązania SOAP (`/cmisws10`, `/cmisws11`) – nie testowane klientem.
+
+## Nazwa obiektu przy zapisie (2026-11-01)
+
+Zgłoszenie z testu: utworzenie obiektu typu `BpmBPDInstance` (typ bez pola `CmisName`) kończyło się błędem `constraint: Type ... has no field 'CmisName'`. Decyzja autora: odczyt zostaje (`CmisName` → `inventoryCode` → `CID:<id>`), a zapis przyjmuje tę samą kolejność.
+- Tworzenie: typ z polem `CmisName` zapisuje nazwę w polu (`inventoryCode` pusty); typ bez pola zapisuje nazwę w `inventoryCode` nagłówka sprawy. Wymóg pola `CmisName` usunięty.
+- Zmiana nazwy (`cmis:name`): ta sama reguła, przez pole nagłówka `mrcCaseHeader.inventoryCode` w `updateCaseParamsByParams`.
+- Unikalność nazw w folderze liczona przez `nameOf`, więc obejmuje oba rodzaje typów.
+- Testy: `CmisRepositoryBusinessTest` 30 OK (nowe: typ bez pola, typ z polem), `CmisRepositoryDbTest` OK (nowy krok 5b: własny typ `CmisNoNameType`, tworzenie, duplikat, zmiana nazwy, ścieżka, brak nowych wersji typu).
+- Ryzyka (obserwacja 137): `inventoryCode` powinien być unikalny, ale mechanizmy jego obsługi nie są zaimplementowane, więc dziś jest pusty; ma tylko zwykły indeks, więc nazwa może się powtórzyć w różnych folderach (unikalność w folderze pilnuje CMIS). Zmiana nazwy zmienia kod widoczny dla innych funkcji. Po wdrożeniu mechanizmów kodu inwentaryzacyjnego zablokować zmianę nazwy dla typów bez pola `CmisName`.
+
+**Test na dev po wdrożeniu (typ bez `CmisName`):** utworzenie folderu typu `BpmBPDInstance`, odczyt po ścieżce, duplikat nazwy (409), zmiana nazwy i usunięcie działają, o ile klient poda pole `bpmProcessInstanceId`. Typ ma regułę unikalności (`TypeCode.uniqueConstraintParamName`), a bez wartości pola Mercury odrzuca zapis (`Naruszenie integralności… pole nie może być puste`), co serwer CMIS zwracał jako `runtime`/500.
+- Zmiana (decyzja autora): w definicji typu CMIS (`MercuryCmisTypeManager`) pola z reguły unikalności typu są oznaczone jako wymagane (`required=true`). Elementy formuły rozdziela `||`, literały w apostrofach są pomijane. Test: `MercuryCmisServerTest.fieldsOfUniqueRuleAreRequired`; razem 24 testy `mercury-ws-app` OK.
+- Nieobjęte: błąd naruszenia integralności nadal wraca jako `runtime`/500 (do ewentualnego mapowania na `constraint`).
