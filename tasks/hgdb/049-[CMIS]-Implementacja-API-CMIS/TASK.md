@@ -549,3 +549,55 @@ Obserwacja 125 w `docs/obserwacje.md` opisuje zaszyty filtr `isDocumentType=fals
 **Zrobione w `mercury-lib` (gałąź `hgdb-049`, niezacommitowane, kompilacja `mercury-srv-api` z `-am` bez błędów):** pole `Boolean isDocumentType` w `ICaseHeader`, `CaseHeader`, `MrcCaseHeader`, `MercuryHeader`; element `isDocumentType` w wyliczeniu `MrcCaseHeaderField` (typ `BOOLEAN`); obsługa w `MrcDataUtils` (`createCaseBaseInfo`, `CaseBaseInfo.getIsDocumentType()`, nagłówek z encji ustawia pole tylko dla dokumentów), `MrcObjectUtils` (`extractCaseFromHeader`, kopiowanie, `caseHeaderHashCode`) i w `hgdb-mrc-object-3.0.xsd`.
 
 **Do zrobienia w `mercury` (wymaga zainstalowanej nowej wersji `mercury-lib` w `.m2`):** `CaseBusinessSupport` (linie ~818, ~869, ~1351 ustawiają dziś zawsze `false`: ma brać wartość z nagłówka), przegląd użyć `MrcCaseHeaderField.values()` i `switch` po tym wyliczeniu (`RestVariableBuilder`, `CaseHeaderSchema`, `CaseViewQueryBuilder`, `CaseBusiness`, raporty POI, GUI `CaseHeaderSection`), testy.
+
+### Rozpoznanie kroku 3: `CmisService` w `mercury-ws-app` (2026-11-01, tylko odczyt kodu)
+
+- **Szkic:** pakiet `org.mercury.cxf.ws.server.cmis.services`, 9 klas (3617 linii). `FileShareCmisServiceFactory` (`AbstractServiceFactory`) tworzy po jednej usłudze na wątek (`ThreadLocal`), owija ją `ConformanceCmisServiceWrapper` i uwierzytelnia przez `FileShareUserManager`. Usługa `FileShareCmisService` dziedziczy po `AbstractCmisService` i `CallContextAwareCmisService`. Fabryka jest wpięta w `webService.xml` (`fileShareCmisServiceFactory`, `HgdbCmisLifecycleBean`), a `repository.properties` ma tylko wpis `class=`.
+- **Wniosek o bezpieczeństwie (zweryfikowane w kodzie):** `HgdbCmisLifecycleBean.afterPropertiesSet` ma na stałe wpisane loginy i hasła testowe (trzy konta) oraz repozytorium plikowe na katalogu `mercury.upload.file.target`. Dane nie są dopisane tutaj. Szkic jest więc nie tylko nieskonfigurowany, ale też zawiera wbudowane konta; to kolejny powód, żeby wymienić go w jednej zmianie (D7).
+- **Uwierzytelnianie (propozycja dla kroków 3 i 5):** `RestServicesHelper` (`mercury-gui-core`) ma już `createContextBasedOnOAuth(request, response, oauthFactoryName)` (token Bearer, role z zakresu) i `createContextBasedOnSession(request)` (`Principal` kontenera, role z `GenericPrincipal`). `CallContext` z Chemistry udostępnia `HttpServletRequest` (`CallContext.HTTP_SERVLET_REQUEST`), więc fabryka może zbudować `Context` Mercury, a gdy się nie uda, rzucić `CmisPermissionDeniedException`. Basic wymaga `security-constraint` z `login-config` BASIC dla ścieżek CMIS w `web.xml` (krok 5); do tego czasu bez tokena Bearer usługa jest zamknięta.
+- **Typy:** `IDocumentTypesManager.getAllDocumentTypes(Context)`, `ITypeCaseDAO.getAllCaseTypes` i `getAllDocumentTypes`, `TypeCase.getIsDocumentType()`, `TypeParam.cmisFieldName`, `MType.cmisTypeName`.
+- **Wstrzykiwanie:** klasy w `mercury-ws-app` korzystają z `@Autowired` (np. `CaseTypeServicesController`); fabrykę CMIS tworzy Spring (`webService.xml`), więc może dostać beany logiki.
+
+### Decyzja: repozytorium CMIS = punkt zamontowania (2026-11-01, autor)
+
+- **Typy (opcja B):** każdy typ sprawy Mercury może być typem CMIS (podtyp `cmis:folder`, a typ dokumentowy podtyp `cmis:document`).
+- **Obiekty:** repozytorium CMIS to punkt zamontowania `CaseCatalog` (`Case2CaseMountPoint`, identyfikator = nazwa). Katalog (folder i dokumenty) obejmuje tylko sprawy umieszczone w danym punkcie zamontowania.
+- **Reguła:** punkt zamontowania repozytorium dokumentów nie może być pusty ani domyślny.
+- **Stan kodu (zweryfikowane):** `Case2CaseLogic` traktuje pusty punkt zamontowania jak brak punktu (`checkMountpoint` zwraca `null`), a `addNodeToMountPoint` tworzy punkt, którego nie ma. CMIS musi więc sam odrzucać pustą nazwę przed wywołaniem logiki, a nazwę repozytorium sprawdzać w `ICase2CaseMountPointDAO` (słownik `MDictDAO<Mp, String>`).
+- **Do ustalenia przy `getRepositoryInfos`:** czy lista repozytoriów to wszystkie punkty zamontowania, czy tylko te oznaczone jako repozytoria dokumentów (dziś `Case2CaseMountPoint` służy też innym zastosowaniom katalogu spraw; przypuszczenie, nie sprawdzono użyć).
+
+### Realizacja: krok 3, szkielet usługi CMIS (2026-11-01, `hgdb-049` w `mercury`, niezacommitowane)
+
+**Zmiany w `mercury-ws-app`:**
+- Nowy pakiet `org.mercury.cmis.server`: `CmisServerConfig` (właściwości `mercury.cmis.repositories` i `mercury.cmis.maxContentSize`), `MercuryCmisRepositoryManager` (repozytorium = punkt zamontowania, informacja o repozytorium), `MercuryCmisTypeManager` (typy CMIS z typów Mercury), `MercuryCmisService` (`AbstractCmisService`), `MercuryCmisServiceFactory`, `MercuryCmisLifecycleBean`, `CmisAuthenticator` i `DenyAllCmisAuthenticator`.
+- Usunięty szkic `FileShare*` (8 klas), `ContentRangeInputStream`, `HgdbCmisLifecycleBean` (wraz z wbudowanymi kontami) i `example-type.xml`. `webService.xml` tworzy teraz `mercuryCmisServiceFactory` (autowiring po typie menedżerów typów) i `mercuryCmisLifecycleBean`; `repository.properties` wskazuje nową fabrykę.
+
+**Zasady:**
+- Lista repozytoriów: `mercury.cmis.repositories` (rozdzielona przecinkami). Gdy właściwości nie ma, jest jedno przykładowe repozytorium `documents`, więc po instalacji bez zmian w konfiguracji CMIS ma repozytorium. Puste elementy listy są pomijane (punkt zamontowania nie może być pusty). Repozytorium spoza listy daje `CmisObjectNotFoundException`.
+- Typy: `cmis:folder` i `cmis:document` są typami bazowymi; każdy najnowszy typ sprawy (`isDocumentType=false`) jest podtypem folderu, a typ dokumentowy podtypem dokumentu; identyfikator typu to kod typu Mercury. Pola typu stają się właściwościami (`BOOLEAN`, `INTEGER`, `NUMBER`/`DECIMAL`/`DOUBLE` jako `DECIMAL`, daty i czas jako `DATETIME`, reszta tekst); pole z `cmisFieldName` równym nazwie właściwości systemowej jej nie zastępuje.
+- Zaimplementowane: `getRepositoryInfos`, `getRepositoryInfo`, `getTypeChildren`, `getTypeDefinition`, `getTypeDescendants`. `getObject`, `getChildren`, `getObjectParents` zwracają „nieobsługiwane” do kolejnego kroku.
+
+**Założenia do potwierdzenia:**
+- Folder główny repozytorium ma identyfikator `@root` i jest wirtualny (nie jest sprawą); sprawy bez rodzica w danym punkcie zamontowania są jego dziećmi. Dotyczy kroku `getObject` i `getChildren`.
+- Punkt zamontowania z listy nie jest jeszcze zakładany w bazie. Zakładanie przy starcie (system context, transakcja) albo przy pierwszym zapisie wymaga decyzji w kroku zapisu; `Case2CaseLogic.addNodeToMountPoint` tworzy punkt sam, a CMIS ma przepuszczać tylko nazwy z listy.
+- Uwierzytelnianie: `DenyAllCmisAuthenticator` odrzuca każde wywołanie (usługa zamknięta). Prawdziwy uwierzytelniacz (Basic i token Bearer, SSO) to krok 5. Atom używa `BasicAuthCallContextHandler`, który przekazuje do fabryki tylko nazwę i hasło, więc weryfikację w tym samym realmie co logowanie hasłem robi fabryka, a nie `login-config` kontenera (korekta wcześniejszego założenia o `Principal`).
+- Szablony `mercury.properties` w pakiecie instalacyjnym (`mercury-cmd`) i obrazie Docker (`mercury-docker`) nie dostały wpisu `mercury.cmis.repositories`; to inne repozytoria, a domyślne `documents` działa bez wpisu.
+
+**Testy:** `MercuryCmisServerTest` (9 testów, bez bazy): konfiguracja, repozytoria, typy bazowe, role typów, właściwości i ich typy, stronicowanie, drzewo typów, odrzucanie przez uwierzytelniacz domyślny. Wynik 9 z 9. Nie sprawdziłem na uruchomionym serwerze (Tomcat), więc nie wiem, czy autowiring po typie w `webService.xml` znajduje oba menedżery typów.
+
+### Realizacja: punkt zamontowania i folder główny jako dane startowe, szablony (2026-11-01, `hgdb-049` w `mercury`, niezacommitowane)
+
+**Zmiana względem szkieletu:** folder główny repozytorium nie jest już wirtualnym `@root`. To sprawa typu predefiniowanego `CmisFolder` (kod inwentaryzacyjny `CMIS-ROOT:<repozytorium>`, nazwa CMIS równa identyfikatorowi repozytorium) w punkcie zamontowania o tej samej nazwie. Jej identyfikator trafia do `RepositoryInfo.rootFolderId`.
+
+**Mechanizm:**
+- `org.mercury.cmis.CmisRepositoryInitializer` (`mercury-srv`): dla każdego repozytorium z `mercury.cmis.repositories` szuka folderu głównego (`ICaseLogic.findByProperty` po polu `CmisName`, potem kod inwentaryzacyjny), a gdy go nie ma, zapisuje sprawę przez `ICaseBusiness.save`, i zawsze woła `ICase2CaseLogic.addNodeToMountPoint`, który tworzy punkt zamontowania, jeśli go brak. Powtórzenie niczego nie dubluje. Pusty identyfikator jest odrzucany (`IllegalArgumentException`), a błąd jednego repozytorium nie blokuje pozostałych (log `error`).
+- `MercuryCmisLifecycleBean` (`mercury-ws-app`) uruchamia inicjalizator po `ContextRefreshedEvent` (raz, kontekst systemowy `sysmercury`) i rejestruje foldery główne w `MercuryCmisRepositoryManager`. Repozytorium bez folderu głównego (nieudana inicjalizacja) nie jest wystawiane w `getRepositoryInfos`.
+
+**Ustalenia z testów na bazie (ważne):**
+1. Zapis sprawy do predefiniowanego typu `CmisFolder` tworzył jego wersję 2. Przyczyny (zweryfikowane na `mercury-db-test`): (a) przy pierwszym ładowaniu danych predefiniowanych typy miały `sumControl = null`, bo pętla sum czytała pola z encji, która ich jeszcze nie znała; (b) źródło żądania było dopisywane do typu; (c) pola typu z CSV różnią się od pól generowanych przy zapisie (`updateable`, `withEmptyOption`, `hasMultiValues`, `arg1..3`, etykiety, `isRequired`).
+2. Naprawy: `PredefiniedValuesLoader` liczy sumę kontrolną także z listy dopiero załadowanych pól; nowa reguła `CaseBusinessSupport.isLockedPredefinedType` (typ nieedytowalny z ujemnym identyfikatorem): zapis sprawy go nie zmienia (`changeType=false` w kroku 4 i w `CaseBusiness.transform2Cases`), źródło żądania nie powoduje nowej wersji. Typy BPM (nieedytowalne, ale z identyfikatorami z sekwencji) reguły nie obejmuje.
+3. Skutek reguły: pole spoza typu zablokowanego nie rozszerzy go (typ pozostaje taki, jak w CSV). Do rozważenia przy `CmisDocument` (te same zasady).
+
+**Testy:** `CmisRepositoryInitializerTest` (scenariusz na `mercury-db-test`, 1 z 1: dwa repozytoria, brak nowej wersji typu, wpisy w `IGO_DA_CASE2CASE_MPS` i `IGO_DA_CASE2CASE`, powtórzenie bez duplikatów, odrzucenie pustego punktu), `CmisRepositoryInitializerXmlTest` (2, bez bazy), `MercuryCmisServerTest` (9), `PredefinedDocumentTypesTest` (5). Nie sprawdzone: pełny `SrvTest` i `testMERC_0168_Scenarios` po zmianach w `CaseBusiness*` i loaderze, start na Tomcacie (autowiring po typie w `webService.xml`, zdarzenie `ContextRefreshedEvent`, wyścig dwóch węzłów klastra przy tworzeniu folderu głównego).
+
+**Szablony `mercury.properties`:** dopisane `mercury.cmis.repositories=documents` i `mercury.cmis.maxContentSize=10485760` w `mercury` (`mercury-server/src/main/config/jenkins` i `.../scichy`), `mercury-cmd` (`system-config-sample/linux`) i `mercury-docker` (`docker-init-config`). Parametry są opcjonalne: bez nich działa to samo (domyślne wartości w kodzie), więc starsze konfiguracje nie wymagają zmian.
