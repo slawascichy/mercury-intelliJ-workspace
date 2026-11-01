@@ -601,3 +601,18 @@ Obserwacja 125 w `docs/obserwacje.md` opisuje zaszyty filtr `isDocumentType=fals
 **Testy:** `CmisRepositoryInitializerTest` (scenariusz na `mercury-db-test`, 1 z 1: dwa repozytoria, brak nowej wersji typu, wpisy w `IGO_DA_CASE2CASE_MPS` i `IGO_DA_CASE2CASE`, powtórzenie bez duplikatów, odrzucenie pustego punktu), `CmisRepositoryInitializerXmlTest` (2, bez bazy), `MercuryCmisServerTest` (9), `PredefinedDocumentTypesTest` (5). Nie sprawdzone: pełny `SrvTest` i `testMERC_0168_Scenarios` po zmianach w `CaseBusiness*` i loaderze, start na Tomcacie (autowiring po typie w `webService.xml`, zdarzenie `ContextRefreshedEvent`, wyścig dwóch węzłów klastra przy tworzeniu folderu głównego).
 
 **Szablony `mercury.properties`:** dopisane `mercury.cmis.repositories=documents` i `mercury.cmis.maxContentSize=10485760` w `mercury` (`mercury-server/src/main/config/jenkins` i `.../scichy`), `mercury-cmd` (`system-config-sample/linux`) i `mercury-docker` (`docker-init-config`). Parametry są opcjonalne: bez nich działa to samo (domyślne wartości w kodzie), więc starsze konfiguracje nie wymagają zmian.
+
+### Realizacja: krok 3, odczyt obiektów (2026-11-01, `hgdb-049` w `mercury`, niezacommitowane)
+
+**Zakres:** `MercuryCmisObjectManager` (`mercury-ws-app`, tylko odczyt) i podpięcie w `MercuryCmisService`: `getObject`, `getChildren`, `getObjectParents` (a przez nie także `getFolderParent` Chemistry). Każde wywołanie najpierw sprawdza, że repozytorium jest skonfigurowane.
+
+**Zasady (z kodu `CaseCatalog`, zweryfikowane w zapytaniach nazwanych, nie na bazie):**
+- Identyfikator obiektu to identyfikator sprawy; rolę wyznacza `isDocumentType` typu. Węzeł katalogu to `CaseRootVersion`, więc zapytania używają `rootVersionId` sprawy.
+- Krawędź katalogu ma głębokość: 1 to wpis własny węzła (rodzic = dziecko), 2 to bezpośrednia krawędź rodzic-dziecko, więcej to domknięcie przechodnie. Dzieci folderu i jego rodzic to krawędzie o głębokości 2 w punkcie zamontowania równym repozytorium.
+- Obiekt należy do repozytorium, gdy jest jego folderem głównym albo ma w nim krawędź rodzica. Inny obiekt (także istniejący) daje „nie znaleziono”. Konsekwencja dla zapisu: każdy nowy folder i dokument musi dostać krawędź od folderu nadrzędnego (folder główny to jedyny węzeł bez rodzica).
+- `cmis:name`: pole `CmisName`, potem kod inwentaryzacyjny, potem `CID:<id>`. Kolizje nazw w folderze (dopisek `(id)`) nie są jeszcze obsługiwane.
+- Właściwości: systemowe (id, typ bazowy i obiektu, nazwa, twórca, daty, opis), dla folderu `cmis:parentId` (a dla głównego `cmis:path` = `/`), dla dokumentu właściwości wersji (etykieta z `CmisVersionLabel` albo `1.0`, seria wersji = `rootVersionId`, najnowsza gdy status sprawy nie jest `Z`), a do tego pola typu (tekst, logiczne, liczby; pola wielowartościowe i daty pominięte). Pole `CmisName` występuje obok `cmis:name`, zgodnie z definicją typu.
+
+**Czego brak (świadomie):** `cmis:path` poza folderem głównym, `getObjectByPath`, filtr właściwości, dozwolone akcje, treść dokumentu (`contentStream*`), uprawnienia sprawy (przypuszczenie: `ICaseLogic.find` stosuje uprawnienia kontekstu, nie sprawdzone), daty z pól typu.
+
+**Testy:** `MercuryCmisObjectManagerTest` (10, logika podstawiona przez `Proxy`, bez bazy): folder główny, folder, dokument, wersje, nazwa zastępcza, obiekt spoza repozytorium, dzieci bezpośrednie ze stronicowaniem, rodzice, dokument nie jest folderem. Razem z `MercuryCmisServerTest` 19 z 19. Nie sprawdzone na bazie ani przez klienta CMIS (np. Workbench): semantyka głębokości krawędzi wynika z odczytu zapytań, a nie z uruchomienia.
