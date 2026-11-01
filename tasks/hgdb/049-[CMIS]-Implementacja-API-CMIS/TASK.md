@@ -651,3 +651,19 @@ Obserwacja 125 w `docs/obserwacje.md` opisuje zaszyty filtr `isDocumentType=fals
 - Token Bearer niesie role z zakresu (`scope`); weryfikacja kontekstu jak w `ContextVerificationAdvice` nie jest powtarzana.
 
 **Testy:** `HttpCmisAuthenticatorTest` (5: Basic z podstawionym weryfikatorem, brak i błędne dane, Bearer z nieznanym tokenem, Basic wyłączone bez klienta, rozbieranie nagłówka z dwukropkiem w haśle); razem 33 testy CMIS w `mercury-ws-app` bez błędów. Nie sprawdzone: prawdziwy token i prawdziwy realm (wymaga serwera i klienta OAuth).
+
+### Realizacja: krok 3, treść plików (2026-11-01, `hgdb-049` w `mercury`, niezacommitowane)
+
+**Zakres:** `MercuryCmisContentManager` (`mercury-ws-app`) i obsługa w `MercuryCmisObjectWriter` oraz `MercuryCmisService`: `createDocument` ze strumieniem, `getContentStream` (z zakresem `offset`/`length`), `setContentStream` (z flagą `overwriteFlag`), `deleteContentStream`; `deleteObject` usuwa też treść.
+
+**Zasady:**
+- Treść leży w istniejącym mechanizmie plików (`IFileIndexLogicInternal`): katalog `mercury.upload.file.target`, nazwa na dysku `cmis_<uuid>` (nazwa na dysku jest globalnie unikalna), identyfikatorem treści jest `FileIndex.id`. W klastrze zapis i odczyt na obcym węźle obsługuje logika plików (RMI), a `CN001RequiredNodeNotAvailableException` daje `CmisRuntimeException` „The content is temporarily unavailable”, a `FI001FileNotExists` daje „nie znaleziono”.
+- Opis treści trzyma sam dokument w polach `CmisContentStreamId`, `CmisFileName`, `CmisMimeType`, `CmisContentSize`; typ dokumentu bez wszystkich czterech pól odrzuca treść (`CmisConstraintException`), ale dokument bez treści tworzy się normalnie. Pola te są dla klienta tylko do odczytu (typ CMIS i `updateProperties`/`createDocument` je ignorują), bo identyfikator treści z klienta wskazywałby dowolny plik.
+- Plik jest zapisywany i czytany w kontekście systemowym; wywołujący sprawdza wcześniej uprawnienia sprawy przez zwykłe wczytanie obiektu w kontekście użytkownika (przypuszczenie, że `ICaseLogic.find` stosuje uprawnienia kontekstu, nie sprawdzone).
+- Limit rozmiaru: `mercury.cmis.maxContentSize` (domyślnie 10 MB), sprawdzany przez zadeklarowaną długość i przy czytaniu strumienia (strumień bez długości też jest ograniczony). Treść jest w pamięci (tablica bajtów), więc to także limit pamięci na żądanie.
+- Spójność: gdy sprawa nie powstanie (błąd zapisu), nowy plik jest usuwany; przy zmianie treści poprzedni plik jest usuwany dopiero po zapisaniu nowego opisu; niepowodzenie usunięcia pliku trafia do dziennika (`warn`), bo sprawa jest już zapisana.
+- Właściwości CMIS dokumentu `cmis:contentStreamId`, `cmis:contentStreamLength`, `cmis:contentStreamMimeType`, `cmis:contentStreamFileName` pochodzą z tych pól; pola typu o tych samych nazwach nadal widać jako zwykłe właściwości.
+
+**Testy:** `MercuryCmisContentTest` (11, mechanizm plików i biznes podstawione): zapis i opis treści, domyślna nazwa i typ MIME, blokada pól treści, limit (deklarowany i rzeczywisty), typ bez pól treści, brak sieroty po błędzie zapisu, odczyt i zakresy, mapowanie błędów (brak treści, brak pliku, węzeł niedostępny), zastąpienie i usunięcie treści, usunięcie dokumentu. Razem 44 testy CMIS w `mercury-ws-app` bez błędów. Scenariusz `CmisContentFileScenario` (`CmisContentFileTest`, baza testowa, 1 z 1) sprawdza na prawdziwej logice ścieżkę, na której opiera się treść: `saveFile`, `findFileByFileName`, `find` po identyfikatorze, `copy2OutputStream`, `deleteFile`. Nowy klucz profilu: `test.skip.package.CmisContentFileTest=true` (w `scichy-test` dodany; w `scichy` dopisuje autor).
+
+**Nie sprawdzone:** zapis i odczyt między węzłami klastra, rzeczywiste uprawnienia użytkownika do sprawy, duże pliki (pamięć), daty modyfikacji treści, `checkOut`/`checkIn`.
