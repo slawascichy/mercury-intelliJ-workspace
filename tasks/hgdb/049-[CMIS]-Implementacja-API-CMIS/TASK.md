@@ -727,3 +727,19 @@ Zgłoszenie z testu: utworzenie obiektu typu `BpmBPDInstance` (typ bez pola `Cmi
 **Test na dev po wdrożeniu (typ bez `CmisName`):** utworzenie folderu typu `BpmBPDInstance`, odczyt po ścieżce, duplikat nazwy (409), zmiana nazwy i usunięcie działają, o ile klient poda pole `bpmProcessInstanceId`. Typ ma regułę unikalności (`TypeCode.uniqueConstraintParamName`), a bez wartości pola Mercury odrzuca zapis (`Naruszenie integralności… pole nie może być puste`), co serwer CMIS zwracał jako `runtime`/500.
 - Zmiana (decyzja autora): w definicji typu CMIS (`MercuryCmisTypeManager`) pola z reguły unikalności typu są oznaczone jako wymagane (`required=true`). Elementy formuły rozdziela `||`, literały w apostrofach są pomijane. Test: `MercuryCmisServerTest.fieldsOfUniqueRuleAreRequired`; razem 24 testy `mercury-ws-app` OK.
 - Nieobjęte: błąd naruszenia integralności nadal wraca jako `runtime`/500 (do ewentualnego mapowania na `constraint`).
+
+## Dozwolone działania (allowable actions) – test w Workbench (2026-11-01)
+
+Zgłoszenie z Workbencha: polecenia **Delete** były wyszarzone. Przyczyna: serwer nie zwracał `allowableActions` (sprawdzone `curl`-em z `includeAllowableActions=true`: brak pola), a klient wyszarza polecenia, których nie ma na liście. Nie był to brak uprawnień.
+- Dodane: `MercuryCmisObjectMapper.allowableActions(document, root)` i parametr `includeAllowableActions` w `getObject`, `getObjectByPath`, `getChildren`, `getObjectParents`, a także `getAllowableActions`. Lista zależy tylko od rodzaju obiektu: folder (przeglądanie, tworzenie folderów i dokumentów), dokument (treść: odczyt, podmiana, usunięcie), obiekt poza folderem głównym (zmiana właściwości, usunięcie, rodzice); folder główny bez zmiany, usunięcia i rodzica.
+- To lista możliwości serwera, nie ocena uprawnień użytkownika (przypuszczenie do potwierdzenia: odmowę uprawnień zwraca dopiero operacja).
+- Reguła złożonego klucza: test `fieldsOfUniqueRuleAreRequired` obejmuje formułę `instanceId||'-'||area` (oba pola wymagane, literał pominięty).
+- Testy: 25 w `mercury-ws-app` OK (nowy: `allowableActionsAreReturnedOnlyWhenRequested`). Wymaga wdrożenia WAR i ponownego testu w Workbenchu.
+
+## Usuwanie folderu z zawartością – `deleteTree` (2026-11-01)
+
+Test w Workbench: usunięcie dokumentu działa, usunięcie folderu kończyło się `notSupported`. Przyczyna: Workbench usuwa folder wywołaniem `deleteTree`, którego serwer nie implementował (`deleteObject` odrzuca niepusty folder zgodnie ze standardem).
+- Warstwa biznesowa: `ICmisRepositoryBusiness.deleteTree(context, repo, folderId, continueOnFailure)` usuwa zawartość od liści (dokumenty z treścią, podfoldery), a folder dopiero po usunięciu zawartości. Zwraca identyfikatory obiektów, których nie udało się usunąć (folder nadrzędny też, gdy zawartość została); folder główny jest chroniony (`CONSTRAINT`), dokument odrzucany (`INVALID_ARGUMENT`). Bez zgody na kontynuację operacja kończy się na pierwszym błędzie.
+- Adapter: `MercuryCmisService.deleteTree` zwraca `FailedToDeleteData`; w dozwolonych działaniach folderu (poza głównym) dodane `canDeleteTree`.
+- Operacja nie jest jedną transakcją: błąd w środku zostawia część obiektów usuniętą (stąd lista niepowodzeń).
+- Testy: `CmisRepositoryBusinessTest` 32 OK, scenariusz `CmisRepositoryDbTest` OK (krok 6b: poddrzewo z dokumentem i treścią, ochrona folderu głównego), `mercury-ws-app` – wyniki testów w podsumowaniu sesji. Wymaga wdrożenia WAR.
