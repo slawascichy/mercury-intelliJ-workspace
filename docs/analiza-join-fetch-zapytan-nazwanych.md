@@ -70,6 +70,25 @@ Priorytet wynika z liczby różnych celów powiązań w jednym wyniku (im więce
 4. Pozostałe encje według profilu.
 5. Każdą zmianę kończyć testami regresji i zapisem pomiarów w zadaniu; zmiany w encjach oznaczają kolejne wydanie `mercury-lib`.
 
+## Wyniki pomiarów (2026-11-02, `JoinFetchStatsTest`, baza testowa, 3255 spraw)
+
+Pomiar: liczba zapytań SQL z `Statistics` Hibernate (`getPrepareStatementCount`), pierwsze i drugie wywołanie tej samej sondy.
+
+| Sonda | Przed | Po |
+|---|---|---|
+| `CaseCatalog` dzieci folderu głównego (3254 wiersze) | 3258 zapytań, 961 ms | 3 zapytania, 153–197 ms (`JOIN FETCH parent, child`) |
+| `CaseCatalog` rodzice | 5 | 3 |
+| `caseDAO.findByIdList(100)`, 1. wywołanie | ok. 100 | 7 (`JOIN FETCH group`, `LEFT JOIN FETCH group.ktmNumber`) |
+| `caseDAO.findByIdList(100)`, 2. wywołanie | – | 100 zapytań, 179 ms |
+| `caseDAO.findByIdList(100)` bez pamięci podręcznej zapytań | – | 7 zapytań, 15 ms |
+| `caseDAO.findByIdList(1000)`, 2. wywołanie | – | 1000 zapytań, 656 ms; bez pamięci podręcznej 27 zapytań, 138 ms |
+
+### Odkrycie: pamięć podręczna zapytań + encje `@Cacheable(false)`
+
+`DAOSupport.setHint` ustawia `org.hibernate.cacheable=true` dla każdego `CacheUsage` poza `NONE`. Trafienie w pamięć podręczną zapytań zwraca same identyfikatory. Hibernate ładuje wtedy encje po jednej, jeśli nie ma ich w pamięci podręcznej drugiego poziomu. 21 encji ma `@Cacheable(false)`, 69 nie ma adnotacji, żadna nie ma `@Cache`. `JOIN FETCH` pomaga więc tylko przy pierwszym wywołaniu (chybienie), a każde kolejne trafienie w pamięć zapytań daje N+1.
+
+Wniosek (do decyzji autora, zmiana globalna): nie ustawiać `cacheable` dla zapytań zwracających encje bez pamięci podręcznej drugiego poziomu (`DAOSupport.isQueryCacheEnabled`), albo świadomie włączyć pamięć drugiego poziomu dla wybranych encji. Zrobione lokalnie: `CmisRepositoryBusiness.loadCases` czyta sprawy bez pamięci podręcznej zapytań (`findByIdList(lista, true, paginacja)`).
+
 ## Załącznik: zapytania nazwane zwracające encje z powiązaniami `EAGER` (94)
 
 Kolumny: encja, nazwa zapytania, warunek `WHERE` (skrócony).
