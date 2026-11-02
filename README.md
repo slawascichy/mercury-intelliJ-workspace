@@ -186,6 +186,7 @@ Używaj ich do pomiarów (zadanie 119), obok indeksu wygenerowanego testem `Luce
 - [Obserwacje z analizy i kandydaci do udoskonaleń](docs/obserwacje.md)
 - [Ewidencja zależności i konfliktów scenariuszy testowych](docs/testy-zaleznosci-scenariuszy.md)
 - [Macierz identyfikacji typu atrybutu (wersje typów i definicji)](docs/macierz-identyfikacji-typu-atrybutu.md)
+- [Analiza `JOIN FETCH` w zapytaniach nazwanych encji (N+1)](docs/analiza-join-fetch-zapytan-nazwanych.md)
 
 ## Licencja
 
