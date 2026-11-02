@@ -84,3 +84,6 @@ Poprzedni wniosek („nie udało się sprawdzić wymiany paczek”) jest nieaktu
 - Czas `createFolder` na węźle 1: 4,5–6,8 s w tym przebiegu (0,65 s w pojedynczym węźle bez bufora hurtowego i drugiego węzła); przyczyna nieustalona (więcej spraw w bazie testowej, praca węzła 2, wysyłka JMS).
 - Błędy węzła 2 w dzienniku: `AlreadyClosedException` na początku (konsument działa równolegle z budową indeksu `buildFullIndex`) i `JMSException: InterruptedException` przy zamykaniu; bez wpływu na wynik.
 - Uruchomienie: `mvn -o test -pl mercury-srv-slave -Dmaven.test.skip=false -Dtest=BulkClusterTest -Duser=scichy-test -Dcluster.entries=20000` z `test.skip.package.BulkClusterTest=false` w profilu; wymaga działającego Tomcata na tej samej bazie (węzeł 1), Terracotty i ActiveMQ.
+
+### Wyjaśnienie czasu `createFolder` (2026-11-02)
+Wolne `createFolder` (3,3–6,8 s) nie wynikało z drugiego węzła ani z bufora hurtowego: bez drugiego procesu 4 kolejne wywołania w folderze głównym trwały po 3,6–3,8 s, a w pustym folderze nadrzędnym 0,09 s. Czas rośnie z liczbą dzieci folderu (ok. 3200 w folderze głównym bazy testowej): sprawdzenie unikalności nazwy w serwerze CMIS wczytuje rodzeństwo. Różnica 4,5–6,8 s kontra 3,7 s w teście z dwoma procesami to prawdopodobnie obciążenie wspólnego hosta. Opis problemu i propozycja poprawki w zadaniu 049.
