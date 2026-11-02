@@ -142,6 +142,7 @@ Maven (📦). Pełne opisy są w plikach `docs/moduly/`.
 | `.idea/jarRepositories.xml` | Lokalne repozytoria Maven poszczególnych projektów (`<repo>/repo`) |
 | `.idea/compiler.xml`, `.idea/encodings.xml` | Ustawienia kompilatora i kodowania (UTF-8) dla modułów |
 | `docs/` | Dokumentacja architektury, modułów i obserwacji z analizy |
+| `scripts/` | Skrypty pomocnicze: `seed_cmis_folders.sh` tworzy 3250 folderów CMIS do pomiarów wydajności (opis: [docs/dane-pomiarowe-cmis.md](docs/dane-pomiarowe-cmis.md)) |
 
 ## Indeksy Lucene do testów wydajności
 
@@ -187,6 +188,8 @@ Używaj ich do pomiarów (zadanie 119), obok indeksu wygenerowanego testem `Luce
 - [Ewidencja zależności i konfliktów scenariuszy testowych](docs/testy-zaleznosci-scenariuszy.md)
 - [Macierz identyfikacji typu atrybutu (wersje typów i definicji)](docs/macierz-identyfikacji-typu-atrybutu.md)
 - [Analiza `JOIN FETCH` w zapytaniach nazwanych encji (N+1)](docs/analiza-join-fetch-zapytan-nazwanych.md)
+- [Dane pomiarowe CMIS (3250 folderów) i skrypt odtwarzania](docs/dane-pomiarowe-cmis.md)
+- [Raport optymalizacji N+1 (`JOIN FETCH`, pamięć zapytań), 2026-11-02](docs/raport-join-fetch-2026-11-02.md)
 
 ## Licencja
 
