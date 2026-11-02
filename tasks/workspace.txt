@@ -86,6 +86,7 @@ claude --resume aa3430ea-1399-481a-aba9-9d5786b44249
 
 ## Dodałem nowe zadanie:
 
+113-Stworzenie-mechanizmu-do-przeglądu-wykonywanych-zapytań-Lucene
 
 ## Strumień:
 

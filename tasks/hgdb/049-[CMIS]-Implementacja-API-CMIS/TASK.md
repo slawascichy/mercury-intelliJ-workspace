@@ -900,3 +900,20 @@ Do sekcji „Usługi systemowe” dodane linki do dokumentacji typów REST (`/sw
 
 ## Wydajność `createFolder` przy wielu dzieciach folderu (2026-11-02, wynik pomiaru przy zadaniu 114)
 `createFolder` (i prawdopodobnie `createDocument`, zmiana nazwy) w folderze z ok. 3200 dziećmi trwa 3,6–3,8 s, a w pustym folderze 0,09 s (Tomcat bez drugiego węzła, baza `mercury-db-test`). Przyczyna (przypuszczenie wynikające z pomiaru; kod do sprawdzenia): kontrola unikalności nazwy w folderze (`CmisRepositoryBusiness`, `nameOf` po rodzeństwie) wczytuje wszystkie dzieci. Czas rośnie liniowo z liczbą dzieci. Propozycja: sprawdzać nazwę zapytaniem po `CmisName` i `inventoryCode` zawężonym do dzieci folderu (indeks Lucene `mrc_mountPointParents` albo zapytanie bazodanowe), a nie przez wczytanie rodzeństwa. Do podjęcia decyzji, czy robimy to w etapie 2.
+
+### Wynik poprawki wydajności `createFolder` (2026-11-02, Tomcat na `mercury-db-test`, ok. 3200 dzieci w folderze głównym)
+Kontrola unikalności nazwy i rozwiązywanie ścieżki nie wczytują rodzeństwa: `CmisRepositoryBusiness.childrenNamed` szuka spraw o danej nazwie (pole `CmisName` w każdym typie, który je ma, kod inwentaryzacyjny przez zapytanie nazwane `Case.findByInventoryCode`, zastępcza nazwa `CID:<id>`), a potem sprawdza, czy kandydat leży bezpośrednio w folderze.
+
+| Operacja | Przed | Po |
+|---|---|---|
+| `createFolder` w folderze głównym | 3,6–3,8 s | 0,15–0,18 s |
+| `getObjectByPath` (`/Cl1_5`) | 2,8 s | 0,065 s |
+| duplikat nazwy (`409`) | 3,7 s | 0,15 s |
+| zmiana nazwy na istniejącą (`409`) / na nową | n/d | 0,07 s / 0,14 s |
+| `createDocument` / duplikat nazwy dokumentu | n/d | 0,18 s / `409` |
+| `getChildren` (`maxItems=100`) | 1,5–2 s | 2,1 s (bez zmian) |
+
+Etapy pośrednie: wczytywanie dzieci partiami (500 identyfikatorów na zapytanie) dało 1,6–1,9 s; pierwsza wersja z `caseDAO.filter` kończyła się `500` (`MBigDataDAOSupport.filter` nie jest wspierane). Zmiana wymagała nowego zapytania nazwanego w encji `Case` (`mercury-lib`, `mercury-entities`).
+- **Ryzyko:** liczba zapytań rośnie z liczbą typów z polem `CmisName` (2 zapytania na typ i wersję typu; `CaseDAO.findByProperty`); przy setkach typów warto to zmierzyć. Pole `CmisName` ma indeks tylko, gdy leży na jednej z pierwszych 16 pozycji parametrów (`IGO_DA_CASE_PARAMxx_INDX`).
+- **Do zrobienia:** `getChildren` wczytuje wszystkie dzieci i dopiero potem stronicuje (2 s przy 3200 dzieciach). Poprawka: stronicować identyfikatory krawędzi przed wczytaniem spraw (z uwzględnieniem ukrywania obiektów bez uprawnień).
+- Scenariusz `CmisRepositoryDbTest` po tej zmianie nie był uruchamiany (czyści bazę, na której działa Tomcat z danymi pomiarowymi): do uruchomienia, gdy Tomcat wróci na `mercury-db`.
