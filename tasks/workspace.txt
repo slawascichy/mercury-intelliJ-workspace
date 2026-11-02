@@ -86,6 +86,8 @@ claude --resume aa3430ea-1399-481a-aba9-9d5786b44249
 
 ## Dodałem nowe zadanie:
 
+222-[GUI]-Panel-monitorowania-sekretarzy
+
 ## Strumień:
 
   D016-Widoki
