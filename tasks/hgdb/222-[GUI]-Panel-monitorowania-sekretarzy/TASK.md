@@ -1,6 +1,7 @@
 # [222] [GUI] Panel monitorowania sekretarzy
 
 https://github.com/slawascichy/hgdb/issues/222
+**Status: ✅ zamknięte 2026-11-02** (do zatwierdzenia i zamknięcia w GitHubie przez autora). Podsumowanie w sekcjach „Realizacja” poniżej i w `podsumowanie-2026-11-02.md`.
 
 1. Rozbudowa usług rest  mercury-ws-app\src\main\java\pro\ibpm\mercury\rest\server\actions\secretaries
    \SecretariesRest.java. Dodanie usług wpierwjących wizualizację stanu sekretarzy:

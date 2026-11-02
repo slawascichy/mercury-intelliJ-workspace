@@ -1,6 +1,7 @@
 # [82] [ActiveMQ] Dynamiczne budowanie odbiorców
 
 https://github.com/slawascichy/hgdb/issues/82
+**Status: ✅ zamknięte 2026-11-02** (do zatwierdzenia i zamknięcia w GitHubie przez autora). Podsumowanie w sekcjach „Realizacja” poniżej i w `podsumowanie-2026-11-02.md`.
 
 Zadanie nawiązuje również do problemu zdefiniowanego w zadaniu #53 .
 Dla kolejek z wiadomościami "NIE filtrowanymi" mam następujące, sztywne rozwiązanie:
