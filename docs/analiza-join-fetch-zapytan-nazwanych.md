@@ -87,7 +87,29 @@ Pomiar: liczba zapytań SQL z `Statistics` Hibernate (`getPrepareStatementCount`
 
 `DAOSupport.setHint` ustawia `org.hibernate.cacheable=true` dla każdego `CacheUsage` poza `NONE`. Trafienie w pamięć podręczną zapytań zwraca same identyfikatory. Hibernate ładuje wtedy encje po jednej, jeśli nie ma ich w pamięci podręcznej drugiego poziomu. 21 encji ma `@Cacheable(false)`, 69 nie ma adnotacji, żadna nie ma `@Cache`. `JOIN FETCH` pomaga więc tylko przy pierwszym wywołaniu (chybienie), a każde kolejne trafienie w pamięć zapytań daje N+1.
 
-Wniosek (do decyzji autora, zmiana globalna): nie ustawiać `cacheable` dla zapytań zwracających encje bez pamięci podręcznej drugiego poziomu (`DAOSupport.isQueryCacheEnabled`), albo świadomie włączyć pamięć drugiego poziomu dla wybranych encji. Zrobione lokalnie: `CmisRepositoryBusiness.loadCases` czyta sprawy bez pamięci podręcznej zapytań (`findByIdList(lista, true, paginacja)`).
+✅ Zrealizowane (decyzja autora 2026-11-02): `DAOSupport` (`mercury-core-server`) nie ustawia `cacheable` dla zapytań, których wynik zawiera encję bez pamięci drugiego poziomu (`returnsUncachedEntity`: typy wyniku Hibernate + `EntityPersister.canReadFromCache()`, wynik zapamiętany per encja). Zapytania projekcyjne (identyfikatory, agregaty) zachowują pamięć zapytań. Dotyczy wszystkich zapytań DAO (`createQuery`, `createNamedQuery`). Dodatkowo `CmisRepositoryBusiness.loadCases` czyta sprawy ścieżką `findByIdList(lista, true, paginacja)`.
+
+Pomiar po zmianie: `findByIdList(100)`, 2. wywołanie: 7 zapytań, 21 ms (było 100 zapytań, 179 ms); `findByIdList(1000)`, 2. wywołanie: 27 zapytań, 83 ms (było 1000 zapytań, 656 ms); katalog dzieci, 2. wywołanie: 3 zapytania, 183 ms. Pozostałe pierwsze ładowania (`Source`, `SystemUser`, `Store`, `TypeCase`) to pojedyncze odczyty na partię, nie na encję.
+
+### Typy (`TypeCase`), pomiar 2026-11-02
+
+Sonda `typeCaseDAO.find(QgetCaseTypesOnly)` (8 typów): 13 zapytań (`TypeCode=8`, `TypeKind=4` osobnymi odczytami). Po `JOIN FETCH tc.code JOIN FETCH tc.kind` w `QgetCaseTypesOnly` i `QgetDocumentTypesOnly`: **1 zapytanie** (też dla dokumentów: 3 → 1). Pozostałe zapytania `TypeCase` zwracają zwykle jeden typ (filtr po kodzie, nazwie, sumie kontrolnej), więc wzorzec N+1 prawie ich nie dotyczy i ich nie zmieniono. Wymagają kolejnych sond: `Type2Type`, `CaseDocument`, historie, `TypeParamRole`. Dla historii (`matter`) i komentarzy (`caseObj`) zapytania filtrują po jednej sprawie, więc różnych celów jest zwykle jeden (przypuszczenie do potwierdzenia sondą).
+
+### Sondy pozostałych encji (2026-11-02, baza testowa)
+
+Sonda `SELECT x FROM Encja x` (limit 200, zwykłe JPQL bez złączeń) pokazuje koszt kaskady `EAGER`. Baza testowa ma mało wierszy dla większości encji, więc wynik rozstrzyga tylko tam, gdzie wierszy jest dużo.
+
+| Encja | Wiersze | Zapytania | Osobne ładowania |
+|---|---:|---:|---|
+| `TypeParam` | 94 | **91** | `ParamDefinition`=85, `TypeCase`=5 |
+| `GroupCase` | 200 | 4 | `KtmNumber`=2, `Source`=1 |
+| `Type2Type` | 3 | 4 | `TypeCode`=3 |
+| `SubType` | 3 | 3 | `TypeCase`=2 |
+| `TypeParamRole` | 2 | 3 | `Role`=2 |
+| `CaseHistoryTrace`, `CaseHistoryStream`, `FileIndex`, `Store` | 1–4 | 1–3 | pojedyncze |
+| `CaseDocument`, `Comment`, `QuickTask` | 0 | 1 | brak danych do oceny |
+
+Jedyny wyraźny N+1 to `TypeParam` (wiele różnych `ParamDefinition` w typie). Dodano `JOIN FETCH tp.paramDefinition` w trzech zapytaniach nazwanych `TypeParam`, które zwracają encje (`QgetByTypeCaseId`, `QsearchByParamDefinitionName`, `QsearchByParamDefinitionNameLastVersion`). Pomiar zapytania nazwanego `QgetByTypeCaseId` dla typu z 33 parametrami: **1 zapytanie**. Pozostałe encje: w danych testowych brak dowodu N+1. Struktura (np. `Type2Type` z różnymi `TypeCode`, `CaseHistory*` z jedną sprawą w wyniku) sugeruje mały zysk. Ocena wymaga bazy z większą liczbą wierszy tych tabel (przypuszczenie).
 
 ## Załącznik: zapytania nazwane zwracające encje z powiązaniami `EAGER` (94)
 
