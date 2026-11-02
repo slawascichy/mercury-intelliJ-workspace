@@ -54,3 +54,34 @@ Jeśli chodzi o kolejki "filtrowane" - to tu jest pomysł by napisać klasę. Je
 > The filter you can use with the BooleanExpression should be any selector you can write for JMS since it is the same mechanism that ActiveMQ uses for filtering JMS messages. The advantage of this is that the filtering happens inside ActiveMQ and this way the client has no control over it. On top of that the client can still use their own selector to further filter messages they receive (for example for load balancing).
 
 Przede wszystkim tymi komponentami rozwiążę problem dynamicznego dodawania nowych węzłów do klastra...!
+## Eksperymenty na wbudowanym brokerze (2026-11-02)
+
+Źródła: `eksperymenty/Exp082.java`, `Exp082b.java`. Broker ActiveMQ 5.16.4 (`activemq-all-5.16.4.jar` z `mercury-server/apache-activemq-5.16.4`) uruchomiony w procesie testowym (bez zapisu na dysk, `vm://`), więc działający broker nie był ruszany. Uruchomienie: `javac -cp activemq-all-5.16.4.jar Exp082.java` i `java -cp activemq-all-5.16.4.jar;. Exp082`.
+
+| Eksperyment | Wynik |
+|---|---|
+| E1: `compositeQueue` z `forwardTo` na `reg.changes.>` (wildcard) | **nie działa**: `StackOverflowError` przy wysłaniu wiadomości; wildcard w `forwardTo` odpada |
+| E2: Virtual Topic (`name=">"`, `prefix="Consumer.*."`), kolejki `Consumer.<węzeł>.VirtualTopic.*`, selektor konsumenta `sender <> '<węzeł>'`; `node3` dochodzi bez zmiany konfiguracji brokera | **działa**: `node2` i dynamiczny `node3` dostają wiadomość, nadawca `node1` nie; `selectorAware=false` zostawia kopię wiadomości w kolejce nadawcy (zaległość 1), `selectorAware=true` nie (0) |
+| E3: `filteredDestination` (stan dzisiejszy) | `node2` dostaje, `node3` (nieskonfigurowany) nie dostaje nic: potwierdza obserwację 139 |
+| E4: wiadomość wysłana, gdy węzeł jest offline (kolejka istnieje) | `selectorAware=false`: **doręczona** po powrocie węzła; `selectorAware=true`: **utracona** (wiadomość nie trafia do kolejki bez konsumenta o pasującym selektorze) |
+
+### Wniosek
+
+- Wildcard w `compositeQueue` odpada. Własny `DestinationInterceptor` nie jest potrzebny.
+- Virtual Topics rozwiązują dynamiczne dodawanie węzłów: konfiguracja brokera ma jedną regułę, a kolejka węzła powstaje, gdy węzeł się zgłosi.
+- `selectorAware=true` gubi wiadomości dla węzła offline, więc odpada. `selectorAware=false` z selektorem u konsumenta zostawia w kolejce węzła wiadomości jego własne (zaległość rośnie bez końca).
+- Proponowane rozwiązanie: Virtual Topics bez selektora po stronie brokera, a pomijanie własnych wiadomości (`sender == własny węzeł`) w odbiorniku aplikacji. Węzeł offline dostaje zaległe wiadomości po powrocie (jak dziś), a nowy węzeł nie wymaga zmiany `activemq.xml`.
+- Zakres zmian w kodzie (do zatwierdzenia): nazwy w `JmsDestinations`, nadawcy (temat `VirtualTopic.*` zamiast kolejki), odbiorniki `@JmsListener` (kolejki `Consumer.<węzeł>.VirtualTopic.*`), harness `mercury-srv-slave` (`BulkClusterScenario` z dowolną nazwą węzła), `activemq.xml` (jedna reguła `virtualTopic`; zmianę i restart robi autor), `redeliveryPolicy` i DLQ z obserwacji 138.
+
+## Realizacja (2026-11-02)
+
+- `activemq.xml` (`mercury-server/apache-activemq-5.16.4/conf`): siedem `compositeQueue` zastąpiła jedna reguła `virtualTopic name="VirtualTopic.>" prefix="Consumer.*." selectorAware="false"`. Kopia: `activemq.xml.bak-082-20261102`. Szablony w `mercury-cmd` i `mercury-docker` (`1_activemq.xml`) nie zmienione (tylko na prośbę autora).
+- `mercury-srv`: `JmsDestinations` (tematy `VirtualTopic.mrc-*`, kolejki odbiorców `Consumer.<węzeł>.VirtualTopic.mrc-*`, `consumerQueue(...)`), szablony `jmsTopicTemplate` i `jmsTopicTemplateWithExpiration`, nadawcy publikują na tematach, wysyłka do jednego węzła na kolejkę odbiorcy, odbiorniki heartbeat, pobudzeń i paczek indeksu pomijają własne wiadomości (bez ostrzeżeń).
+- Obserwacja 138: `LuceneCaseSaveBuffersForIndexConsumer` po 5 doręczeniach (`JMSXDeliveryCount`) przenosi paczkę do `ActiveMQ.DLQ` (kopia z `dlqDeliveryFailureCause` i `originalDestination`) i ją potwierdza.
+- Testy: `JmsDestinationsTest` (4). Testu routingu na wbudowanym brokerze nie ma w `mercury-srv`, bo `activemq-broker` 5.16.2 nie ma w lokalnym `.m2` (eksperymenty w `eksperymenty/`).
+- Test na żywo (autor zrestartował ActiveMQ i wdrożył WAR): kolejki `Consumer.node1.*` powstały, heartbeat przechodzi przez własną kolejkę i jest pomijany. `BulkClusterScenario` jako **`node3`** (nie ma go w dawnej konfiguracji): 5000 wpisów hurtowych, zmiana bieżąca z węzła 1 w indeksie węzła `node3` po 473, 477 i 1381 ms, bufor hurtowy opróżniony w 9 s.
+
+### Uwagi eksploatacyjne
+
+- Kolejki `Consumer.<węzeł>.*` zostają po wyłączeniu węzła; kolejka paczek indeksu (`mrc-lucene-document-registry-changes`) nie wygasa, więc dla węzła wycofanego na stałe trzeba ją usunąć (Jolokia/konsola), inaczej będzie rosła.
+- Stare kolejki `…-node1`/`…-node2` z poprzedniej konfiguracji zostały w bazie brokera jako nieużywane.

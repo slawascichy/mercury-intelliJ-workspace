@@ -4,6 +4,29 @@ https://github.com/slawascichy/hgdb/issues/218
 
 **Status (2026-10-28):** zadanie założone po dyskusji przy zadaniu 016 (Widoki). Nic nie zaimplementowano. Poniżej cel, ustalone fakty, propozycja i decyzje do podjęcia.
 
+## Duplikacja zadań
+
+### [10] Usuwanie wszystkich spraw z danego typu
+
+https://github.com/slawascichy/hgdb/issues/10
+
+Przydałaby się funkcjonalność do usuwania wszystkich spraw z danego typu. Na wejściu podawany mógłby być kod typu, a usługa archiwizuje lub usuwa wszystkie sprawy wskazanego typu.
+
+### [23] Obsługa retencji spraw
+
+https://github.com/slawascichy/hgdb/issues/23
+
+W encji TypeCode zdefiniowano pole:
+```java
+/** * Czas, wyrażony w milisekundach, po którym obiekt sprawy danego typu, zostanie * usunięty, licząc od 
+ czasu/daty jego utworzenia. */ 
+@Column(name = "RETENTION_TIME_MILIS") @Property 
+@MappedProperty 
+@MappedPropertyEager 
+private Long retentionTimeMilis;
+```
+Trzeba zrobić sheduler'a, który będzie usuwał sprawy, których czas życia wygasł.
+
 ## Cel (autor)
 
 Mercury ma pełnić rolę bazy spraw dla procesów. Procesy i ich modele się zmieniają, a założeniem jest, żeby zmiana modelu **nie wymagała migracji**: sprawy zostają pod starą wersją typu, a nowe powstają pod nową. Stare wersje spraw usuwa „czyściciel”: na żądanie albo jako scheduler.

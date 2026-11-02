@@ -84,6 +84,15 @@ git checkout master && git pull && git branch -d ${BRANCH_VERSION}
 claude --resume aa3430ea-1399-481a-aba9-9d5786b44249
 ```
 
+
+```
+hgdb-49 [CMIS] Implementacja API CMIS
+
+https://github.com/slawascichy/hgdb/issues/49
+https://github.com/slawascichy/hgdb/issues/114
+
+```
+
 ## Dodałem nowe zadanie:
 
 
@@ -94,12 +103,12 @@ claude --resume aa3430ea-1399-481a-aba9-9d5786b44249
 >049-[CMIS]-Implementacja-API-CMIS
   D058-Logger-dynamiczne-zmiana-poziomów-logowania
   D062-Problem-dodawanie-klucza-głównego-po-utworzniu-typu-bez-pola
-082-[ActiveMQ]-Dynamiczne-budowanie-odbiorców
+>082-[ActiveMQ]-Dynamiczne-budowanie-odbiorców
   D109-CaseBusiness_changeModel-duplicate-key-value-violates-unique-constraint-igo_da_typecode_case_uk
   D110-CaseLobProperty-More-than-one-row-with-the-given-identifier-was-found
   D115-Usługa-updateCasesParamsByParams-nie-można-zaktualizować-parametru-do-null
 113-Stworzenie-mechanizmu-do-przeglądu-wykonywanych-zapytań-Lucene
->114-Obsługa-indeksowania-przez-dedykowanych-sekretarz-indeksu
+  D114-Obsługa-indeksowania-przez-dedykowanych-sekretarz-indeksu
   D116-Usługa-updateCasesParamsByParams-nie-działa-prawidłowo
 118-Poprawienie-mechanizmów-obsługi-pamięci-podręcznych
   D119-[Lucene]-Problem-wydajności-systemu-długie-zapytania-Lucene
@@ -124,7 +133,7 @@ claude --resume aa3430ea-1399-481a-aba9-9d5786b44249
    B218-Czyściciel-starych-wersji-spraw
 219-Wydajność-generowania-plików-Excel
    B220-Filtry-i-sortowanie-w-eksporcie-widoków
->222-[GUI]-Panel-monitorowania-sekretarzy
+  D222-[GUI]-Panel-monitorowania-sekretarzy
  
  
  

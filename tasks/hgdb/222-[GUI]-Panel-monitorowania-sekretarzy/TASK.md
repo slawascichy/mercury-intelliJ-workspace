@@ -14,7 +14,6 @@ https://github.com/slawascichy/hgdb/issues/222
 - Zakres i znaczenie przycisku (decyzje autora): panel obejmuje węzeł obsługujący żądanie; „start” to pobudzenie sekretarza (istniejące usługi `wakeUp…Secretary`).
 - `mercury-srv`, pakiet `org.mercury.business.secretaries`: `ISecretariesStateBusiness`, `SecretariesStateBusiness`, `SecretaryState`, `SecretaryBufferState`. Stan „czy pracuje” z menedżerów sekretarzy (`isWorking()`), rozmiary buforów jako `SELECT count(*)` z tabel o stałych nazwach.
 - Bufory pokazane tylko dla tabel, które są kolejkami sekretarza (zweryfikowane w encjach): `bpmBPDInstance` (`IGO_DA_BPM_BPD_INSTANCE_B`), `bpmTask` (`IGO_DA_BPM_TASK_B`, `IGO_DA_BPM_TASK_NARRATIVE_B`), `caseIndex` (bieżący `IGO_LUC_SAVE_BUFFER`, hurtowy `IGO_LUC_SAVE_BUFFER_BULK`, archiwum `IGO_LUC_ARCH_SAVE_BUFFER`), `statsBuffer` (`IGO_DA_STATS_BUFFER`). `caseMigrator`, `reportExport`, `reportImport`, `caseAttributes`: tylko stan pracy (brak kolejki w bazie, którą dałoby się policzyć jednoznacznie).
-- Nie ma jeszcze rozmiaru „w przetwarzaniu” dla sekretarza indeksu: w `CaseSaveBuffer` nie znalazłem kolumny znacznika przetwarzania (przypuszczenie: stan trzymany w pamięci sekretarza, do sprawdzenia przy stronie).
 - `mercury-ws-app`: `POST /rest/service/SecretariesRest/getSecretariesState` (`SecretariesRest`, `SecretariesRestRequests.SecretariesStateRequest`, `SecretariesRestResponses.SecretariesStateResponse`: `nodeName`, `timestamp`, `secretaries[]`). Bez nowego DTO w `mercury-lib`, więc bez nowego wydania biblioteki.
 - Testy: `SecretariesStateBusinessTest` (7), `SecretariesRestStateTest` (2): OK.
 - OpenAPI: `SecretariesRest` nie ma dziś kluczy w `openapi-docs_*.properties` (usługi `wakeUp…` też), więc nic nie uzupełniałem; do decyzji, czy dodać opisy dla całego `SecretariesRest`.
@@ -42,4 +41,7 @@ https://github.com/slawascichy/hgdb/issues/222
 ### Do zrobienia
 
 - Sprawdzić stronę na Tomcacie po wdrożeniu WAR (logowanie `mrc-sysadmin`, bufory przy `LuceneVolumeTest -Dperf.reindex=true -Dperf.reindexBulk=true`, `BulkClusterTest`).
-- Rozmiar „w przetwarzaniu” dla sekretarza indeksu (patrz etap 1).
+
+### Etap 3: test na dev (zrobione, 2026-11-02)
+
+`LuceneVolumeTest -Dperf.cases=2000 -Dperf.reindex=true -Dperf.reindexBulk=true -Dperf.reindexEntries=100000` na `mercury-db-test`: bufor hurtowy opróżniony po 147 s od startu (ok. 680 wpisów/s), bufor bieżący przez cały czas 0, wpis bieżący przetworzony po 251–1003 ms w trakcie przetwarzania hurtu. Autor potwierdził, że panel pokazuje narastanie i opróżnianie buforów oraz działa przycisk „Pobudź”. Zadanie 222 zakończone, do commitu i zamknięcia przez autora.
