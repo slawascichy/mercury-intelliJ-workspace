@@ -876,3 +876,24 @@ Kafki nie ma dziś w żadnym repozytorium (`mercury-srv` ma klienta ActiveMQ). D
 - Bufor bez indeksów przy milionie wierszy: koszt wyboru pierwszych N wierszy `scn IS NULL` zależy od liczby martwych wpisów do pominięcia (PostgreSQL: odśmiecanie); przemawia za osobną tabelą hurtową (wariant B), żeby tabela bieżąca została mała.
 - **Wariant F (do zbadania):** dla bardzo dużych paczek zamiast zasilać bufor, pełna przebudowa indeksu z bazy w tle (`MLuceneIndexer`: katalogi `index`/`index2`, wątki, SCN, zamiana), a zmiany bieżące dociągane z bufora po zamianie jak po backupie. Opłacalne tylko, gdy import to duża część zbioru.
 - **Pomiary na początek:** wpisów/s (jeden wątek i konwersja równoległa), czas i rozmiar skanu bufora przy 1 mln wierszy, opóźnienie pojedynczej zmiany bieżącej w trakcie importu.
+
+## 2026-11-02: test zwykłego użytkownika na dev (etap 2, dopięcie)
+
+Zasada autora: Tomcat nie jest infrastrukturą (startuje go autor na osobne życzenie). Test `curl`-em przez wiązanie Browser na `http://127.0.0.1:8080/mercury-ws-app`, użytkownik `tester` (dane podał autor; nie zapisuję ich w plikach).
+- **Zweryfikowane:** lista repozytoriów z `rootFolderId`, `children` folderu głównego, `createFolder` i `createDocument` z treścią (autor i data z użytkownika `tester`, `cmis:path` i `cmis:parentId` poprawne), pobranie treści, zmiana nazwy (`update`), zapytanie CMIS-QL po 6 s od zmiany (`LIKE` po nowej nazwie, `cmis:createdBy` z indeksu), duplikat nazwy w folderze (`nameConstraintViolation`, 409), `delete` dokumentu i `deleteTree` folderu (oba 200).
+- **Nie sprawdzone:** odmowa dla użytkownika bez uprawnień do typu (`permissionDenied`) i dla roli spoza `mercury.cmis.repositories.<id>.roles` (wymaga użytkownika z ograniczoną rolą i restartu Tomcata po zmianie konfiguracji), Workbench (zakładka Query), klient Atom.
+- Uwaga: `cmis:contentStreamFileName` to nazwa przesłanego pliku (`t.txt`), niezależna od `cmis:name` (zgodnie z CMIS).
+
+## 2026-11-02: uprawnienia do pól w CMIS (decyzja autora: opcja 1, spójnie z REST) i tłumaczenia
+
+**Reguła:** pole typu jest czytelne, gdy jest na liście `SecurityContextHelperBean.getReadableParams(typ)` (albo lista zawiera `*`), jak w odczycie pól spraw w REST (`CaseBusiness.getCaseParamsByParamNames`).
+- `ICmisRepositoryBusiness.hiddenProperties(context, typ)` zwraca identyfikatory właściwości CMIS, których użytkownik nie czyta (pola typu, a dla pola `CmisDescription` także `cmis:description`). Właściwości systemowe (identyfikator, typ, nazwa, daty, autorzy, informacje o treści) nie są ukrywane: nazwa i struktura drzewa nie mogą zależeć od uprawnień do pól (jak nawigacja wewnętrzna z poprzednich kroków).
+- Adapter (`MercuryCmisService`, `MercuryCmisObjectMapper.toObjectData(..., hidden)`) pomija te właściwości w `getObject`, `getObjectByPath`, `getChildren`, `getObjectParents` i w wyniku zapytania ładowanym ze spraw.
+- Zapytania (`CmisRepositoryBusiness.query`): kolumny ukrytych pól są usuwane z wyniku czytanego z indeksu; warunek (`WHERE`) i sortowanie (`ORDER BY`) po ukrytym polu kończą się `permissionDenied` (CMIS 403), bo ujawniałyby wartości. Dla zapytań o typ bazowy (`cmis:document`, `cmis:folder`) właściwości typów nie są dostępne w zapytaniu, więc dotyczy to tylko zapytań o konkretny typ.
+- Testy: `CmisRepositoryBusinessTest` (nowy `fieldsWithoutReadPrivilegeAreHiddenAndCannotBeQueried`) 35 OK, `mercury-ws-app` (nowy `propertiesWithoutReadPrivilegeAreOmitted`) 41 OK. Nie sprawdzone na serwerze (potrzebny użytkownik z rolą z ograniczonymi polami); `mercury-srv` zainstalowany w `.m2`, wymaga wdrożenia WAR.
+- Zapis (`updateProperties`, `createDocument`) już sprawdza uprawnienia do pól w `caseBusiness`.
+
+**Tłumaczenia:** 29 kluczy CMIS (`typeKind.baseDocuments.description`, `cmis.*`) przetłumaczył translator Gemini (`localizer.py translate`, `validate` bez błędów; jedno ostrzeżenie dla `fr`: wartość identyczna ze źródłem). Dopisane do `resources_de/es/fr/ko.properties` w trzech kopiach (`mercury-entities-ids/src/main/resources`, `mercury-entities-ids/resources`, `mercury-srv/resources`), końce linii zgodne z indeksem (LF). Przegląd językowy wyniku (zwłaszcza `ko` i `de`) nie był robiony.
+
+### Strona główna `mercury-ws-app` (`pages/index.jsp`): linki CMIS i narzędzia (2026-11-02)
+Do sekcji „Usługi systemowe” dodane linki do dokumentacji typów REST (`/swagger-ui/types.html`) i poziomów logowania (`/static/admin/loggers.html`) oraz nowa sekcja „Repozytorium dokumentów (CMIS)” z informacją o uwierzytelnianiu i linkami do `/browser`, `/atom11` i `/cmis-endpoints.json`. Siedem nowych kluczy `app.index.*` w `WebAppMsg_{de,en,es,fr,ko,pl}.properties` (znaki spoza ASCII jako `\uXXXX`) i w źródłach `*_utf8.properties`; `pl` i `en` napisane ręcznie, reszta z translatora Gemini (`validate` nie uruchamiany osobno dla tego pliku, przegląd językowy nie robiony). Nie sprawdzone w przeglądarce: wymaga wdrożenia WAR.
