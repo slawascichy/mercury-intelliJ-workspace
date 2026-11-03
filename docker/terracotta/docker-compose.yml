@@ -1,0 +1,35 @@
+# Serwer Terracotta dla pamięci podręcznych Mercury DB (Ehcache clustered 3.6.1).
+#   docker compose up -d --build
+#   docker compose --profile bench run --rm bench     # mikrotest opóźnienia (z tego hosta)
+services:
+  terracotta:
+    build: .
+    image: mercury/terracotta:3.6.1
+    container_name: mercury-terracotta
+    restart: unless-stopped
+    ports:
+      - "${TC_PORT:-9510}:9510"
+      - "${TC_GROUP_PORT:-9530}:9530"
+    environment:
+      JAVA_OPTS: "${TC_JAVA_OPTS:--Xms256m -Xmx512m -XX:MaxDirectMemorySize=2g}"
+    volumes:
+      - terracotta-logs:/data/logs
+#    healthcheck:
+#      test: ["CMD-SHELL", "exec 3<>/dev/tcp/127.0.0.1/9510"]
+#      interval: 10s
+#      timeout: 5s
+#      retries: 6
+#      start_period: 20s
+
+  bench:
+    image: mercury/terracotta:3.6.1
+    profiles: ["bench"]
+#    depends_on:
+#      terracotta:
+#        condition: service_healthy
+    environment:
+      TC_URL: "terracotta://terracotta:9510/default-server"
+    command: ["bench"]
+
+volumes:
+  terracotta-logs:
