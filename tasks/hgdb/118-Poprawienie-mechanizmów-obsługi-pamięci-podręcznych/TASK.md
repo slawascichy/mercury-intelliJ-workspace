@@ -247,3 +247,24 @@ Test z `minCostMs=5` na Tomcacie (start 21:31): Tomcat uczył się typów (log I
 **Weryfikacja:** dwa osobne procesy węzła 2: proces A zapisał ciężką sprawę (`FSMServiceOrder.5818002`, kontekst `pl_PL`/`Europe/Warsaw`), świeży proces B w sondzie kluczy trafił w pamięć współdzieloną tylko dla tego samego kontekstu (**30 ms** wobec 111–173 ms przy chybieniach), pozostałe warianty kontekstu (bez locale, tylko strefa, `en_US`) słusznie chybiły. Do potwierdzenia po wdrożeniu jara `mercury-srv` na Tomcacie: kierunek węzeł 2 → Tomcat (REST `CaseBusinessRest/find`, log `Trafienie w pamięć współdzieloną`).
 
 **Uwaga o progu:** koszty w logu Tomcata są łączne z podobiektami (np. `FSMServiceOrder` 319 ms zawiera 11 typów zagnieżdżonych), a typy zagnieżdżone też trafiają do pamięci współdzielonej, jeśli przekraczają próg; przy opóźnieniu Terracotty ok. 15 ms próg 25 ms jest rozsądnym minimum, a niższe wartości (5 ms) zapełniają pamięć wpisami, których odczyt jest droższy niż przekształcenie.
+
+## Wynik: Terracotta na Linuksie i test węzeł 2 → Tomcat (2026-11-03, wieczór)
+
+**Opóźnienie Terracotty (mikrotest `Bench`, wpisy 2/5/16/56 KB):**
+| Klient → serwer | zapis p50 | odczyt (inny klient) p50 |
+|---|---|---|
+| kontener Linux → serwer Linux (`devops-box-01`, Docker, autor) | 0,55–0,88 ms | 0,26–0,37 ms |
+| JVM Windows → serwer Linux (`devops-box-01.hgdb.org:9510`) | 12,5–13,6 ms | 12,8–15,6 ms |
+| JVM Windows → serwer Windows (localhost) | 12,9–14,0 ms | 13,3–15,5 ms |
+
+Narzut 13–15 ms wynika ze strony **klienta Java na Windowsie** (nie serwera i nie rozmiaru wpisu); sztuczka z wątkiem `Thread.sleep(Long.MAX_VALUE)` (rozdzielczość zegara) go nie usuwa. Na Linuksie koszt operacji jest ok. 40 razy mniejszy, więc regiony klastrowe (znaczniki czasu Hibernate, transakcje globalne) kosztują na zapis rzędu kilku ms, a nie ok. 100 ms jak na dev. Pomiar `createFolder` (189 ms) dotyczy więc tylko środowiska dev na Windowsie; pomiar zapisu na Tomcacie pod Linuksem nie był wykonany.
+
+**Selektywna pamięć współdzielona potwierdzona między węzłami:** węzeł 2 (proces testowy) zapisał trzy ciężkie sprawy `FSMServiceOrder` (kontekst bez locale i strefy, jak w REST), a Tomcat po REST `CaseBusinessRest/find` trafił w pamięć współdzieloną **3 razy, 0 chybień** (log: `Trafienie w pamięć współdzieloną ... koszt przekształcenia 59/67/59 ms`); czas żądań 44–55 ms wobec 115–290 ms przy zimnym przekształceniu (lokalne trafienie: ok. 31–37 ms). Klucz zależy od locale i strefy: REST przekazuje je jako `null`, więc węzły dzielą wpisy tylko dla żądań z takim samym kontekstem (wpis zapisany dla `pl_PL`/`Europe/Warsaw` nie jest widoczny dla żądania bez tych pól).
+
+**Progi:** przy opóźnieniu ok. 0,3 ms (Linux) odczyt z pamięci współdzielonej (z deserializacją 0,4–1,6 ms) kosztuje ok. 1–2 ms, czyli poniżej typowego przekształcenia (3,3–4,6 ms; 11 ms typy średnie; 63 ms `FSMServiceOrder`). Na produkcji na Linuksie sensowny jest próg ok. 5 ms (`mercury.cache.caseObject.shared.minCostMs`), na dev (Windows, 13–15 ms) zostaje 25 ms.
+
+## Decyzje autora (2026-11-03, wieczór) i plan
+
+- **CaseMapper (przekazywanie dokumentów Lucene)** robimy w tym zadaniu (118). Plan szczegółowy: `tasks/hgdb/plan-2026-11-04.md`.
+- **Pomiar zapisu na Linuksie** (`createFolder` itd.) przeniesiony do osobnego zadania **223**, po 211; porównamy wyniki z pomiarami z 118.
+- Zrestartowany Tomcat; podsumowanie dnia: `tasks/hgdb/podsumowanie-2026-11-03.md`.
