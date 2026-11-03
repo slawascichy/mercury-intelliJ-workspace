@@ -996,3 +996,9 @@ Przyjęte propozycje: (1) etykieta wersji `major.minor` w polu dokumentu, `check
 - Decyzja 4 zrealizowana: `deleteObject(allVersions=false)` usuwa tylko ostatnią wersję (poprzednia znów jest aktywna i ostatnia), nie-ostatnią lub serię pobraną do edycji odrzuca (`constraint`), kopię roboczą traktuje jak `cancelCheckOut`. `cmis:isMajorVersion` wynika z etykiety. Scenariusz `CmisRepositoryDbScenario` obejmuje te przypadki (test włączany kluczem `test.skip.package.CmisRepositoryDbTest=false`, domyślnie `true`).
 - Dokumentacja: sekcja "Wersjonowanie dokumentów" w `docs/007_CMIS/index.mdx` (EN i PL).
 - **Dalej:** test klientem CMIS na Tomcacie po wdrożeniu jarów i WAR; odtworzenie zestawu pomiarowego (`scripts/seed_cmis_folders.sh`); dokumentacja 007_CMIS.
+
+## Zamknięcie zadania (2026-11-03)
+
+- Smoke test wersjonowania na Tomcacie (browser binding, curl; `admin` i `tester`): `cancelCheckOut`, `checkIn` major (`2.0`) i minor (`1.1`, `isMajorVersion=false`), odmowa `checkIn` i `cancelCheckOut` dla innego użytkownika (403), `deleteObject(allVersions=false)` (ostatnia wersja usunięta, poprzednia znów ostatnia; starsza wersja i seria pobrana do edycji odrzucone błędem `constraint`), `deleteObject(allVersions=true)`. Wszystko zgodne z decyzjami autora.
+- Wydane i scalone: `mercury-lib` 3.0.4.20 (PR #34), `mercury` 3.0.4.12 (PR #223). Wersja `mercury-lib` w `mercury` bez zmian (`mercury.static.version` = 3.0.4.20).
+- **Niesprawdzone (luki):** wersjonowanie klientem OpenCMIS/Workbench i Atom; test pliku zdalnego na dwóch węzłach; przegląd użyć `MrcCaseHeaderField.values()` po dodaniu `isDocumentType` do nagłówka (nie ustalono, czy wykonany); zestaw pomiarowy 3250 folderów `Perf` nie został odtworzony na `mercury-db-test`.

@@ -66,7 +66,7 @@ netsh winsock reset
 
 * Obsługa Git
 ```bash
-export TAG_VERSION="3.0.4.20"
+export TAG_VERSION="3.0.4.12"
 git tag -a ${TAG_VERSION} -m "Wersja ${TAG_VERSION}"
 git push origin
 git push origin ${TAG_VERSION}
@@ -100,7 +100,7 @@ https://github.com/slawascichy/hgdb/issues/114
 
   D016-Widoki
   D039-[Lucene]-Optymalizacja-dostępu-do-IndexReader-a
->049-[CMIS]-Implementacja-API-CMIS
+  D049-[CMIS]-Implementacja-API-CMIS
   D058-Logger-dynamiczne-zmiana-poziomów-logowania
   D062-Problem-dodawanie-klucza-głównego-po-utworzniu-typu-bez-pola
   D082-[ActiveMQ]-Dynamiczne-budowanie-odbiorców
