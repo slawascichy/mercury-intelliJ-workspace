@@ -84,3 +84,89 @@ Decyzja autora: zawężenie warstw tylko dla `REFRESH` przysłanego przez klient
 - Bez zmian celowo: `CaseSearchBusiness` (master i slave: zapisuje `NONE` na czas transformacji i przywraca wartość klienta), wyszukiwarki (`SearchProvider`, `MSearcher`, `BSearcher`, `LuceneSearcher`: własne `REFRESH` z pola `searcher`), `HttpResponseCacheManager` (osobne pole `httpResponseCacheUsage`), `ParamDefinitionDAO`, `AttributeTypeParameterFactory` (odświeżenie wymuszone przez serwer), `CaseIndexerBusinessUpdateCallable` i `CaseDocumentLogicHelper` (pola DAO, nie kontekst).
 - Zmiana zachowania: klient z `REFRESH` bez `cache.refresh.layers` odświeża tylko warstwę biznesową; `DAO` (Hibernate query cache), `LUCENE` i `ATTRIBUTES` używają pamięci bez odświeżania. Pełne odświeżenie: `cache.refresh.layers=ALL`.
 - Kompilacja: `mercury-core-server`, `mercury-dao`, `mercury-lucene-indexes`, `mercury-srv` (install bez testów) OK. Nie sprawdzone na serwerze.
+
+## Weryfikacja na Tomcacie (2026-11-03, `mercury-db-test`, pamięci klastrowe)
+
+- Start serwera (18:25): połączenie z Terracottą (`LeaseMaintainerFactory`, `CLUSTERED node`), brak błędów konfiguracji pamięci. Jedyny `ERROR` to znany brak `ehcache.properties`.
+- Wywołania REST z `cacheUsage` `TO_USE`/`REFRESH` i `cache.refresh.layers` (bez, `business`, `dao`, `ALL`) kończą się HTTP 200, bez błędów w logu. Skrypt: `scratchpad/refresh_test.sh` (token klienta OAuth czytany w locie z konfiguracji dev, niewypisywany; poziom `org.hibernate.SQL` przywracany do `INHERIT`).
+- **Ograniczenie:** różnicy między wariantami nie widać w SQL dla `TypeCodeRest/findAll` (zawsze 11 zapytań o `IGO_DA_TYPECODE`: encja bez pamięci drugiego poziomu, N+1 po zapytaniu). Zachowanie warstwy DAO sprawdza test jednostkowy `DAOSupportRefreshLayerTest` (3 OK): `REFRESH` bez warstw lub z `business` daje `CACHE_MODE=NORMAL`, z `dao` lub `ALL` daje `REFRESH`, `TO_USE` i `NONE` bez zmian.
+- Wariant B ostrzeżenia `setTimeToLive`: logger `pl.slawas.common.cache` jest w `apache-tomcat/lib/logback.xml` ustawiony na `ERROR` (zmiana autora), więc brak `WARN EhCache.java:256` w logu niczego nie dowodzi. Potwierdza go test `CacheHelperTimeToLiveTest` i lektura kodu; pełne sprawdzenie wymagałoby podniesienia tego loggera do `WARN` i restartu (pamięci atrybutów powstają przy pierwszym użyciu).
+- Niesprawdzone: odświeżenie wewnętrzne (`CaseObjectMapCache`) po zmianie sprawy z drugiego węzła; drugi węzeł nie był uruchomiony.
+
+## Ostrzeżenie `setTimeToLive`: poprawka w `sccommon` (2026-11-03, gałąź `hgdb-118` w `sccommon`, niezacommitowane)
+
+Po restarcie serwera (logger `pl.slawas.common.cache` przywrócony przez autora) ostrzeżenie `EhCache.java:256` nadal się pojawiało (16 razy od startu) przy pamięciach `SecurityContext` (10), `CaseMetadataCache` (5) i `CaseLobPropertyCache` (1). Te pamięci tworzy klasa bazowa `ObjectWithCacheSupport` z `sccommon-cache`, która przy tworzeniu pamięci i w `setCacheTimeToLive` zawsze woła `setTimeToLiveSeconds`; poprawka w `mercury` (`CacheHelper.applyTimeToLive`) obejmowała tylko `AttributeTypeParameter`. (Wcześniejszy brak ostrzeżeń w oknie 18:25 wynikał z loggera ustawionego na `ERROR`; moja uwaga, że ustawienie nie działa, była błędna.)
+
+Zmiany w `sccommon-cache` (decyzja autora: poprawiamy w `sccommon`):
+- `IObjectCache.isTimeToLiveChangeable()` (metoda domyślna, `true`),
+- `EhCache.isTimeToLiveChangeable()`: `true` tylko dla `CustomExpiryPolicy`,
+- `ObjectWithCacheSupport`: oba miejsca ustawiania TTL idą przez `applyTimeToLive`, które pomija zmianę (wpis `debug`), gdy pamięć jej nie obsługuje.
+- Test `EhCacheTimeToLiveChangeableTest` (2 OK, prawdziwy Ehcache: standardowe `ttl` i `CustomExpiryPolicy`); testy modułu `sccommon-cache` zielone (`EhCacheProviderTest`, `ScEhCacheRegionFactoryTest`). W `sccommon-utils` pada `JdbcEntityManagerTest.testDmlOperations` (moduł bez zmian, test JDBC; nie sprawdzałem, czy pada też bez mojej zmiany).
+
+Do zrobienia po wydaniu `sccommon`: podnieść wersję w `mercury` i uprościć `CacheHelper.applyTimeToLive` do `cache.isTimeToLiveChangeable()`; sprawdzić w logu serwera brak `WARN EhCache.java:256`. Pozostałe repozytoria z `sccommon` (`mercury-lib`, `hgdb-client-open`, `mercury-cmd`) dostaną nową wersję przy własnym wydaniu (interfejs zgodny wstecz).
+
+**2026-11-03:** `sccommon` 2.0.0.3 wydany (autor). W `mercury`: `sccommon.version` = 2.0.0.3 (pom rodzica w `.m2` odświeżony), `CacheHelper.applyTimeToLive` używa `IObjectCache.isTimeToLiveChangeable()`; testy `CacheHelperTimeToLiveTest` (3), `CacheRefreshTest` (4), `DAOSupportRefreshLayerTest` (3) OK, `mercury-core-server` zainstalowany. Do sprawdzenia po wdrożeniu WAR i restarcie: brak `WARN EhCache.java:256` w logu serwera (logger `pl.slawas.common.cache` na `WARN`).
+
+## Analiza klastra: pamięci nie są współdzielone (2026-11-03, test na dwóch węzłach)
+
+**Wynik (zweryfikowany):** przy obecnej konfiguracji pamięci podręczne są **lokalne dla węzła**; dane nie przepływają między węzłami przez Terracottę.
+
+- Test `CacheClusterScenario`/`CacheClusterTest` (`mercury-srv-slave`, węzeł 2 = proces testowy, węzeł 1 = Tomcat): węzeł 2 zapisał wpis w pamięci `MercuryCore`, węzeł 1 wyczyścił tę pamięć przez REST `clearCache` (200), a wpis węzła 2 przetrwał: pamięć lokalna. Węzeł 2 raportuje zasoby pamięci `MercuryCore`: `[heap, offheap]` (bez warstwy klastrowej), mimo że `ehcacheDefault.xml` ma `<terracotta:clustered-store consistency="strong"/>`. Uwaga: `EhCacheProvider.clearCache` czyści tylko pamięci zarejestrowane w mapie `caches` providera i po cichu pomija nieznaną nazwę, więc sam wynik `clearCache` nie dowodzi; dowodem jest lista zasobów pamięci i eksperyment poniżej.
+- **Eksperyment kontrolny** (dwóch klientów Terracotty w jednym procesie, tymczasowe pamięci `probe118-*`, po teście usunięte z serwera Terracotty; skrypty w `scratchpad/probe`, Ehcache 3.6.1):
+  | Konfiguracja pamięci | Zasoby | B widzi zapis A | `clear()` z B widoczny w A |
+  |---|---|---|---|
+  | `heap` + `<terracotta:clustered-store consistency="strong"/>` (jak w Mercury) | `[heap]` | nie | nie |
+  | `heap` + `<terracotta:clustered-dedicated unit="MB">2</...>` + `clustered-store` | `[heap, clustered-dedicated]` | tak | tak |
+  | `heap` + `offheap` + `clustered-dedicated` + `clustered-store` | `[heap, offheap, clustered-dedicated]` | tak | tak |
+- **Wniosek:** w Ehcache 3 pamięć jest klastrowa dzięki **zasobowi klastrowemu** w `<eh:resources>` (`clustered-dedicated`, albo `clustered-shared` z pulą), a `clustered-store` tylko ustawia spójność i bez zasobu nic nie daje. Wszystkie obecne `ehcacheDefault.xml`/`ehcacheCommon.xml` (serwer, profile, `mercury-docker`, `mercury-cmd`, pliki testowe) mają `clustered-store` bez zasobu klastrowego, więc pamięci w klastrze nie są współdzielone. Nie sprawdzono wariantu `clustered-shared` (zmiana `server-side-config` na już skonfigurowanym serwerze Terracotty prawdopodobnie wymaga zgodnej konfiguracji).
+- **Konsekwencje:** spójność między węzłami opiera się dziś tylko na JMS (unieważnianie pamięci definicji: `ParamDefinition`, `TypeCase`, `TypeParam`), na porównaniu znaczników czasu w `CaseDAO.find`/`CaseObjectMapCache` oraz na TTL. Dla pamięci bez unieważniania (np. regiony Hibernate, pamięci odpowiedzi HTTP, `CaseObjectMapCache` w węźle bez zmiany) dane mogą być nieaktualne do wygaśnięcia TTL. Czy encja `Case` jest w pamięci drugiego poziomu i które regiony faktycznie są używane: do sprawdzenia.
+- **Do decyzji autora:** które pamięci mają być klastrowe (nie wszystkie: koszt serializacji i opóźnienie Terracotty) i jak duże (`clustered-dedicated unit="MB"`); wartości w pamięciach klastrowych muszą być serializowalne.
+
+## Analiza: co współdzielić w klastrze (2026-11-03)
+
+Pełna analiza w `analiza-pamieci-klaster.md` (tabele z rekomendacją i priorytetami). Skrót: priorytet 1 (poprawność): `default-update-timestamps-region`, `CaseGlobalTransactionCache`; priorytet 2 (definicje i atrybuty): `CaseMetadataCache` i pamięci wartości słownikowych atrybutów (szablon `default`); definicje typów i atrybutów w mapach JVM (`ICaseTypesManager`, `AttributeTypeParameterFactory.attributies`) nie są pamięciami Ehcache, więc XML ich nie obejmie (synchronizacja JMS); reszta zostaje lokalna. Czeka na decyzję autora, potem zmiana plików XML i test na dwóch węzłach.
+
+## Zmiany konfiguracji pamięci klastrowych (2026-11-03, niezacommitowane)
+
+Zakres (decyzja autora: „zaczynamy tak jak piszesz”): w `ehcacheDefault.xml` i `ehcacheCommon.xml` (serwer dev, profile `scichy` i `scichy-test`, `mercury-srv-slave` test, `mercury-docker`, `mercury-cmd` sample):
+- `default-update-timestamps-region`: `heap` + `clustered-dedicated` 4 MB (bez `offheap`),
+- `CaseGlobalTransactionCache`: `heap` 20000 + `clustered-dedicated` 64 MB (bez `offheap`), `ttl` 86400 bez zmian,
+- nowy alias `CaseMetadataCache` (tylko Default): `heap` 1000 + `clustered-dedicated` 64 MB, `ttl` 3600 (zabezpieczenie; unieważnia JMS),
+- szablon `default` (tylko Default): `<eh:expiry><eh:class>…CustomExpiryPolicy</eh:class></eh:expiry>`.
+Parsowanie wszystkich 12 plików przez `XmlConfiguration` OK.
+
+**Odkrycie (szablon `default`):** gdy w XML jest szablon `default`, `EhCacheProvider` tworzy z niego wszystkie pamięci dynamiczne i nigdy nie używa `CustomExpiryPolicy`, więc `setTimeToLive` nie mógł działać: pamięci dynamiczne (`SecurityContext`, `OAuthFactory`, `CaseLobPropertyCache`, wartości słownikowe atrybutów i inne) **nie miały żadnego wygasania**, a TTL z `ParamDefinition.timeToLiveSeconds` i `cache.timeToLiveSeconds` były ignorowane. Sprawdzone eksperymentem: szablon z `CustomExpiryPolicy` daje każdej pamięci własną instancję polityki, a TTL ustawiony na jednej nie zmienia drugiej (domyślnie 86400 s). Skutek zmiany: pamięci dynamiczne zaczną wygasać po TTL (24 h domyślnie albo z definicji parametru); `MercurySecurityOAuthConfig` trzyma tylko wyniki sprawdzenia ścieżek (bezpieczne), `OAuthFactory` czyta token z bazy po wygaśnięciu.
+
+**Weryfikacja węzła 2 (proces `mercury-srv-slave`):** zasoby `[heap, clustered-dedicated]` dla `CaseGlobalTransactionCache`, `CaseMetadataCache` i `default-update-timestamps-region`; `TypeCase` CmisFolder (3 parametry) po serializacji: 6489 bajtów. Kroki z węzłem 1 (czyszczenie przez REST) czekają na restart Tomcata z nową konfiguracją (węzeł 1 działa jeszcze na starej, lokalnej).
+
+**`CaseObjectMapCache` i `CaseMapper` (uwaga autora):** `CaseObjectMapCache` trzyma wynik przekształcenia relacyjnego w obiekt (`MrcObject`, klucz: id sprawy + skrót parametrów transformacji, walidacja znacznikiem czasu sprawy), więc to najdroższy do odtworzenia wpis i współdzielenie ma uzasadnienie (ciepła pamięć na każdym węźle). Zastrzeżenia do pomiaru: rozmiar (150000 wpisów wobec 512 MB zasobu), `put` serializuje całą mapę wariantów sprawy, serializowalność zagnieżdżonych właściwości `MrcObject`. `CaseMapper` trzyma `org.apache.lucene.document.Document`, które **nie jest `Serializable`** (sprawdzone), więc bez zmiany kodu nie może być klastrowe; używa go głównie indekser.
+
+### `CaseMapper`: współdzielenie gotowych dokumentów Lucene (uwaga autora, 2026-11-03)
+
+Cel autora: jeden węzeł przygotowuje dokument (kosztowne mapowanie sprawy), pozostałe węzły dodają gotowy do własnych indeksów.
+
+Ustalenia z kodu:
+- Pamięć dokumentów jest **wyłączona w kodzie**: w `CaseMapper.convert2Document` wywołanie `helper.getDocument(...)` jest zakomentowane z uwagą FIXME („Document cannot be cast to java.io.Serializable, na razie wyłączam użycie pamięci podręcznej”), a używane jest `CaseMapperHelper.createNewInstance` (zawsze pełne mapowanie). Region `CaseMapper` (150000 wpisów) jest więc dziś nieużywany.
+- Każdy węzeł dostaje te same zmiany indeksu (paczki rozsyłane do kolejek węzłów, obs. 139) i mapuje sprawy samodzielnie, więc praca jest powielana na każdym węźle indeksującym.
+- Dawny projekt (`CachedDocument`, `removeExternalFields`, `sourceChanges`) zakładał częściową aktualizację dokumentu z pamięci; dokument zależy też od źródeł zewnętrznych (komentarze, podsprawy, pliki), których zmiana nie zmienia `Case.lastModifyDate`.
+
+Wniosek: współdzielenie jest możliwe po zmianie kodu: serializowalny odpowiednik dokumentu (lista pól z parametrami `FieldType` i wartościami, odtwarzany do `Document`) oraz klucz oparty na tożsamości zmiany (sprawa + wersja źródeł/paczka), nie samo id sprawy; pamięć ma być krótkim buforem przekazania (TTL rzędu minut, usuwanie przez eksmisję), a nie 150000 wpisów. Przed implementacją: pomiar udziału `convert2Document` w czasie indeksowania sprawy.
+
+### `CaseMapper`: komunikat JMS o zmianach indeksu i import (odpowiedzi na uwagi autora, 2026-11-03)
+
+**Komunikat JMS** (`LuceneCaseSaveBuffersForIndexMessage`, temat `LUCENE_DOCUMENT_REGISTRY_CHANGES_TOPIC`, właściwość `sender`): `nodeName` nadawcy i lista `CaseSaveBuffer`: `id` (klucz wiersza bufora w wspólnej bazie), `matterId` (id sprawy), `operation` (I/U/R), `scnNumber` (numer sesji indeksowania nadawany przez sekretarza, dla niesprocesowanych wpisów `null`), `source` (nazwa obiektu, którego zmiana wywołała aktualizację), `skipBefore`, `typeCode`.
+- Komunikat mówi **co** się zmieniło, ale **nie niesie wersji** sprawy ani źródeł. Wiersz bufora dla sprawy z `SCN_NUMBER IS NULL` jest wyszukiwany po `MATTER_ID` (`CaseSaveBufferDAOJDBC`), więc kolejne zmiany tej samej sprawy przed przetworzeniem trafiają do tego samego wiersza (przypuszczenie: aktualizowany, nie dublowany); `id` wiersza nie jest więc tożsamością wersji dokumentu. Klucz (`matterId`, `operation`, `source`) ani `id` nie wystarczy, żeby bezpiecznie użyć dokumentu przygotowanego przez inny węzeł (węzeł B mógłby użyć dokumentu starszego niż zmiana).
+- Warianty: (A) dodać do bufora token wersji zmiany (kolumna rosnąca przy każdej zmianie wiersza; DDL dla wszystkich baz, na PostgreSQL ręcznie), dokument w pamięci kluczowany `matterId` + token; (B) węzeł używający sprawdza odcisk danych wejściowych (np. `lastModifyDate` sprawy i znaczniki źródeł) przed użyciem dokumentu, o ile da się go policzyć taniej niż pełne mapowanie; (C) węzeł mapujący publikuje gotowy dokument w komunikacie (zmiana architektury: rozmiar komunikatu, kolejność, obsługa błędów). Rekomendacja: pomiar, potem wariant A.
+
+**Import (skokowy, duży rozmiar):** rozmiar bufora przekazania ≈ tempo mapowania × opóźnienie drugiego węzła × rozmiar dokumentu, np. 500 dok/s × 120 s × 15 KB ≈ 900 MB (wartości przykładowe, bez pomiaru); cały milionowy import (≈ 15 GB) i tak nie zmieści się w `primary-server-resource` (512 MB w kicie dev). Alokowanie pod import nie ma więc sensu: pamięć ma być ograniczona (eksmisja zastępuje brakujące wpisy zwykłym mapowaniem na węźle), a tryb hurtowy (bufor hurtowy z zadania 114, importy przekraczające próg) powinien albo omijać bufor przekazania (serializacja i sieć bez zysku, gdy odbiorca jest daleko w tyle), albo go używać z krótkim TTL i akceptować chybienia. Prawdziwą dźwignią dla importu jest podział pracy (każdy węzeł mapuje inny podzbiór spraw i publikuje dokumenty), co wymaga wariantu C.
+
+## Wynik testu klastra po restarcie Tomcata z nową konfiguracją (2026-11-03)
+
+`CacheClusterScenario` (węzeł 2 = proces `mercury-srv-slave`, węzeł 1 = Tomcat, wspólna baza `mercury-db-test`, wspólna Terracotta): **przechodzi** (1 test, 0 błędów).
+- `CaseGlobalTransactionCache` i `CaseMetadataCache`: wpis zapisany przez węzeł 2 znika po `clearCache` wykonanym przez REST na węźle 1: pamięci są współdzielone.
+- `default-update-timestamps-region`: zasoby `[clustered-dedicated, heap]`. Po `createFolder` (CMIS, Basic) na węźle 1 węzeł 2, pytając Hibernate (`UpdateTimestampsCache.isUpToDate`) o tabelę `IGO_DA_CASES`, uznaje wyniki zapytań po chwili `t0` za nieaktualne (przed zapisem: aktualne). Czyli zapis na jednym węźle unieważnia zbuforowane zapytania na drugim. Nie wykonano kontroli negatywnej na starej, lokalnej konfiguracji (wcześniej region był lokalny, więc brak propagacji jest oczekiwany, ale nie zmierzony).
+- `TypeCase` (CmisFolder, 3 parametry) po serializacji: 6489 bajtów.
+- Start Tomcata (19:51): brak ostrzeżeń i błędów związanych z pamięciami.
+- Scenariusz uruchamiany z `-Dmaven.test.skip=false -Duser=scichy-test`, kluczem `test.skip.package.CacheClusterTest=false` (tymczasowo, w profilu `scichy-test`) i zmiennymi środowiskowymi `HGDB_OAUTH_CLIENT_ID`, `HGDB_OAUTH_CLIENT_SECRET`, `HGDB_USER`, `HGDB_PASSWORD`. Test sprząta po sobie (folder CMIS usuwany `deleteTree`).
+
+Otwarte: pamięci wartości słownikowych atrybutów (własny szablon klastrowy), pomiar `CaseObjectMapCache` i `convert2Document` (`CaseMapper`), przycięcie `CacheRefresh`/warstw na serwerze (sprawdzenie na żywo dla `LUCENE` i `ATTRIBUTES`), commity.
