@@ -917,3 +917,73 @@ Etapy pośrednie: wczytywanie dzieci partiami (500 identyfikatorów na zapytanie
 - **Ryzyko:** liczba zapytań rośnie z liczbą typów z polem `CmisName` (2 zapytania na typ i wersję typu; `CaseDAO.findByProperty`); przy setkach typów warto to zmierzyć. Pole `CmisName` ma indeks tylko, gdy leży na jednej z pierwszych 16 pozycji parametrów (`IGO_DA_CASE_PARAMxx_INDX`).
 - **Do zrobienia:** `getChildren` wczytuje wszystkie dzieci i dopiero potem stronicuje (2 s przy 3200 dzieciach). Poprawka: stronicować identyfikatory krawędzi przed wczytaniem spraw (z uwzględnieniem ukrywania obiektów bez uprawnień).
 - Scenariusz `CmisRepositoryDbTest` po tej zmianie nie był uruchamiany (czyści bazę, na której działa Tomcat z danymi pomiarowymi): do uruchomienia, gdy Tomcat wróci na `mercury-db`.
+
+## Etap 3: rozpoznanie i projekt (2026-11-03, do zatwierdzenia)
+
+Zakres: `checkOut`, `checkIn`, `cancelCheckOut`, `getAllVersions`, `getObjectOfLatestVersion`, `createDocumentFromSource` (CMIS 1.1, Chemistry 1.1.0). Dziś `MercuryCmisService` nie implementuje żadnej z tych operacji, a `createDocument` ignoruje `versioningState`.
+
+### Stan kodu (zweryfikowany)
+
+- Nowa wersja sprawy powstaje zapisem listy dwóch obiektów przez `ICaseBusiness.saveList` (wzór: `ChangeCaseVersionScenario`): stara wersja dostaje `Case.State.Z`, nowa ma `caseId=null` i `previousVersionId` wskazujące starą (stan `A`). `CaseRootVersion.lastVersion` wskazuje ostatnią wersję.
+- `CaseDAO.afterInsert` → `checkCaseRootVersion` **ustawia `lastVersion` na każdą wstawianą sprawę** z danym `rootVersionId`, a przy usunięciu ostatniej wersji `CaseDAO` cofa wskaźnik na `previousVersionId`.
+- Indeks Lucene: `mrc_isLatestVersion` (`CaseMapper.LUCENE_IS_LATEST_VERSION`) = żadna sprawa nie wskazuje danej jako `previousVersionId` (zasada z etapu 1).
+
+### Konsekwencje dla kopii roboczej (PWC, stan `O`)
+
+Kopia robocza po `checkOut` jest nową wersją z `previousVersionId` = bieżąca `A`. Bez zmian dałoby to: (1) `lastVersion` wskazujące PWC, (2) `mrc_isLatestVersion=false` dla wersji `A`. CMIS wymaga, żeby w trakcie `checkOut` ostatnią wersją była nadal `A` (a `isLatestVersion=false` miała PWC). Potrzebne są dwie reguły: **wersje w stanie `O` nie przesuwają `CaseRootVersion.lastVersion`** (DAO) i **wskazania z wersji `O` nie wpływają na `mrc_isLatestVersion`** (mapper indeksu); przy `checkIn` obie wersje zapisują się razem (`O`→`A`, stara `A`→`Z`) i wskaźnik przechodzi na nową.
+
+### Proponowany przebieg
+
+| Operacja | Działanie |
+|---|---|
+| `checkOut` | kopia sprawy (pola i plik: nowy `FileIndex`) jako wersja `O`, `previousVersionId` = bieżąca `A`; tylko dla ostatniej wersji w stanie `A`; jedna kopia robocza na serię (`versionSeriesCheckedOutId`), blokada dla innych użytkowników (`versionSeriesCheckedOutBy`) |
+| `checkIn` | jedna zapisywana lista: `O`→`A` (z nową treścią i właściwościami z żądania, opcjonalnie komentarz), poprzednia `A`→`Z`; nowa `cmis:versionLabel`; wynik: identyfikator nowej wersji |
+| `cancelCheckOut` | usunięcie wersji `O` i jej pliku (istniejące usuwanie wersji sprawy, `removeAllVersions=false`) |
+| `getAllVersions` | łańcuch po `previousVersionId` od ostatniej wersji (stan `Z` i `A`, bez `O` poza własną kopią roboczą użytkownika) |
+| `getObjectOfLatestVersion` | `CaseRootVersion.lastVersion` (opcja `major`: najnowsza wersja główna) |
+| `createDocumentFromSource` | nowa sprawa z kopią pól i pliku (plik z węzła, który go ma, jak w `getContentStream`), bez serii wersji źródła |
+
+Właściwości CMIS: `cmis:isLatestVersion`, `cmis:isMajorVersion`, `cmis:isLatestMajorVersion`, `cmis:versionLabel`, `cmis:versionSeriesId` (= `rootVersionId`), `cmis:isVersionSeriesCheckedOut`, `cmis:versionSeriesCheckedOutId`, `cmis:versionSeriesCheckedOutBy`, `cmis:isPrivateWorkingCopy`, `cmis:checkinComment`; typy dokumentów `versionable=true`; dozwolone działania `canCheckOut`, `canCheckIn`, `canCancelCheckOut`, `canGetAllVersions`.
+
+### Do rozstrzygnięcia przez autora
+
+1. **Etykieta wersji:** proponuję `major.minor` liczone z łańcucha (1.0 po utworzeniu, `checkIn` z `major=true` zwiększa pierwszą liczbę, z `major=false` drugą), zapisane w polu dokumentu (bez nowej encji) albo wyliczane z długości łańcucha (prościej, ale tylko wersje główne)?
+2. **Które typy są wersjonowane:** wszystkie typy dokumentowe, czy flaga na typie (`versionable`)?
+3. **Blokada:** czy `checkIn`/`cancelCheckOut` tylko przez użytkownika, który zrobił `checkOut` (z wyjątkiem roli administratora repozytorium)?
+4. **Usuwanie:** `deleteObject` z `allVersions=true` usuwa całą serię łącznie z PWC; `allVersions=false` ostatnią wersję (istniejące `CaseDAO`)? Co z `deleteObject` na serii z aktywnym `checkOut` (proponuję odmowę `updateConflict`)?
+
+### Szacunek i testy
+
+Ok. 2–3 dni: DAO i mapper indeksu (reguły `O`), warstwa biznesowa `CmisRepositoryBusiness`, adapter `MercuryCmisService`, mapowanie właściwości i działania dozwolone, testy jednostkowe (stuby) i `CmisRepositoryDbTest` na `mercury-db-test` (cykl `createDocument` → `checkOut` → `checkIn` → `getAllVersions`, klaster przez drugi proces), pomiar i test klientem Workbench.
+
+### Decyzje autora (2026-11-03)
+
+Przyjęte propozycje: (1) etykieta wersji `major.minor` w polu dokumentu, `checkIn` z `major=true` zwiększa pierwszą liczbę, z `major=false` drugą; (2) wszystkie typy dokumentowe są wersjonowane; (3) `checkIn` i `cancelCheckOut` tylko przez użytkownika, który zrobił `checkOut` (wyjątek: administrator repozytorium); (4) `deleteObject` z `allVersions=true` usuwa całą serię z kopią roboczą, `allVersions=false` ostatnią wersję, a seria z aktywnym `checkOut` jest odrzucana (`updateConflict`).
+
+### Etap 3: postęp (2026-11-03)
+
+**Zrobione (reguły kopii roboczej, bez zmian w `mercury-lib`):**
+- `org.mercury.dao.api.CaseWorkingCopy.isWorkingCopy(Case)` (`mercury-dao-api`): dokument (`isDocumentType=true`) w stanie `O`; sprawy niebędące dokumentami zachowują znaczenie stanu `O` (odłożona). Test `CaseWorkingCopyTest` (4).
+- `CaseDAO`: wstawienie kopii roboczej nie przesuwa `CaseRootVersion.lastVersion`, a jej usunięcie nie cofa wskaźnika na `previousVersionId`.
+- `CaseMapper` (indeks): `mrc_isLatestVersion` jest `false` dla kopii roboczej, a wskazanie z kopii roboczej nie czyni poprzedniej wersji „nieostatnią” (`hasNewerVersion` filtruje wyniki `Case.QfindNewestVersion` przez `filterNQ`).
+
+**Komplikacje znalezione przy rozpoznaniu zapisu wersji (do rozwiązania przed `checkOut`):**
+1. `CaseDAO.checkUniqueConstraintAfterDML`: klucz unikalny należący do poprzedniej wersji jest przenoszony na nową (`updateConstraintEntry`) i wymaga, żeby poprzednia była `Z` (chyba że `ADDITIONAL_PARAM_SKIP_CHECK_PREVIOUS_CASE_STATUS`). Dla kopii roboczej (poprzednia nadal `A`) typy z polami unikalnymi wymagają pominięcia tej logiki przy wstawieniu i aktualizacji kopii roboczej; klucz przechodzi dopiero przy `checkIn` (zapis pary: poprzednia `A`→`Z`, kopia `O`→`A`, w tej kolejności).
+2. `CaseBusinessSupport.step3TryIdentifyCaseId`: ręczna zmiana wersji jest rozpoznawana tylko dla starej wersji w stanie `Z` zapisywanej razem z nową; zapis nowej sprawy z `previousVersionId` wskazującym wersję `A` (kopia robocza) nie ma dziś ścieżki. Nagłówek XML (`caseXml`) nie niesie `previousVersionId`, więc kopię trzeba tworzyć przez `MrcObject` (jak `ChangeCaseVersionScenario`), nie przez XML.
+3. Wniosek: `checkOut` powstaje przez `saveList` z jednym obiektem (kopia z `caseId=null`, `previousVersionId`, status `O`), a nie przez dotychczasowe `create`; konieczny jest test na bazie (`CmisRepositoryDbTest`, `mercury-db-test`, czyści dane pomiarowe CMIS: odtwarzanie `scripts/seed_cmis_folders.sh`).
+
+**Dalej (kolejność):** (a) pominięcie reguł kluczy unikalnych i statusu poprzedniej wersji dla kopii roboczej w `CaseDAO`; (b) `CmisRepositoryBusiness.checkOut/checkIn/cancelCheckOut/getAllVersions/getLatestVersion` z testem na bazie; (c) adapter `MercuryCmisService`, właściwości wersji, dozwolone działania, `versionable=true`; (d) `createDocumentFromSource`; (e) test klientem CMIS (Workbench) na Tomcacie.
+
+### Etap 3: warstwa danych i biznesowa (2026-11-03, test na `mercury-db-test`)
+
+**Zrobione i sprawdzone na bazie** (`CmisRepositoryDbTest`, blok „7b. wersje dokumentu”; przechodzi):
+- `CmisRepositoryBusiness`: `checkOut` (kopia pól i **własnego pliku**, wersja `O` z `previousVersionId` i `rootVersionId`), `checkIn` (właściciel kopii albo `mrc-sysadmin`; zmiany właściwości i treści z żądania trafiają do kopii; poprzednia `A`→`Z`, kopia `O`→`A`), `cancelCheckOut` (usuwa kopię i jej plik), `getAllVersions` (kopia robocza, potem od najnowszej), `getLatestVersion`, `findWorkingCopy`.
+- Reguły: drugi `checkOut` serii, `checkOut` kopii roboczej i `checkIn` zwykłej wersji są odrzucane (`CONSTRAINT`/`INVALID_ARGUMENT`); w trakcie `checkOut` ostatnią wersją i jedynym dzieckiem folderu jest nadal `A`; po `checkIn` dzieckiem folderu jest nowa wersja, a zapytanie CMIS-QL zwraca tylko ostatnią.
+- `deleteObject` (i `deleteTree`) usuwa **całą serię** dokumentu z plikami wszystkich wersji, a seria z aktywnym `checkOut` jest odrzucana (decyzja 4).
+- `CaseDAO`: kopia robocza pomija wpis kluczy unikalnych (przy wstawieniu, aktualizacji i usunięciu), `afterUpdate` przesuwa `CaseRootVersion.lastVersion` na zatwierdzoną kopię (`promoteToLastVersionIfNewer`), nowa metoda `findNewerLastVersionIds` (jedno zapytanie dla partii, używana w `loadCases`, żeby dziecko folderu reprezentowała ostatnia wersja).
+- `CaseLogicHelperService.removeValidation`: kopię roboczą wolno usunąć osobno (`cancelCheckOut`); naprawiłem też komunikat błędu z `%d` dla identyfikatorów tekstowych (`IllegalFormatConversionException`).
+- Testy: `CmisRepositoryBusinessTest` 36 OK, `CaseWorkingCopyTest` 4 OK.
+
+**Błąd własny znaleziony tym testem (regresja programu JOIN FETCH, już naprawiona):** w `mercury-lib` (`Case.java`) zapytania `MCase.findLastVersion` i `MCase.findAllVersions` miały niekwalifikowane `rootVersionId` w `WHERE`; po dodaniu `JOIN FETCH` Hibernate traktował je jak kolumnę (`column "rootversionid" does not exist`), więc nie działało pobieranie wszystkich wersji sprawy (np. usuwanie wszystkich wersji). Poprawka: `c.rootVersionId`. Jar encji 3.0.4.20 przebudowany; do commitu w `mercury-lib` (`Case.java`). Pozostałe zapytania zmienione w JOIN FETCH sprawdzone pod kątem takich odwołań: brak.
+
+**Dalej:** adapter `MercuryCmisService` (operacje wersjonowania, właściwości `cmis:isLatestVersion`, `cmis:versionLabel`, `cmis:isVersionSeriesCheckedOut`, `cmis:versionSeriesCheckedOutId/By`, `cmis:isPrivateWorkingCopy`, dozwolone działania, `versionable=true`), `createDocumentFromSource`, etykieta wersji `major.minor` w polu dokumentu, test klientem CMIS na Tomcacie. Test `CmisRepositoryDbTest` wyczyścił `mercury-db-test` (zestaw pomiarowy CMIS do odtworzenia po restarcie Tomcata: `scripts/seed_cmis_folders.sh`).

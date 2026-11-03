@@ -1,6 +1,7 @@
 # [113] Stworzenie mechanizmu do przeglądu wykonywanych zapytań Lucene
 
 https://github.com/slawascichy/hgdb/issues/113
+**Status: ✅ zamknięte 2026-11-03** (rejestr i statystyki, REST, strona, test dwóch węzłów, dokumentacja; do zamknięcia w GitHubie przez autora). Szczegóły w sekcjach „Rozpoznanie” i „Realizacja”.
 
 Jest taka potrzeba by mieć podgląd do aktualnie wykonywanych zapytań.
 Można to zrealizować poprzez zgromadzenie aktywnych wątków aktualnie realizujących zadanie wyszukiwania
