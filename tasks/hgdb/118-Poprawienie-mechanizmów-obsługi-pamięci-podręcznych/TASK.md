@@ -170,3 +170,60 @@ Wniosek: współdzielenie jest możliwe po zmianie kodu: serializowalny odpowied
 - Scenariusz uruchamiany z `-Dmaven.test.skip=false -Duser=scichy-test`, kluczem `test.skip.package.CacheClusterTest=false` (tymczasowo, w profilu `scichy-test`) i zmiennymi środowiskowymi `HGDB_OAUTH_CLIENT_ID`, `HGDB_OAUTH_CLIENT_SECRET`, `HGDB_USER`, `HGDB_PASSWORD`. Test sprząta po sobie (folder CMIS usuwany `deleteTree`).
 
 Otwarte: pamięci wartości słownikowych atrybutów (własny szablon klastrowy), pomiar `CaseObjectMapCache` i `convert2Document` (`CaseMapper`), przycięcie `CacheRefresh`/warstw na serwerze (sprawdzenie na żywo dla `LUCENE` i `ATTRIBUTES`), commity.
+
+## Pomiary dla `CaseObjectMapCache` i `CaseMapper` (2026-11-03, zestaw 116, 243 sprawy, `mercury-db-test`)
+
+Scenariusz `CacheMeasureScenario` (`mercury-srv`, test `CacheMeasureTest`; czyści bazę i ładuje zestaw z zadania 116; dane zostawione `-Dtest.keep.dataset=true`).
+
+| Wielkość | średnia | p50 | p90 | p99 | max |
+|---|---|---|---|---|---|
+| przekształcenie sprawy w `MrcObject`, bez pamięci (ms) | 4,58 | 3,43 | 6,75 | 19,7 | 90,3 |
+| to samo z pamięcią, trafienie lokalne (ms) | 1,97 | 1,83 | 2,60 | 4,50 | 15,6 |
+| serializacja `MrcObject` (ms) / odczyt (ms) | 0,20 / 0,42 | 0,15 / 0,35 | 0,29 / 0,58 | 1,14 / 1,61 | 4,2 / 4,9 |
+| rozmiar `MrcObject` po serializacji (B) | 4446 | 3454 | 7073 | 15655 | 56770 |
+| pobranie sprawy do indeksu `findForIndex` (ms) | 1,87 | 1,82 | 2,54 | 3,93 | 5,7 |
+| mapowanie na dokument Lucene `convert2Document` (ms) | 9,54 | 8,82 | 13,9 | 21,2 | 32,0 |
+| rozmiar dokumentu Lucene, suma długości pól (B) | 2093 | 1924 | 2795 | 5085 | 7884 |
+
+Wszystkie 243 `MrcObject` są serializowalne. Pamięć lokalna oszczędza średnio ok. 2,6 ms na sprawę (4,6 → 2,0 ms: samo `find` nadal czyta sprawę z bazy). Dokument Lucene jest mały (średnio 2 KB, max 8 KB), więc bufor przekazania dokumentów zajmuje ok. 7 razy mniej, niż zakładał wcześniejszy przykład (15 KB): 500 dok/s × 120 s × 2,1 KB ≈ 126 MB.
+
+**Opóźnienie Terracotty (mikrotest, serwer kit dev na Windows, localhost, dwóch klientów, `clustered-dedicated`, odczyty z pominięciem `heap`):** zapis i odczyt wpisu od innego klienta trwa **ok. 13–15 ms** niezależnie od rozmiaru (2, 5, 16, 56 KB), spójności (`strong` i `eventual`) i `preferIPv4Stack`. Wartość zbliżona do kwantu zegara Windows (15,6 ms); opóźnienie na Linuksie (środowisko produkcyjne) nie zostało zmierzone.
+
+Wnioski (dla tego środowiska):
+- `CaseObjectMapCache` w pamięci klastrowej: odczyt (≥ 13 ms) jest wolniejszy niż pełne przekształcenie (średnio 4,6 ms, p99 19,7 ms), więc współdzielenie opłaca się tylko dla rzadkich, bardzo ciężkich spraw. **Zostaje lokalna.**
+- `CaseMapper` (przekazywanie dokumentów): mapowanie średnio 9,5 ms vs odczyt z Terracotty ≥ 13 ms; opłacalne dopiero przy opóźnieniu Terracotty wyraźnie poniżej czasu mapowania (do zmierzenia na Linuksie) albo przy pobieraniu wielu dokumentów jednym żądaniem.
+- **Ryzyko dla już wdrożonych pamięci klastrowych:** każdy zapis w regionie znaczników czasu (Hibernate: wstępne i końcowe unieważnienie dla każdej tabeli transakcji) i w `CaseGlobalTransactionCache` kosztuje jedną operację Terracotty; przy 13–15 ms na operację zapis sprawy może zwolnić o dziesiątki–setki ms (do zmierzenia: `createFolder` w pustym folderze miał 0,09 s przy pamięciach lokalnych).
+- Alternatywa dla znaczników czasu: wyłączenie pamięci zapytań Hibernate (`hibernate.cache.use_query_cache=false`), co usuwa i ryzyko nieaktualnych wyników między węzłami, i zapisy do Terracotty; koszt to więcej zapytań do bazy (do zmierzenia, zapytania zwracające encje bez pamięci drugiego poziomu już omijają pamięć zapytań).
+
+Stan bazy po pomiarze: w `mercury-db-test` jest zestaw 243 spraw z zadania 116, a folder główny CMIS został usunięty przez czyszczenie (Tomcat zgłasza `objectNotFound` dla starego id; po restarcie serwer tworzy folder główny od nowa).
+
+## Pomiar na dużych obiektach (FSMServiceOrder, 2026-11-03) i szablon `attribute-values`
+
+`CacheMeasureScenario` rozszerzony o `-Dmeasure.files=<pliki z /pro/ibpm/mercury/logic/>`, `-Dmeasure.dataset=false`, `-Dmeasure.clean=false`, `-Dmeasure.repeats=5`. Załadowano `FSMServiceOrder.v1.xml` (84 339 B XML, 1 sprawa, 3,1 s), `FSMServiceOrderSimple.v1.xml` (1 sprawa) i `FSMServiceOrderSimple.v3.xml` (2 sprawy); `FSMServiceOrder.v2.xml` nie załadował się (loader: „Can't insert case with previousVersionId=…, because is not set rootVersionId”, niezwiązane z pomiarem). Cztery sprawy po 5 powtórzeń (n=20):
+
+| Wielkość (DUZE) | średnia | p50 | p90 (≈ `FSMServiceOrder`) | max |
+|---|---|---|---|---|
+| przekształcenie w `MrcObject`, bez pamięci (ms) | 22,4 | 11,3 | 62,7 | 63,7 |
+| to samo, trafienie lokalne (ms) | 1,16 | 1,02 | 1,72 | 2,02 |
+| rozmiar `MrcObject` (B) | 26 880 | 18 079 | 62 945 | 62 945 |
+| serializacja / odczyt (ms) | 0,62 / 0,79 | 0,43 / 0,65 | 1,41 / 1,60 | 1,52 / 1,64 |
+| mapowanie na dokument Lucene (ms) | 8,1 | 8,1 | 10,6 | 11,2 |
+| rozmiar dokumentu Lucene (B) | 4488 | 4137 | 5614 | 5614 |
+
+(Zestaw 116, 278 spraw, bez dużych: przekształcenie średnio 3,3 ms, `MrcObject` średnio 4,6 KB, dokument 2,1 KB, mapowanie 6,6 ms.)
+
+Wnioski:
+- `FSMServiceOrder` v1 (sprawa 63 KB po serializacji) przekształca się w ok. 63 ms, więc odczyt z Terracotty (ok. 15 ms + 1,6 ms odczytu) oszczędziłby ok. 46 ms (73%), ale dla typowych spraw (3–11 ms) byłby stratą. Próg opłacalności: koszt przekształcenia powyżej opóźnienia Terracotty (tu ok. 17 ms), więc tylko dla rzadkich, ciężkich spraw. Wariant selektywny (do rozważenia, nie wdrożony): do pamięci klastrowej trafiają tylko wpisy, których przekształcenie trwało powyżej progu, a zdalne wyszukiwanie wykonuje się tylko dla typów uznanych lokalnie za ciężkie.
+- Dokument Lucene nie rośnie tak jak `MrcObject` (4,5 KB wobec 27 KB średnio; mapowanie 8 ms), więc przekazywanie dokumentów nie zyskuje na dużych typach; opłacalność `CaseMapper` zależy od opóźnienia Terracotty na Linuksie.
+
+**Punkt 1 (sccommon 2.0.0.4, wydany przez autora):** `sccommon.version` = 2.0.0.4 w `mercury` (pom rodzica w `.m2` odświeżony); `AttributeTypeParameter.createCache` używa `getCache(nazwa, CacheHelper.ATTRIBUTE_VALUES_TEMPLATE)`; w sześciu `ehcacheDefault.xml` dodano szablon `attribute-values` (lokalny, `CustomExpiryPolicy`): współdzielenie w klastrze to dopisanie zasobu klastrowego w tym szablonie. Testy `mercury-core-server` (10) OK. Poprawka `CustomExpiryPolicy` w 2.0.0.4: odczyt nie przedłuża już życia wpisu.
+
+## Selektywna pamięć współdzielona `CaseObjectMapCacheShared` (stan na 2026-11-03, praca wstrzymana na prośbę autora)
+
+Zaimplementowane (niezacommitowane, nieprzetestowane end-to-end): `SharedCaseObjectStore` (próg kosztu `mercury.cache.caseObject.shared.minCostMs`, domyślnie 25 ms; uczony koszt typu EWMA 0,2 i lista ciężkich spraw; asynchroniczny zapis; nieaktywna, gdy pamięć nie jest klastrowa; wyłączenie `mercury.cache.caseObject.shared.enabled=false`), integracja w `CaseObjectMapCache` (nowe przeciążenia `getCaseObject/putCaseObject` z `typeKey` i kosztem) i `CaseBusiness.transform2MrcObject` (pomiar kosztu), alias `CaseObjectMapCacheShared` (128 MB, `ttl` 3600) w sześciu `ehcacheDefault.xml` (16 MB w teście `mercury-srv`), test `SharedCaseObjectStoreTest` (6 OK).
+
+**Błąd znaleziony przy teście (mercury-lib):** `MrcObject.propertyNamesLock` jest `final transient` z inicjalizacją w deklaracji, więc po deserializacji Javy ma wartość `null` i `getPropertyNames()` kończy się `NullPointerException` (dotyczy też `MrcPage`, `MrcPagedResult`, `MrcPagingParams`). Obiekt odczytany z pamięci współdzielonej jest bezużyteczny. Poprawka w `MrcObject` (pole niefinalne + `readObject`) jest zrobiona na gałęzi `hgdb-118` w `mercury-lib`, test `MrcObjectSerializationTest` w `mercury-srv-api` jeszcze się nie kompiluje (konstruktor `MrcPagingParams` ma inne parametry; moduł kompiluje się ze `-source 1.5`, bez try-with-resources).
+
+**Ostrzeżenie:** do czasu wydania poprawki w `mercury-lib` włączona pamięć współdzielona z nowymi jarami `mercury-srv` może zgłaszać `NullPointerException` dla ciężkich spraw (koszt > 25 ms). Do tego czasu nie wdrażać nowego `mercury-srv` z aliasem `CaseObjectMapCacheShared` albo ustawić `mercury.cache.caseObject.shared.enabled=false`.
+
+**2026-11-03: poprawka `MrcObject` w `mercury-lib` gotowa** (gałąź `hgdb-118`, niezacommitowana): `propertyNamesLock` niefinalne + `readObject` odtwarzające blokadę po deserializacji. Test `MrcObjectSerializationTest` (3 OK: obiekt po serializacji ma poprawne `getPropertyNames`/`getPropertyValue`, można go zmieniać, `MrcPagingParams` działa po odczycie). Po lokalnym wydaniu `mercury-lib` wymagane: podniesienie `mercury.static.version` w `mercury`, wdrożenie jarów i WAR, dopiero wtedy test selektywnej pamięci współdzielonej na ciężkich sprawach.
