@@ -107,7 +107,7 @@ https://github.com/slawascichy/hgdb/issues/114
   D109-CaseBusiness_changeModel-duplicate-key-value-violates-unique-constraint-igo_da_typecode_case_uk
   D110-CaseLobProperty-More-than-one-row-with-the-given-identifier-was-found
   D115-Usługa-updateCasesParamsByParams-nie-można-zaktualizować-parametru-do-null
->113-Stworzenie-mechanizmu-do-przeglądu-wykonywanych-zapytań-Lucene
+  D113-Stworzenie-mechanizmu-do-przeglądu-wykonywanych-zapytań-Lucene
   D114-Obsługa-indeksowania-przez-dedykowanych-sekretarz-indeksu
   D116-Usługa-updateCasesParamsByParams-nie-działa-prawidłowo
 118-Poprawienie-mechanizmów-obsługi-pamięci-podręcznych
