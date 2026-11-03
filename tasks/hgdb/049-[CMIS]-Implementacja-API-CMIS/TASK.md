@@ -987,3 +987,11 @@ Przyjęte propozycje: (1) etykieta wersji `major.minor` w polu dokumentu, `check
 **Błąd własny znaleziony tym testem (regresja programu JOIN FETCH, już naprawiona):** w `mercury-lib` (`Case.java`) zapytania `MCase.findLastVersion` i `MCase.findAllVersions` miały niekwalifikowane `rootVersionId` w `WHERE`; po dodaniu `JOIN FETCH` Hibernate traktował je jak kolumnę (`column "rootversionid" does not exist`), więc nie działało pobieranie wszystkich wersji sprawy (np. usuwanie wszystkich wersji). Poprawka: `c.rootVersionId`. Jar encji 3.0.4.20 przebudowany; do commitu w `mercury-lib` (`Case.java`). Pozostałe zapytania zmienione w JOIN FETCH sprawdzone pod kątem takich odwołań: brak.
 
 **Dalej:** adapter `MercuryCmisService` (operacje wersjonowania, właściwości `cmis:isLatestVersion`, `cmis:versionLabel`, `cmis:isVersionSeriesCheckedOut`, `cmis:versionSeriesCheckedOutId/By`, `cmis:isPrivateWorkingCopy`, dozwolone działania, `versionable=true`), `createDocumentFromSource`, etykieta wersji `major.minor` w polu dokumentu, test klientem CMIS na Tomcacie. Test `CmisRepositoryDbTest` wyczyścił `mercury-db-test` (zestaw pomiarowy CMIS do odtworzenia po restarcie Tomcata: `scripts/seed_cmis_folders.sh`).
+
+### Etap 3: adapter i `createDocumentFromSource` (2026-11-03)
+
+- Adapter `MercuryCmisService`: `checkOut`, `checkIn`, `cancelCheckOut`, `getAllVersions`, `getObjectOfLatestVersion`, `createDocumentFromSource`; właściwości wersji (`cmis:isLatestVersion`, `cmis:versionLabel`, `cmis:isVersionSeriesCheckedOut`, `cmis:versionSeriesCheckedOutId/By`, `cmis:isPrivateWorkingCopy`), dozwolone działania, `versionable=true`, `isPwcUpdatable=true`.
+- Biznes: `createDocumentFromSource` tworzy nową serię 1.0 z polami i własną kopią pliku źródła; podane właściwości nadpisują wartości źródła. Scenariusz `CmisRepositoryDbScenario` (blok 7b) obejmuje także kopię.
+- Testy: `CmisRepositoryBusinessTest` 36 OK, `CmisRepositoryDbTest` OK (`mercury-db-test`), testy CMIS w `mercury-ws-app` 36 OK.
+- **Odstępstwo od decyzji 4:** `deleteObject` usuwa zawsze całą serię; adapter ignoruje `allVersions=false` (usunięcie tylko ostatniej wersji nie jest zrealizowane). Do decyzji autora.
+- **Dalej:** test klientem CMIS na Tomcacie po wdrożeniu jarów i WAR; odtworzenie zestawu pomiarowego (`scripts/seed_cmis_folders.sh`); dokumentacja 007_CMIS.
