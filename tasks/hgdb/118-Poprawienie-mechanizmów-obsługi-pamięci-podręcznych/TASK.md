@@ -268,3 +268,52 @@ Narzut 13–15 ms wynika ze strony **klienta Java na Windowsie** (nie serwera i 
 - **CaseMapper (przekazywanie dokumentów Lucene)** robimy w tym zadaniu (118). Plan szczegółowy: `tasks/hgdb/plan-2026-11-04.md`.
 - **Pomiar zapisu na Linuksie** (`createFolder` itd.) przeniesiony do osobnego zadania **223**, po 211; porównamy wyniki z pomiarami z 118.
 - Zrestartowany Tomcat; podsumowanie dnia: `tasks/hgdb/podsumowanie-2026-11-03.md`.
+
+## Przekazywanie dokumentów Lucene między węzłami (2026-11-04, niezacommitowane)
+
+### Rozpoznanie (odczyt kodu) i decyzje autora
+
+- **Bufor zmian:** `MLucSaveBufferLogicSupport.save` zawsze **wstawia nowy wiersz** (nowe `id` z sekwencji). Metoda `getNotProcessesByMatterId`, która miała łączyć zmiany tej samej sprawy, nie jest nigdzie wywoływana (wcześniejsze przypuszczenie o aktualizacji w miejscu było błędne). SCN nadaje sekretarz przy pobraniu paczki (`CaseSaveBufferScnSeq`), a `LucCaseSaveBufferLogicHelper.optimalization` scala wiersze tej samej sprawy w paczce w jeden wpis (`R` wygrywa, `I` wypiera `U`, źródła się sumują).
+- **Tożsamość dokumentu = id sprawy + SCN paczki** (bez DDL i bez nowego tokena). Paczka wysyłana w JMS jest już zoptymalizowana, więc para jest unikalna i taka sama u nadawcy i odbiorców. Zmiana po pobraniu paczki trafia do następnej paczki (nowy SCN) i wywołuje ponowne mapowanie; sprawa w aktywnej transakcji wraca do bufora z `scnNumber=null` i dostaje nowy SCN. Decyzja autora: wariant bez DDL, wysyłka JMS po mapowaniu.
+- **Kolejność w sekretarzu** (`LucCaseSaveBufferBusiness.processNextPackage`) była: wysyłka JMS, potem własne mapowanie. Przy włączonym przekazywaniu: mapowanie i publikacja dokumentów, czekanie na zapisy (`flush`), dopiero potem JMS i obudzenie. Przy wyłączonym zostaje stara kolejność.
+- Pełne mapowanie nie zależy od `sources` (pamięć dokumentów wyłączona w kodzie, `createNewInstance`); `sources` wpływa tylko na to, co `findForIndex` inicjalizuje.
+- Rodzaje pól wytwarzane przez mapowanie: `TextField`, `StringField`, `StoredField` (tekst, liczby, bajty), punkty `Int/Long/Float/DoublePoint`, DocValues `SortedNumeric/Sorted/SortedSet`.
+
+### Zaimplementowane
+
+- `SharedStoreSupport` (`mercury-core-server`): wspólna część magazynów współdzielonych (zapis asynchroniczny, liczniki, `isClustered`, `flush`); `SharedCaseObjectStore` rozszerza ją (6 testów OK).
+- `org.mercury.lucene.handoff` (`mercury-lucene-indexes-api`): `SerializableDocument` (odwzorowanie `Document`, nieobsługiwane pole to `UnsupportedFieldException`), `SharedLuceneDocumentStore` (region `CaseMapperShared`, klucz `caseId|scn`, parametr `mercury.cache.luceneDocument.shared.enabled`), `ICaseDocumentHandoff` (`take`/`offer`, `NONE`), `HandoffRole` (`NONE`/`PUBLISHER`/`CONSUMER`).
+- `CaseIndexer.updateIndexByKeys(..., handoff)` (nowe przeciążenie, w `ICaseIndexer` metoda domyślna): gotowy dokument albo mapowanie i publikacja; `MLuceneIndexerSupport.addDoc/updateDoc` z gotowym dokumentem.
+- `CaseIndexerBusinessSupport.updateIndex(..., HandoffRole)`, `ICaseIndexerBusinessInternal`, `CaseIndexerBusinessUpdateCallable`, konsument JMS (`CONSUMER`), sekretarz (`PUBLISHER`, kolejność jak wyżej).
+- Region `CaseMapperShared`: `heap` 100 + `clustered-dedicated` 128 MB, `ttl` 600 s, w 7 plikach `ehcacheDefault.xml` (serwer dev, `scichy`, `scichy-test`, testy `mercury-srv` i `mercury-srv-slave`, `mercury-cmd`, `mercury-docker`). **Rozmiar identyczny wszędzie.**
+
+### Wyniki
+
+Testy: `SerializableDocumentTest` (4 OK: pola i wyniki wyszukiwania/sortowania w `RAMDirectory` identyczne po serializacji Javy), `SharedLuceneDocumentStoreTest` (5 OK: sekretarz publikuje, odbiorca pobiera tylko dla tej samej paczki, inny SCN to chybienie, odbiorca nie publikuje, nieobsługiwane pole pomijane), testy modułów `mercury-lucene-indexes*` zielone (121, 10 pominiętych kluczem).
+
+Pomiar na 883 sprawach `mercury-db-test` (`CacheMeasureTest`, `measure.clean=false`, `measure.dataset=false`, Windows):
+
+| Wielkość | średnia | p50 | p90 | p99 | max |
+|---|---|---|---|---|---|
+| mapowanie dokumentu `convert2Document` (ms) | 5,07 | 4,53 | 7,21 | 11,7 | 42,1 |
+| `findForIndex` (ms) | 0,90 | 0,83 | 1,19 | 1,89 | 6,25 |
+| serializacja dokumentu przekazania (ms) | 0,073 | 0,066 | 0,102 | 0,166 | 0,332 |
+| odtworzenie dokumentu (ms) | 0,123 | 0,106 | 0,156 | 0,252 | 6,71 |
+| rozmiar po serializacji Javy (B) | 4613 | 4715 | 5697 | 8286 | 11 553 |
+| suma długości pól dokumentu (B) | 2515 | 2485 | 3136 | 5614 | 7884 |
+
+Wszystkie 883 dokumenty się odwzorowują (bez nieobsługiwanych pól). Rozmiar po serializacji to ok. 1,8 raza suma długości pól (narzut Javy), więc szacunek bufora dla importu: 500 dok/s × 120 s × 4,6 KB ≈ 276 MB, więcej niż 128 MB regionu; nadmiar wypiera eksmisja (brakujące wpisy to zwykłe mapowanie). Do rozważenia: kompresja albo zwięzła serializacja.
+
+Region na prawdziwej Terracotcie (30 spraw, ten sam proces): `CaseMapperShared` utworzony jako klastrowy, 30 z 30 dokumentów opublikowanych i odczytanych z kompletem pól (zapisy 30, nieobsługiwane 0). Odczyty trafiały w warstwę `heap` tego samego procesu, więc to nie jest pomiar opóźnienia sieci.
+
+Oczekiwany zysk po stronie odbiorcy: koszt mapowania (ok. 5 ms) zastępuje odczyt (ok. 0,3 ms na Linuksie) i odtworzenie (ok. 0,12 ms), więc rzędu 4,5 ms na sprawę (≈ 90%). Na Windowsie (13–15 ms na operację) przekazywanie dokumentów jest wolniejsze niż mapowanie; środowisko docelowe to Linux, pomiar w zadaniu 223.
+
+### Nie sprawdzone
+
+- Dwa prawdziwe węzły z JMS (sekretarz publikuje, drugi węzeł pobiera z Terracotty): wymaga wdrożenia WAR i drugiego węzła.
+- Zmiana kolejności w sekretarzu (mapowanie przed JMS) i rola `CONSUMER` w konsumencie JMS nie mają testu integracyjnego.
+- Import hurtowy (tryb z zadania 114): przekazywanie działa tak samo jak w trybie zwykłym; decyzja, czy omijać je dla paczek hurtowych, jest otwarta.
+
+### Zmiany pomocnicze w testach
+
+`CacheMeasureScenario`: pobiera mapper z indeksera (bez ładowania zestawu danych mapper nie miał wstrzykniętego menedżera ról, `NullPointerException` w `GroupCaseMapper`), mierzy przekazanie dokumentu (`hand_ser_ms`, `hand_deser_ms`, `hand_size_B`) i sprawdza przekazywanie na prawdziwym regionie (`checkDocumentHandoff`).

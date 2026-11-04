@@ -66,13 +66,13 @@ netsh winsock reset
 
 * Obsługa Git
 ```bash
-export TAG_VERSION="2.0.0.3"
+export TAG_VERSION="2.0.0.4"
 git tag -a ${TAG_VERSION} -m "Wersja ${TAG_VERSION}"
 git push origin
 git push origin ${TAG_VERSION}
 ```
 ```bash
-export BRANCH_VERSION=hgdb-118
+export BRANCH_VERSION=hgdb-118-expiry
 git push origin ${BRANCH_VERSION}
 ```
 ```bash
