@@ -66,13 +66,13 @@ netsh winsock reset
 
 * Obsługa Git
 ```bash
-export TAG_VERSION="2.0.0.4"
+export TAG_VERSION="3.0.4.13"
 git tag -a ${TAG_VERSION} -m "Wersja ${TAG_VERSION}"
 git push origin
 git push origin ${TAG_VERSION}
 ```
 ```bash
-export BRANCH_VERSION=hgdb-118-expiry
+export BRANCH_VERSION=hgdb-118
 git push origin ${BRANCH_VERSION}
 ```
 ```bash
@@ -109,7 +109,7 @@ https://github.com/slawascichy/hgdb/issues/118
   D113-Stworzenie-mechanizmu-do-przeglądu-wykonywanych-zapytań-Lucene
   D114-Obsługa-indeksowania-przez-dedykowanych-sekretarz-indeksu
   D116-Usługa-updateCasesParamsByParams-nie-działa-prawidłowo
->118-Poprawienie-mechanizmów-obsługi-pamięci-podręcznych
+  D118-Poprawienie-mechanizmów-obsługi-pamięci-podręcznych
   D119-[Lucene]-Problem-wydajności-systemu-długie-zapytania-Lucene
   D121-Sortowanie-po-wybranych-parametrach-kończy-się-błędem
   D133-Swagger-implementacja
@@ -133,6 +133,6 @@ https://github.com/slawascichy/hgdb/issues/118
 219-Wydajność-generowania-plików-Excel
    B220-Filtry-i-sortowanie-w-eksporcie-widoków
   D222-[GUI]-Panel-monitorowania-sekretarzy
- 
+223-Pomiar-zapisu-na-Linuksie-Tomcat-Terracotta
  
  

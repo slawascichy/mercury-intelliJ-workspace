@@ -78,3 +78,32 @@ Nie widzę przeszkody blokującej wydanie, ale kilka punktów trzeba rozstrzygn�
 - Zapytanie Lucene i parametry z `lucene.properties` działają na nowej wersji (przykład wymuszenia: `lucene.reader.pool=false`).
 - Kompozycje dwu- i trzywęzłowa startują (licencja próbna, ActiveMQ, Ehcache).
 - README, kompozycje i Helm wskazują nową wersję; `docs/moduly/mercury-docker.md` zaktualizowany.
+
+## Decyzja autora (2026-11-04): podział na 211a i 211b, zmiana kolejności
+
+211 to ostateczne wydanie systemu, więc przestaje być krokiem w środku kolejki. Nowa kolejność zadań: **191 → 209 → 223 → 211b**.
+
+- **211a, procedura wydania (cykliczna, bez obowiązkowej publikacji).** Lista kroków i skrypty do wielokrotnego użycia: podbicie wersji w `mercury-cmd` i `mercury-docker` (dziś kilkanaście miejsc, obrazy stoją na `3.0.3.2.11` od 2022 r.), budowa `mercury-install-package` i automatyczna kontrola zawartości ZIP-a (wersje jarów, `ehcache*.xml` z regionami `CaseMapperShared` i `CaseObjectMapCacheShared`, `tc-config.xml`), skrypt testu dymnego kompozycji (start, logi, `/rest/openapi.json`, CMIS). Uruchamiana jako release candidate przy zamknięciu większych pakietów zadań; wgranie ZIP-a i publikacja obrazów to czynności autora.
+- **211b, wydanie ostateczne.** Ta sama procedura po 191, 209 i 223, z publikacją na `hgdb.org` i Docker Hub oraz artykułami docusaurus (Docker, Kubernetes) i `docs/moduly/mercury-docker.md`, `mercury-cmd.md`.
+
+Powody: dryf wersji wyjdzie wcześniej, nie naraz; 191 (Java 17) zmienia JDK, Tomcat i bazę obrazu (do sprawdzenia także kompatybilność Ehcache/Terracotty 3.6.1); 223 rozstrzyga regiony klastrowe i próg `minCostMs`.
+
+### Wejście z zadania 118 (2026-11-04)
+
+- Regiony klastrowe w `ehcacheDefault.xml`/`ehcacheCommon.xml` mają razem 388 MB (znaczniki czasu Hibernate 4, transakcje globalne 64, metadane typów 64, obiekty spraw 128, dokumenty Lucene 128). Serwer Terracotta w `mercury-docker/ehcache/conf/*` i w pakiecie `mercury-cmd` (`ehcache-clustered/server/conf/tc-config.xml`) ma `primary-server-resource` **512 MB**: mieści, ale z małym zapasem. Propozycja: 1024 MB jak w `docker/terracotta` (do akceptacji autora).
+- Wzorzec `/rest/**` → `/rest/service/**` (obserwacja 88), blok `lucene.properties` (obserwacja 90), sekrety przykładowe (obserwacja 89): bez zmian względem szkicu powyżej.
+- Wydane: `mercury-lib` 3.0.4.21, `mercury` 3.0.4.13, `sccommon` 2.0.0.4.
+
+## Postęp 211a (2026-11-04, gałąź `hgdb-211` w `mercury-docker` i `mercury-cmd`, niezacommitowane)
+
+Opis i stan skryptów: `procedura-wydania.md`. Zrobione: `mercury-docker/bin/release/` (`set-versions.sh`, `verify-cache-config.sh`, `build-and-push-images.sh`, `smoke-test.sh`), kompozycje czytają prefiks rejestru ze zmiennej `HGDB_REGISTRY` (domyślnie pusta, czyli bez zmiany zachowania). **Decyzja autora: obrazy przechowujemy w Nexusie `nexus.scisoftware.local`, repozytorium `docker-hosted`.** Rejestr: `nexus.scisoftware.local:5000` (port `docker-hosted` potwierdzony). Rozpoznanie: pakiet instalacyjny składa się z katalogu serwera dev i `target` w `mercury` (Ant `verify` już sprawdza wersje jarów, WAR i logowanie), więc 211a dodaje tylko kontrolę pamięci klastrowych, podbicie wersji, wysyłkę do Nexusa i test dymny.
+
+Otwarte: `primary-server-resource` 512 → 1024 MB; rozjazd `ehcacheCommon.xml` w przykładach (4 regiony) z plikiem dev (6); numer wydania release candidate (`set-versions.sh` jeszcze nie zastosowany); test dymny i budowa obrazów do uruchomienia na `devops-box-01`.
+
+### Release candidate 3.0.4.13 (2026-11-04)
+
+Zastosowane na gałęziach `hgdb-211` (decyzje autora): `--srv 3.0.4.13 --lib 3.0.4.21 --client 3.1.4.19`; `primary-server-resource` 1024 MB. Pakiet `mercury-install-package-3.0.4.13.POSTGRESQL.20261104.zip` (136 MB) zbudowany z korzenia `mercury-cmd` po poprawce reguły weryfikacji Ant (zob. `procedura-wydania.md`). Do zrobienia przez autora: wgranie ZIP-a (krok 6), budowa obrazów (`build-and-push-images.sh`, rejestr `nexus.scisoftware.local:5000`) i test dymny na `devops-box-01`. Niezacommitowane zmiany: `mercury-docker` (wersje, kompozycje `HGDB_REGISTRY`, Terracotta 1024 MB, `bin/release/`), `mercury-cmd` (`pom.xml`, `build-installation.xml`, `README.md`, `tc-config.xml`, `README.txt` przykładu).
+
+### Pakiety w Nexusie i obrazy bazowe (2026-11-04)
+
+Decyzje autora: pakiety ładowane do repozytorium `raw` `mercury-docker-packages` w Nexusie (utworzone przez autora); `FROM` zmienione na nowsze i odporniejsze na podatności. Wykonane: do `mercury-docker-packages` wgrano pięć plików (pakiet RC 3.0.4.13, Tomcat 8.5.82, JDK 8u202, kit Terracotty 3.6.1, poi-toolkit 4.0.5-SNAPSHOT; odczyt anonimowy działa); Dockerfile'e pobierają z `ARG PACKAGES_URL` (domyślnie Nexus) z `curl -f`; `FROM`: `almalinux:9` (mercury, mercury-lb, openldap), `eclipse-temurin:8-jdk-alpine` (activemq, ehcache, poi-server), ActiveMQ 5.16.7 (CVE-2023-46604), `postgres:14.24`, OpenLDAP 2.6.16. Szczegóły i uzasadnienie w `procedura-wydania.md`, sekcja „Obrazy bazowe”. Nie zbudowane (brak Dockera); do sprawdzenia na `devops-box-01`. Do decyzji: PostgreSQL 14 (koniec wsparcia 2026-11-12), Tomcat 8.5.82 i JDK 8u202 w obrazie serwera.
