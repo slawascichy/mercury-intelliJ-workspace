@@ -317,3 +317,21 @@ Oczekiwany zysk po stronie odbiorcy: koszt mapowania (ok. 5 ms) zastępuje odczy
 ### Zmiany pomocnicze w testach
 
 `CacheMeasureScenario`: pobiera mapper z indeksera (bez ładowania zestawu danych mapper nie miał wstrzykniętego menedżera ról, `NullPointerException` w `GroupCaseMapper`), mierzy przekazanie dokumentu (`hand_ser_ms`, `hand_deser_ms`, `hand_size_B`) i sprawdza przekazywanie na prawdziwym regionie (`checkDocumentHandoff`).
+
+### Test dwóch węzłów (2026-11-04, 12:24)
+
+`LuceneHandoffScenario` / `LuceneHandoffTest` (`mercury-srv-slave`; klucz `test.skip.package.LuceneHandoffTest` w `scichy-test`, w `scichy` do dopisania): węzeł 1 = Tomcat z nowym WAR (log: `Przekazywanie dokumentów Lucene włączone`, region `CaseMapperShared` utworzony), węzeł 2 = proces testowy (`node2`, klaster, wspólne: baza, Terracotta, ActiveMQ). Węzeł 1 utworzył 6 folderów CMIS (`createFolder`); jego sekretarz zmapował sprawy i opublikował dokumenty, a węzeł 2 jako odbiorca paczek JMS pobrał je z Terracotty: **trafienia 6, chybienia 0, własne zapisy 0**. Log Tomcata w czasie testu: 0 wpisów `ERROR`/`WARN`. Foldery usunięte (`deleteTree`).
+
+Uwagi: łączne liczniki węzła 2 po teście to trafienia 7, chybienia 4 (4 chybienia dotyczą paczek sprzed punktu odniesienia testu, czyli odbiorca zmapował sprawy sam, zgodnie z założeniem awaryjnego mapowania). Test nie weryfikuje osobno zawartości indeksu węzła 2 (trafienie oznacza, że dokument został użyty w `addDoc`/`updateDoc`). Rola `master` indeksu była `null` (żaden węzeł nie ogłosił się masterem), więc oba węzły mogły pełnić rolę sekretarza; w tym przebiegu publikował Tomcat.
+
+Nadal nie sprawdzone: scenariusz odwrotny (sekretarzem jest węzeł 2, odbiorcą Tomcat), import hurtowy, opóźnienie na Linuksie.
+
+## Dokumentacja (2026-11-04, docusaurus-hgdb, niezacommitowane)
+
+EN i PL (sprawdzone kompilacją MDX): nowa strona `005_Configuration/Cache_configuration.mdx` (warstwy, pliki Ehcache, regiony klastrowe i zasada identycznego rozmiaru, szablony i wygasanie, selektywne współdzielenie obiektów spraw z parametrami, przekazywanie dokumentów, opóźnienie Terracotty, monitorowanie); `004_API/001_Context` (wiersz `cacheUsage`, wiersz `cache.refresh.layers`, sekcja „Odświeżanie pamięci podręcznych według warstw”); `003_Architecture/003_Index_Lucene` (sekcja „Przekazywanie dokumentów między węzłami”); `005_Configuration/index` (pozycje listy zaznaczone ✅). `docs/obserwacje.md`: pozycje 142–148. OpenAPI: opisy `schema.Context.cacheUsage` i `schema.Context.requestProperties` uzupełnione w `openapi-docs_en.properties`; **tłumaczenia `de`/`es`/`fr`/`ko` do uzupełnienia przez translator (`localization-project`)**, strony docusaurus w `es`/`fr`/`ko`/`de` również. `docker/terracotta/README.md`: suma regionów 388 MB, stan „uruchomiony na devops-box-01”.
+
+## Pozostało do zamknięcia 118
+
+- Autor: dopisać klucze `test.skip.package.CacheClusterTest=true`, `CacheMeasureTest=true` (`mercury-srv`, `mercury-srv-slave`) i `LuceneHandoffTest=true` do profilu `scichy`; przywrócić `mercury.cache.caseObject.shared.minCostMs` na 25 na Tomcacie dev; commity (`mercury`, `mercury-lib`, `sccommon`, `mercury-docker`, `mercury-cmd`, workspace, docusaurus).
+- Nie sprawdzone: odwrotny kierunek przekazywania dokumentów (sekretarz = węzeł 2), test na żywo warstw `LUCENE` i `ATTRIBUTES`, import hurtowy, opóźnienie na Linuksie (zadanie 223).
+- Rytuał zamknięcia: wydanie `mercury` (PR, merge, tag), potem `master`, `git pull`, nowa gałąź.

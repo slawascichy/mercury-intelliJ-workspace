@@ -5,8 +5,7 @@ Kompozycja Docker z serwerem Terracotta, na którym leżą współdzielone w kla
 Mercury: serwer `default-server`, port `9510`, zasób `primary-server-resource` (adres w XML:
 `terracotta://<host>:9510/default-server`).
 
-**Stan: obraz nie był budowany ani uruchamiany** (maszyna, na której powstał, nie mogła pobrać obrazu bazowego
-z Docker Hub). Plik `Dockerfile` i `tc-config.xml` oparto na kicie 3.6.1 używanym w środowisku dev.
+**Stan:** obraz zbudowany i uruchomiony na `devops-box-01.hgdb.org` (autor, 2026-11-03). Plik `Dockerfile` i `tc-config.xml` oparto na kicie 3.6.1 używanym w środowisku dev.
 
 ## Uruchomienie
 
@@ -49,7 +48,7 @@ kilkunastu milisekund na zapis.
 | Logi | wolumin `terracotta-logs` (`/data/logs`) |
 
 Suma rozmiarów `clustered-dedicated` wszystkich pamięci w `ehcacheDefault.xml` i `ehcacheCommon.xml` musi mieścić się
-w `primary-server-resource` (obecnie ok. 260 MB). `MaxDirectMemorySize` powinno być większe niż suma zasobów off-heap,
+w `primary-server-resource` (obecnie 388 MB: znaczniki czasu Hibernate 4, transakcje globalne 64, metadane typów 64, obiekty spraw 128, dokumenty Lucene 128). `MaxDirectMemorySize` powinno być większe niż suma zasobów off-heap,
 a pamięć maszyny wirtualnej większa od `MaxDirectMemorySize` plus sterta.
 
 **Zasada zgodności:** ten sam alias pamięci musi mieć identyczny rozmiar `clustered-dedicated` we wszystkich
