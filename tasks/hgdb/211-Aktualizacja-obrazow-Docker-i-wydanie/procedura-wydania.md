@@ -79,3 +79,48 @@ Skrypty leżą w `mercury-docker/bin/release/` (nie robią commitów):
 **Nie sprawdzone (brak Dockera na maszynie roboczej):** żadna z budów obrazów nie była uruchomiona. Największe ryzyko: `openldap` (kompilacja na EL9) i `mercury-lb` (konfiguracja nginx na EL9). Pierwsza budowa na `devops-box-01`.
 
 **Pozostaje przestarzałe w obrazie serwera (do decyzji, powiązane z zadaniem 191):** Tomcat 8.5.82 (gałąź 8.5 bez wsparcia od 2024-03) i Oracle JDK 8u202 z 2019 r. (tarballe z repozytorium `raw`). Rekomendacja: Tomcat 9.0.x (ta sama specyfikacja Servlet 4, bez przepisywania aplikacji) i JDK Temurin 8 jako tarball; wymaga testu aplikacji, więc nie zmienione w tym release candidate.
+
+## Pierwsza budowa i test dymny lokalnie (2026-11-04, Docker na maszynie roboczej)
+
+Obrazy bazowe pobierane przez proxy Dockera w Nexusie (`nexus.scisoftware.local:5001`, `build-and-push-images.sh --bases-from`; pierwsze pobranie dużego obrazu bywa wolne, więc skrypt ponawia 3 razy). Wszystkie siedem obrazów zbudowało się; test dymny kompozycji jednowęzłowej (porty hosta przesunięte, osobny projekt) wykrył **problemy, których nie było widać bez uruchomienia**:
+
+| Problem | Przyczyna | Poprawka |
+|---|---|---|
+| `setenv.sh` i `poi-server/bin/startServer.sh` w kontenerze: `$'\r': command not found`, `not found` | pliki miały CRLF w katalogu roboczym (checkout na Windowsie; w indeksie git są LF) | konwersja do LF, `.gitattributes`: `*.sh` i `*.docker-init` z `eol=lf` |
+| `activemq`: `bin/linux-x86-64/wrapper: not found` | ActiveMQ używa natywnej binarki glibc, a Alpine ma musl | obrazy Javy na `eclipse-temurin:8-jdk-ubi9-minimal` (glibc) zamiast Alpine |
+| `activemq`: `Unable to locate 'ps'` | brak `procps-ng` w UBI minimal | dodany pakiet |
+| `poi-server`: `/opt/java/bin/java: No such file` | skrypt ma na sztywno `JAVA_HOME=/opt/java` (układ starego obrazu) | `JAVA_HOME=${JAVA_HOME:-/opt/java}` |
+| ostrzeżenia `setlocale: pl_PL.UTF-8` | UBI minimal ma tylko angielskie ustawienia regionalne | dodany `glibc-langpack-pl` |
+| `smoke-test.sh` uznał stos za sprawny mimo zatrzymanych kontenerów | `docker compose ps` bez `-a` nie pokazuje zatrzymanych | `docker compose ps -a` |
+
+**Stan:** zmiany w Dockerfile'ach `activemq`, `ehcache`, `poi-server` i w `startServer.sh` są wprowadzone, ale trzy obrazy nie zostały po nich jeszcze przebudowane, a test dymny nie przeszedł do końca (drugi przebieg został zatrzymany przez system z powodu niskiej pamięci). Zbudowane i sprawdzone: `mercury-lb`, `postgres`, `openldap` (kompilacja OpenLDAP 2.6.16 na AlmaLinux 9 powiodła się). Obraz serwera po poprawce `setenv.sh` startował bez błędów `\r`, ale nie doczekał końca sprawdzania.
+
+## Tomcat 9: konsultacja z `mercury-gui-core` (2026-11-04)
+
+Kompilacja klas `mercury-gui-core` zależnych od Catalina przeciwko `tomcat-catalina` 9.0.123 wykazała dokładnie dwa miejsca niezgodności: `GenericPrincipal` w 8.5.82 ma konstruktor 6-argumentowy (z `GSSCredential`), a w 9.0.123 tylko 7-argumentowy; `RealmBase.getName()` w 9.0 nie istnieje. Konstruktor 6-argumentowy `TomcatMercuryPrincipal` nie jest nigdzie używany (realm woła tylko 3-argumentowy), a `@Override` przy `getName()` można usunąć. Zmiana (gałąź `hgdb-211` w `mercury`, niezacommitowana): usunięty konstruktor 6-argumentowy i `@Override`; klasy kompilują się przeciwko **8.5.82 (Maven) i 9.0.123 (`javac`)**, więc jeden jar działa w obu wersjach (środowisko dev autora może zostać na 8.5.x).
+Konfiguracja obrazu względem oryginału 8.5.82 jest mało zmieniona (`catalina.properties`: dwa loadery i dwa dopisane wzorce `jarsToSkip`; `server.xml`: parametry Connectora i własny `Realm`; `web.xml` to w praktyce starszy oryginał bez własnej konfiguracji, więc w obrazie z Tomcatem 9 należy użyć oryginalnego). Pliki dla 9.0.123 są przygotowane (tymczasowo poza repozytorium); Tomcat 9.0.123 (suma SHA-1 zgodna) jest wgrany do repozytorium `raw` jako `apache-tomcat-9.0.123.tar.gz`. **Nie wprowadzone w obrazie**: najpierw ma przejść test dymny obecnej wersji, potem zmiana Tomcata i drugi test.
+Uwaga: Tomcat 9.0.123 ma domyślnie `maxParameterCount="1000"` na Connectorze (starsze wydania 10000); do sprawdzenia przy żądaniach z wieloma parametrami.
+
+## Wynik testu dymnego na pełnym stosie (2026-11-04, Docker lokalnie)
+
+Pełny test dymny kompozycji jednowęzłowej (`smoke-test.sh --port-offset 10000`, izolowane dane `/d/mercury-smoke`, usunięte po teście) **przeszedł bez błędów**: wszystkie kontenery zdrowe, `/rest/openapi.json` publiczny (200), token OAuth dla `admin` z zakresem `mrc-user,mrc-sysadmin` wydany, usługa REST z tokenem 200 i bez tokenu 401, brak błędów krytycznych w logach i zasobów Terracotty. Stos: `almalinux:9` (mercury, mercury-lb), `eclipse-temurin:8-jdk-ubi9-minimal` (activemq, ehcache, poi-server), `postgres:14.24`, `scisoftware/openldap:ubuntu-24.04`, **Tomcat 9.0.123** (potwierdzone w obrazie), JDK 8u202.
+
+### Zmiany po pierwszym teście
+
+| Zmiana | Powód |
+|---|---|
+| zależności w kompozycjach (`condition: service_healthy`): `mercury` → `mercury-nodeN` → `poi-server-nodeN`, `openldap`, `ehcache-nodeN`; `poi-server` → `activemq` → `postgres-db`; healthchecki TCP/HTTP | start w kolejności gotowości; zależność od niezdrowego `openldap` ujawniła błąd obrazu |
+| wzorzec `/rest/**` → `/rest/service/**` (XML, SQL) i zakres OAuth `mrc-user,mrc-useradmin,mrc-sysadmin` | obserwacja 88; zakres zgodny z konfiguracją dev (użytkownik `admin` ma rolę `mrc-sysadmin`) |
+| `openldap`: obraz `scisoftware/openldap:ubuntu-24.04` (repozytorium `docker-openldap`) zamiast własnej kompilacji; ścieżki woluminów `/var/lib/ldap`, `/etc/ldap/slapd.d`; Helm `image.openldap` | własna kompilacja OpenLDAP na AlmaLinux 9 kolidowała z systemowymi bibliotekami (`libldap.so.2` → `libldap_r`), `slapd` nie startował; obraz Ubuntu jest utrzymywany i bez kompilacji |
+| Tomcat 8.5.82 → 9.0.123 (`catalina.properties`, `server.xml.docker-init` przeniesione na oryginały 9.0.123; własny `web.xml` usunięty) | koniec wsparcia gałęzi 8.5; `mercury-gui-core` zgodny z oboma wersjami |
+| `smoke-test.sh`: izolowana kopia kompozycji, własny `--data-root`, `--port-offset`, sprawdzenie funkcjonalne OAuth/REST, `ps -a` | kompozycje montują dane z `D:\mercury` (bind-mounty), których `down -v` nie czyści; stare dane maskowały zmiany i były modyfikowane przez test |
+
+### Uwagi i ryzyka
+
+- **Nie sprawdzone:** kompozycje dwu- i trzywęzłowa (zmienione tym samym skryptem, walidacja `docker compose config` OK, ale nie uruchamiane); wykres Helm (brak klastra); budowa i wysyłka obrazów do `docker-hosted` (tylko `--dry-run`); `maxParameterCount=1000` Tomcata 9 przy żądaniach z wieloma parametrami.
+- **Skutek uboczny na maszynie roboczej:** test przy pierwszych przebiegach używał `D:\mercury\postgres-db` (stare dane z 2022 r.) i zmodyfikował ten katalog; dane są zbędne (decyzja autora). Tag lokalny `ibpm/openldap:mercury-hgdb-3.0` wskazuje obraz EL9 z poprawką bibliotek; skrypt `bin/openldap-dev-start.sh` (kontener deweloperski autora) nadal używa tego tagu i starych ścieżek, bez zmian.
+- **Do zrobienia:** usunąć katalog `mercury-docker/openldap` (zastąpiony obrazem z `docker-openldap`) po decyzji autora; zaktualizować `bin/openldap-dev-start.sh`; przebudować i wgrać pakiet RC (przykłady `mercury-cmd` mają nowe wzorce i zakresy); wgrać obrazy do Nexusa.
+
+### OpenLDAP: decyzja autora i zmiany (2026-11-04)
+
+Zgoda autora: katalog `mercury-docker/openldap` (własna kompilacja na CentOS 8, potem AlmaLinux 9) usunięty, zostaje krótki `README.md` z odesłaniem do repozytorium `docker-openldap` i obrazu `scisoftware/openldap:ubuntu-24.04`. Skrypt `bin/openldap-dev-start.sh` przepięty: nie buduje obrazu, tylko go pobiera (opcjonalnie przez proxy Nexusa: `LDAP_IMAGE_SOURCE`), nowe woluminy `openldap_ldap` i `openldap_slapd-d` (ścieżki `/var/lib/ldap` i `/etc/ldap/slapd.d`; stare woluminy `openldap_database` i `openldap_config` zostały nietknięte). Autor usunął stary kontener deweloperski, nowy `openldap` utworzono tym skryptem (te same ustawienia domyślne: sufiks `dc=sample,dc=example,dc=com`, `cn=Manager`).

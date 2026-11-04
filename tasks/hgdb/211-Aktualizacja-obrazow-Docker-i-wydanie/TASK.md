@@ -107,3 +107,46 @@ Zastosowane na gałęziach `hgdb-211` (decyzje autora): `--srv 3.0.4.13 --lib 3.
 ### Pakiety w Nexusie i obrazy bazowe (2026-11-04)
 
 Decyzje autora: pakiety ładowane do repozytorium `raw` `mercury-docker-packages` w Nexusie (utworzone przez autora); `FROM` zmienione na nowsze i odporniejsze na podatności. Wykonane: do `mercury-docker-packages` wgrano pięć plików (pakiet RC 3.0.4.13, Tomcat 8.5.82, JDK 8u202, kit Terracotty 3.6.1, poi-toolkit 4.0.5-SNAPSHOT; odczyt anonimowy działa); Dockerfile'e pobierają z `ARG PACKAGES_URL` (domyślnie Nexus) z `curl -f`; `FROM`: `almalinux:9` (mercury, mercury-lb, openldap), `eclipse-temurin:8-jdk-alpine` (activemq, ehcache, poi-server), ActiveMQ 5.16.7 (CVE-2023-46604), `postgres:14.24`, OpenLDAP 2.6.16. Szczegóły i uzasadnienie w `procedura-wydania.md`, sekcja „Obrazy bazowe”. Nie zbudowane (brak Dockera); do sprawdzenia na `devops-box-01`. Do decyzji: PostgreSQL 14 (koniec wsparcia 2026-11-12), Tomcat 8.5.82 i JDK 8u202 w obrazie serwera.
+
+## Uwagi autora do 211b (2026-11-04) i rozpoznanie
+
+Test dymny pełnej kompozycji jednowęzłowej na Tomcacie 9 zaakceptowany przez autora („wygląda jakby działał”). Uwagi do wydania ostatecznego:
+
+### 1. Zmiana nazwy produktu: `IBPM Mercury (HgDB)` → `Mercury 3.0 (HgDB)`
+
+Rozpoznanie (tylko odczyt):
+- Nazwa produktu w aplikacji pochodzi z parametru `mercury.product.name` (`AppConstants.PROP_PRODUCT_NAME`, `LicenseHelper.PROP_PRODUCT_NAME`); bez parametru używana jest stała `LicenseHelper.TRIAL_LICENSE_CN_DEFAULT` = „Mercury DB (HgDB) 3.0 - Trial”. W obrazie parametr jest ustawiony w `mercury-docker/mercury-3.0/docker-init-config/config/mercury.properties` (`mercury.product.name=IBPM Mercury (HgDB)`). Nazwa trafia do stopki stron serwera (`footer.jsp`: `AppConstants.PRODUCT_NAME`).
+- W dokumentacji `mercury-docker` jest 11 plików z dokładnym ciągiem `IBPM Mercury (HgDB)` i ok. 120 wystąpień „IBPM Mercury …” (README obrazów i kompozycji, diagramy, „IBPM Mercury Enterprise”, „IBPM Mercury DB”). W `mercury` ciąg występuje w 1 pliku; docusaurus używa już „Mercury DB (HgDB) 3.0”.
+- **Zależność z punktem 2:** `LicenseHelper.checkLicense` porównuje CN licencji z `mercury.product.name`, więc zmiana nazwy unieważnia istniejące pliki licencji wystawione na starą nazwę (CN = „IBPM Mercury (HgDB)”).
+
+### 2. Weryfikacja mechanizmu licencji Trial
+
+Rozpoznanie (kod w `hgdb-tools`: `org.hgdb.tools.license.LicenseHelper`, `LicenseType`; testy `LicenseHelperTest`, `LicenceMercurySrvTest`, `LicensePresentationTest`):
+- Trial: do 3 węzłów, 30 dni (`TRIAL_LICENSE_EXPIRATION_INTERVAL`), CN = nazwa produktu, zakończenie po `expiration`.
+- Gdy pliku licencji nie ma, serwer **sam generuje licencję TRIAL** (`checkLicenseFileExists` → `generateLicenseFile`), więc usunięcie pliku (albo nowy wolumen/kontener) zaczyna nowy okres próbny: do oceny, czy to zamierzone.
+- Do sprawdzenia: koniec ważności (zachowanie po 30 dniach, komunikaty, blokada), limit 3 węzłów w klastrze, zgodność CN po zmianie nazwy, licencje płatne po zmianie nazwy (migracja/ponowne wystawienie), manipulacja zegarem i plikiem, zachowanie obrazu Docker (gdzie leży plik licencji, czy jest w wolumenie), testy jednostkowe, widok licencji na stronie (`LicensePresentationTest`).
+
+### 3. Logo w stopce i favicon (aplikacja `mercury-ws-app`, nie docusaurus)
+
+- Logo stopki: `mercury/mercury-ws-app/src/main/webapp/static/img/transparent_height_72.png` (127×72 px). Użycia: `pages/include/footer.jsp` oraz strony `static/admin/loggers.html`, `lucene-queries.html`, `secretaries.html` (`height: 72px`).
+- Nowe logo: `D:\workspace\scisoftware\img\logo-SciSoftware-20241206\icononly-for-icon.png` (1000×1000 px, 72 KB): przy wyświetlaniu 72 px wysokości lepiej przeskalować (np. 144 px dla ekranów o wysokiej gęstości), żeby nie ładować 1000 px.
+- Favicon: `static/img/favicon.ico`, `static/img/icons/favicon.ico` i `icons/favicon-16x16.png`, `favicon-32x32.png`, `favicon-96x96.png` (użycia: `pages/include/iconsLinks.jsp` i strony `static/admin/*.html`). Nowy: `D:\workspace\scisoftware\img\logo-SciSoftware-20241206\favicon.ico`; PNG 16/32/96 trzeba wygenerować z nowej ikony (brak ImageMagick; można użyć Java `ImageIO`).
+
+### Pytania do autora przed realizacją
+1. Dokładny zapis nazwy: `Mercury 3.0 (HgDB)`; czy zmienić też `TRIAL_LICENSE_CN_DEFAULT` („Mercury DB (HgDB) 3.0 - Trial”) i teksty „IBPM Mercury Enterprise / DB” w dokumentacji obrazów?
+2. Co z istniejącymi licencjami (CN ze starą nazwą): akceptujemy nowe wystawienie, czy `LicenseHelper` ma tolerować starą nazwę?
+3. Logo: podmienić zawartość pliku `transparent_height_72.png` (bez zmian w JSP), czy dodać plik o nowej nazwie i poprawić odwołania?
+
+### Decyzje autora do 211b (2026-11-04) — realizacja w 211b, nie teraz
+
+1. **Nazwa produktu = nazwa w licencji.** Nazwę produktu ustawiamy na tę, która jest w licencji: dla Trial `Mercury DB (HgDB) 3.0 - Trial` (czyli `LicenseHelper.TRIAL_LICENSE_CN_DEFAULT`), bo inaczej licencja nie przejdzie sprawdzenia CN. Wymagany **prosty mechanizm powiązania nazwy produktu z kompozycją i z licencją** (jedno źródło prawdy dla `mercury.product.name` w obrazie, kompozycjach, pakiecie i generatorze licencji; do zaprojektowania w 211b). Dotychczasowa wartość `IBPM Mercury (HgDB)` w `mercury-docker/.../mercury.properties` nie pasuje do licencji.
+2. **Porządek z licencjami:** osobny moduł/usługa/narzędzie do generowania kluczy licencji (zamiast wspólnej logiki w `hgdb-tools`); zakres, forma (CLI, usługa) i migracja istniejących licencji do ustalenia w 211b.
+3. **Logo i favicon:** podmienić zawartość pliku `transparent_height_72.png` (bez zmian w JSP), obraz przeskalować do 72 px wysokości (opcjonalnie 144 px dla ekranów o wysokiej gęstości); favicon podmienić na `favicon.ico` z `logo-SciSoftware-20241206` i wygenerować PNG 16/32/96 px.
+
+Wszystko powyższe wchodzi do 211b (wydanie ostateczne), teraz nie realizujemy.
+
+### Wydanie `mercury` 3.0.4.14 i dalsze kroki (ustalenia autora, 2026-11-04)
+
+- Zmiana `mercury-gui-core` (zgodność realmu z Tomcatem 8.5 i 9.0, usunięty nieużywany konstruktor `TomcatMercuryPrincipal`) jest poważna wersyjnie, więc **autor wydaje `mercury` 3.0.4.14**. Potem Claude „odświeża” obrazy: `set-versions.sh --srv 3.0.4.14 …`, przebudowa pakietu (po wdrożeniu spójnego katalogu serwera dev), wgranie pakietu do Nexusa (`upload-packages.sh`), przebudowa obrazów, test dymny.
+- Gdy będziemy gotowi: wypchnięcie obrazów do `docker-hosted` i próba uruchomienia **kompozycji 3-węzłowej na `devops-box-01`** (decyzja autora: najpierw autor sprawdza całość „klikając”).
+- **Do 211b dopisane:** przygotować na `devops-box-01` **Kubernetes** i zweryfikować kompozycję także na tym rozwiązaniu (wykres Helm `charts/mercury-single-node`: nieprzetestowany; zmieniony `image.openldap`, ścieżki woluminów `/var/lib/ldap` i `/etc/ldap/slapd.d`). Dopiero gdy wszystko będzie gotowe do wydania ostatecznego.
