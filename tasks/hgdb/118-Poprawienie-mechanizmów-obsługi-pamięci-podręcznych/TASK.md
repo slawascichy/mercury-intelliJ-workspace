@@ -335,3 +335,11 @@ EN i PL (sprawdzone kompilacją MDX): nowa strona `005_Configuration/Cache_confi
 - Autor: dopisać klucze `test.skip.package.CacheClusterTest=true`, `CacheMeasureTest=true` (`mercury-srv`, `mercury-srv-slave`) i `LuceneHandoffTest=true` do profilu `scichy`; przywrócić `mercury.cache.caseObject.shared.minCostMs` na 25 na Tomcacie dev; commity (`mercury`, `mercury-lib`, `sccommon`, `mercury-docker`, `mercury-cmd`, workspace, docusaurus).
 - Nie sprawdzone: odwrotny kierunek przekazywania dokumentów (sekretarz = węzeł 2), test na żywo warstw `LUCENE` i `ATTRIBUTES`, import hurtowy, opóźnienie na Linuksie (zadanie 223).
 - Rytuał zamknięcia: wydanie `mercury` (PR, merge, tag), potem `master`, `git pull`, nowa gałąź.
+
+### Test dwóch węzłów: kierunek odwrotny (2026-11-04, 12:38)
+
+`LuceneHandoffScenario` z `-Dhandoff.reverse=true`: węzeł 2 (proces testowy) wstawił do bufora indeksu 6 zmian istniejących spraw (`updateIndexByCaseIds`), jego sekretarz zmapował je, opublikował dokumenty w `CaseMapperShared` (zapisy 6, nieobsługiwane 0) i wysłał komunikat JMS (SCN 50602). Tomcat jako odbiorca: w logu (`org.mercury.lucene.handoff` na DEBUG ustawione przez REST na czas testu, potem `inherit`) **6 trafień, 0 chybień, 0 wpisów `ERROR`/`WARN`**. Oba kierunki przekazywania dokumentów potwierdzone. Skrypt: `scratchpad/handoff_reverse.sh` (token OAuth czytany w locie z konfiguracji dev, niewypisywany).
+
+### Stan do rytuału zamknięcia (2026-11-04)
+
+`minCostMs` przywrócone na 25 w profilu `scichy` (`mercury-server/src/main/config/scichy/.../mercury.properties` i wygenerowanej kopii); klucze `test.skip.package.*` w profilu `scichy` są (`CacheMeasureTest`, `CacheClusterTest`, `LuceneHandoffTest`). Niezacommitowane w `mercury`: tryb odwrotny `LuceneHandoffScenario` i `minCostMs`. Niewypchnięte: `mercury-lib` `hgdb-118` (3 commity, bez tagu 3.0.4.21), `mercury` `hgdb-118` (12 commitów), `mercury-docker` (7), `mercury-cmd` (8), docusaurus (1), workspace (55). `sccommon` 2.0.0.4 wydany (PR #15, tag), zmiany w katalogu roboczym to tylko końce linii w 5 plikach `pom.xml`.
