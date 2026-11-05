@@ -124,3 +124,7 @@ Pełny test dymny kompozycji jednowęzłowej (`smoke-test.sh --port-offset 10000
 ### OpenLDAP: decyzja autora i zmiany (2026-11-04)
 
 Zgoda autora: katalog `mercury-docker/openldap` (własna kompilacja na CentOS 8, potem AlmaLinux 9) usunięty, zostaje krótki `README.md` z odesłaniem do repozytorium `docker-openldap` i obrazu `scisoftware/openldap:ubuntu-24.04`. Skrypt `bin/openldap-dev-start.sh` przepięty: nie buduje obrazu, tylko go pobiera (opcjonalnie przez proxy Nexusa: `LDAP_IMAGE_SOURCE`), nowe woluminy `openldap_ldap` i `openldap_slapd-d` (ścieżki `/var/lib/ldap` i `/etc/ldap/slapd.d`; stare woluminy `openldap_database` i `openldap_config` zostały nietknięte). Autor usunął stary kontener deweloperski, nowy `openldap` utworzono tym skryptem (te same ustawienia domyślne: sufiks `dc=sample,dc=example,dc=com`, `cn=Manager`).
+
+## Odświeżenie 3.0.4.14 (2026-11-04, wieczór)
+
+`mercury` 3.0.4.14 wydane lokalnie przez autora. Wykonane: podbicie wersji (`set-versions.sh --apply`), budowa pakietu (`mvn -o install` w `mercury-cmd`, weryfikacja Ant OK), wgranie `mercury-install-package-3.0.4.14.POSTGRESQL.20261104.zip` do Nexusa (raw, `--force`), `verify-cache-config.sh` bez błędów. Do zrobienia: przebudowa obrazów, test dymny, wysyłka do `docker-hosted`, test 3 węzłów na `devops-box-01`.
