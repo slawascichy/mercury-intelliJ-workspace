@@ -85,3 +85,21 @@ Klaster trzywęzłowy na `devops-box-01` (Linux, obrazy 3.0.4.14 z wzorcami Ehca
 Wnioski (z zastrzeżeniami): `createFolder` p50 to ok. 100 ms na każdym z trzech węzłów i powtarza się między przebiegami (p50 99 i 99 ms na node1), a odczyt kosztuje ok. 22 ms (HTTP, uwierzytelnianie i sieć). Narzut zapisu ponad odczyt to więc ok. 75–80 ms. W 118 na Windowsie (localhost, inny sprzęt) `createFolder` trwał 189 ms z regionami klastrowymi i 90 ms z lokalnymi; Linux z klastrowymi regionami (ok. 100 ms) jest zatem wyraźnie bliżej wartości z lokalnymi pamięciami niż z klastrowymi na Windowsie. **To jeszcze nie jest porównanie A/B**: brakuje wariantu B (lokalny region znaczników czasu) i C na tym samym klastrze i sprzęcie, więc nie wiemy, ile z tych ok. 100 ms to koszt Terracotty. Różnice między węzłami są w granicach rozrzutu.
 
 **`createDocument` nie działa na tym klastrze (HTTP 500, `Cannot store the content … FileNotFoundException`).** Przyczyna: katalog `/opt/mercury-3.0/upload` w obrazie należał do `root` (powstawał dopiero przez `VOLUME`, po `chown`), a serwer działa jako `mercury` (UID 1000); dodatkowo katalog hosta podmontowany do `mercury-upload-*` musi mieć właściciela UID 1000. Poprawka w Dockerfile (katalog tworzony przed `chown`) w obserwacji 153. Do czasu aktualizacji obrazu i `sudo chown -R 1000:1000` na katalogach `mercury-upload-*` (i `mercury-lucene-*`, `poi-server-*`) mierzone są tylko `read` i `createFolder` (`OPS="read createFolder"`).
+
+#### Wariant A po aktualizacji do obrazów 3.0.4.15 (2026-11-05, ten sam klaster i klient)
+
+Obrazy 3.0.4.15 mają poprawiony katalog `upload` (własność `mercury`), więc `createDocument` już działa (HTTP 200). Ten sam sposób pomiaru, ms:
+
+| węzeł | operacja | n | min | p50 | p90 | max |
+|---|---|---|---|---|---|---|
+| node1 (:28080) | read | 35 | 25 | 29 | 48 | 60 |
+| node1 | createFolder | 35 | 109 | 129 | 157 | 246 |
+| node1 | createDocument | 35 | 105 | 122 | 156 | 180 |
+| node2 (:28081) | read | 35 | 21 | 24 | 42 | 48 |
+| node2 | createFolder | 35 | 102 | 126 | 170 | 234 |
+| node2 | createDocument | 35 | 100 | 134 | 174 | 195 |
+| node3 (:28082) | read | 35 | 22 | 28 | 43 | 57 |
+| node3 | createFolder | 35 | 101 | 130 | 165 | 200 |
+| node3 | createDocument | 35 | 102 | 117 | 156 | 431 |
+
+Wnioski: `createDocument` kosztuje tyle co `createFolder` (p50 ok. 117–134 ms wobec 126–130 ms), czyli zapis dokumentu z małą treścią nie dokłada zauważalnego czasu. `createFolder` jest o ok. 25–30 ms wolniejszy niż w pierwszym przebiegu na 3.0.4.14 (p50 ok. 100 ms), a odczyt też (ok. 29 wobec 22 ms), więc część różnicy to inne obciążenie sieci i serwera, a nie nowy obraz (przypuszczenie; nie sprawdzone). Nadal brakuje wariantów B i C, by oddzielić koszt Terracotty.
