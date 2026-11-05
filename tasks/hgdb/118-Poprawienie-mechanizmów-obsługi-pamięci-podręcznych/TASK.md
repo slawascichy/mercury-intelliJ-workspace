@@ -266,7 +266,7 @@ Narzut 13–15 ms wynika ze strony **klienta Java na Windowsie** (nie serwera i 
 ## Decyzje autora (2026-11-03, wieczór) i plan
 
 - **CaseMapper (przekazywanie dokumentów Lucene)** robimy w tym zadaniu (118). Plan szczegółowy: `tasks/hgdb/plan-2026-11-04.md`.
-- **Pomiar zapisu na Linuksie** (`createFolder` itd.) przeniesiony do osobnego zadania **223**, po 211; porównamy wyniki z pomiarami z 118.
+- **Pomiar zapisu na Linuksie** (`createFolder` itd.) przeniesiony do osobnego zadania **226**, po 211; porównamy wyniki z pomiarami z 118.
 - Zrestartowany Tomcat; podsumowanie dnia: `tasks/hgdb/podsumowanie-2026-11-03.md`.
 
 ## Przekazywanie dokumentów Lucene między węzłami (2026-11-04, niezacommitowane)
@@ -306,7 +306,7 @@ Wszystkie 883 dokumenty się odwzorowują (bez nieobsługiwanych pól). Rozmiar 
 
 Region na prawdziwej Terracotcie (30 spraw, ten sam proces): `CaseMapperShared` utworzony jako klastrowy, 30 z 30 dokumentów opublikowanych i odczytanych z kompletem pól (zapisy 30, nieobsługiwane 0). Odczyty trafiały w warstwę `heap` tego samego procesu, więc to nie jest pomiar opóźnienia sieci.
 
-Oczekiwany zysk po stronie odbiorcy: koszt mapowania (ok. 5 ms) zastępuje odczyt (ok. 0,3 ms na Linuksie) i odtworzenie (ok. 0,12 ms), więc rzędu 4,5 ms na sprawę (≈ 90%). Na Windowsie (13–15 ms na operację) przekazywanie dokumentów jest wolniejsze niż mapowanie; środowisko docelowe to Linux, pomiar w zadaniu 223.
+Oczekiwany zysk po stronie odbiorcy: koszt mapowania (ok. 5 ms) zastępuje odczyt (ok. 0,3 ms na Linuksie) i odtworzenie (ok. 0,12 ms), więc rzędu 4,5 ms na sprawę (≈ 90%). Na Windowsie (13–15 ms na operację) przekazywanie dokumentów jest wolniejsze niż mapowanie; środowisko docelowe to Linux, pomiar w zadaniu 226.
 
 ### Nie sprawdzone
 
@@ -333,7 +333,7 @@ EN i PL (sprawdzone kompilacją MDX): nowa strona `005_Configuration/Cache_confi
 ## Pozostało do zamknięcia 118
 
 - Autor: dopisać klucze `test.skip.package.CacheClusterTest=true`, `CacheMeasureTest=true` (`mercury-srv`, `mercury-srv-slave`) i `LuceneHandoffTest=true` do profilu `scichy`; przywrócić `mercury.cache.caseObject.shared.minCostMs` na 25 na Tomcacie dev; commity (`mercury`, `mercury-lib`, `sccommon`, `mercury-docker`, `mercury-cmd`, workspace, docusaurus).
-- Nie sprawdzone: odwrotny kierunek przekazywania dokumentów (sekretarz = węzeł 2), test na żywo warstw `LUCENE` i `ATTRIBUTES`, import hurtowy, opóźnienie na Linuksie (zadanie 223).
+- Nie sprawdzone: odwrotny kierunek przekazywania dokumentów (sekretarz = węzeł 2), test na żywo warstw `LUCENE` i `ATTRIBUTES`, import hurtowy, opóźnienie na Linuksie (zadanie 226).
 - Rytuał zamknięcia: wydanie `mercury` (PR, merge, tag), potem `master`, `git pull`, nowa gałąź.
 
 ### Test dwóch węzłów: kierunek odwrotny (2026-11-04, 12:38)

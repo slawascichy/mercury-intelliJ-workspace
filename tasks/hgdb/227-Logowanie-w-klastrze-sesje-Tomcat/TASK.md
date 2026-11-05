@@ -1,4 +1,4 @@
-# [224] Logowanie i sesje w klastrze (Tomcat Cluster, sticky session)
+# [227] Logowanie i sesje w klastrze (Tomcat Cluster, sticky session)
 
 Status: **założone 2026-11-05**, po zadaniu 211b / po stabilizacji klastra trzywęzłowego na `devops-box-01`.
 

@@ -1,4 +1,4 @@
-# [223] Pomiar zapisu sprawy na Linuksie (Tomcat i Terracotta)
+# [226] Pomiar zapisu sprawy na Linuksie (Tomcat i Terracotta)
 
 Status: **zaplanowane po zadaniu 211** (Aktualizacja obrazów Docker i wydanie). Wyniki porównać z pomiarami z zadania 118.
 

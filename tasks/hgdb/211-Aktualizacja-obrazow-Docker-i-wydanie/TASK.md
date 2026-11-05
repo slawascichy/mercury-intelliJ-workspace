@@ -81,12 +81,12 @@ Nie widzę przeszkody blokującej wydanie, ale kilka punktów trzeba rozstrzygn�
 
 ## Decyzja autora (2026-11-04): podział na 211a i 211b, zmiana kolejności
 
-211 to ostateczne wydanie systemu, więc przestaje być krokiem w środku kolejki. Nowa kolejność zadań: **191 → 209 → 223 → 211b**.
+211 to ostateczne wydanie systemu, więc przestaje być krokiem w środku kolejki. Nowa kolejność zadań: **191 → 209 → 226 → 211b**.
 
 - **211a, procedura wydania (cykliczna, bez obowiązkowej publikacji).** Lista kroków i skrypty do wielokrotnego użycia: podbicie wersji w `mercury-cmd` i `mercury-docker` (dziś kilkanaście miejsc, obrazy stoją na `3.0.3.2.11` od 2022 r.), budowa `mercury-install-package` i automatyczna kontrola zawartości ZIP-a (wersje jarów, `ehcache*.xml` z regionami `CaseMapperShared` i `CaseObjectMapCacheShared`, `tc-config.xml`), skrypt testu dymnego kompozycji (start, logi, `/rest/openapi.json`, CMIS). Uruchamiana jako release candidate przy zamknięciu większych pakietów zadań; wgranie ZIP-a i publikacja obrazów to czynności autora.
-- **211b, wydanie ostateczne.** Ta sama procedura po 191, 209 i 223, z publikacją na `hgdb.org` i Docker Hub oraz artykułami docusaurus (Docker, Kubernetes) i `docs/moduly/mercury-docker.md`, `mercury-cmd.md`.
+- **211b, wydanie ostateczne.** Ta sama procedura po 191, 209 i 226, z publikacją na `hgdb.org` i Docker Hub oraz artykułami docusaurus (Docker, Kubernetes) i `docs/moduly/mercury-docker.md`, `mercury-cmd.md`.
 
-Powody: dryf wersji wyjdzie wcześniej, nie naraz; 191 (Java 17) zmienia JDK, Tomcat i bazę obrazu (do sprawdzenia także kompatybilność Ehcache/Terracotty 3.6.1); 223 rozstrzyga regiony klastrowe i próg `minCostMs`.
+Powody: dryf wersji wyjdzie wcześniej, nie naraz; 191 (Java 17) zmienia JDK, Tomcat i bazę obrazu (do sprawdzenia także kompatybilność Ehcache/Terracotty 3.6.1); 226 rozstrzyga regiony klastrowe i próg `minCostMs`.
 
 ### Wejście z zadania 118 (2026-11-04)
 

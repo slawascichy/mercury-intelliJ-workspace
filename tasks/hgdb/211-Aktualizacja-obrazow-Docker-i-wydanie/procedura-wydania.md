@@ -1,6 +1,6 @@
 # Procedura wydania (211a): pakiet instalacyjny i obrazy Docker
 
-Stan: 2026-11-04, szkic wykonany na gałęzi `hgdb-211` (`mercury-docker`, `mercury-cmd`). Procedura jest **cykliczna**: uruchamiamy ją jako release candidate przy zamknięciu większych pakietów zadań, a jako wydanie ostateczne (211b) po zadaniach 191, 209 i 223. Publikacja na Docker Hub i na `hgdb.org` jest opcjonalna i należy do autora.
+Stan: 2026-11-04, szkic wykonany na gałęzi `hgdb-211` (`mercury-docker`, `mercury-cmd`). Procedura jest **cykliczna**: uruchamiamy ją jako release candidate przy zamknięciu większych pakietów zadań, a jako wydanie ostateczne (211b) po zadaniach 191, 209 i 226. Publikacja na Docker Hub i na `hgdb.org` jest opcjonalna i należy do autora.
 
 Skrypty leżą w `mercury-docker/bin/release/` (nie robią commitów):
 
@@ -128,3 +128,15 @@ Zgoda autora: katalog `mercury-docker/openldap` (własna kompilacja na CentOS 8,
 ## Odświeżenie 3.0.4.14 (2026-11-04, wieczór)
 
 `mercury` 3.0.4.14 wydane lokalnie przez autora. Wykonane: podbicie wersji (`set-versions.sh --apply`), budowa pakietu (`mvn -o install` w `mercury-cmd`, weryfikacja Ant OK), wgranie `mercury-install-package-3.0.4.14.POSTGRESQL.20261104.zip` do Nexusa (raw, `--force`), `verify-cache-config.sh` bez błędów. Do zrobienia: przebudowa obrazów, test dymny, wysyłka do `docker-hosted`, test 3 węzłów na `devops-box-01`.
+
+## Stan zamknięcia 211a (2026-11-05)
+
+**Zrobione i zweryfikowane:** pakiet 3.0.4.14 (`...POSTGRESQL.20261105.zip`) w Nexusie raw; obrazy `ibpm/*` (`mercury` 3.0.4.14, `mercury-lb`, `postgres`, `activemq`, `ehcache`, `poi-server`) i `scisoftware/openldap:ubuntu-24.04` w `docker-hosted`; test dymny jednowęzłowy i dwuwęzłowy (z kontrolą heartbeatów) bez błędów; `verify-cache-config.sh` 0 błędów; kompozycje z `ulimits` (`nofile` 65536); `activemq.xml` z Virtual Topic (obs. 149); wzorce Ehcache zsynchronizowane z dev (obs. 150); `smoke-test.sh` obsługuje kompozycje wielowęzłowe (obs. 151).
+
+**Uruchomione u autora, nie przeze mnie:** kompozycja trzywęzłowa na `devops-box-01` z obrazami po poprawce ActiveMQ i `ulimits`. Obraz `ibpm/mercury` z nowymi wzorcami Ehcache: autor potwierdził tylko, że klaster „powinien być na najnowszych obrazach”.
+
+**Niesprawdzone:** kompozycja trzywęzłowa lokalnie (skrypt ją obsługuje, nie uruchamiałem), Helm `charts/mercury-single-node`, warstwy `LUCENE`/`ATTRIBUTES` pamięci podręcznej na żywym klastrze, import hurtowy, Tomcat 8.5 na dev z nowym realmem i LDAP, test negatywny kontroli heartbeatów.
+
+**Przeniesione do 211b:** nazwa produktu i licencja (CN), narzędzie do kluczy licencyjnych, weryfikacja Trial, logo i favicon, Kubernetes i Helm na `devops-box-01`, publikacja (Docker Hub, `hgdb.org`), artykuły docusaurus. Osobne zadania: PostgreSQL 14 (koniec wsparcia 2026-11-12), 226 (pomiar na Linuksie), 227 (sesje w klastrze).
+
+**Rytuał:** push `hgdb-211` (`mercury`, `mercury-cmd`, `mercury-docker`, workspace), PR i merge, pull `master`, tag `mercury` 3.0.4.14; 211b od świeżego `master` w nowej gałęzi.

@@ -24,7 +24,7 @@
 
 ## Nowe zadanie
 
-- **223** Pomiar zapisu sprawy na Linuksie (Tomcat i Terracotta): po zadaniu 211, porównanie z wynikami 118.
+- **226** Pomiar zapisu sprawy na Linuksie (Tomcat i Terracotta): po zadaniu 211, porównanie z wynikami 118.
 
 ## Moje błędy dnia (zapisane, żeby się nie powtórzyły)
 
@@ -37,4 +37,4 @@
 - `mercury` (gałąź `hgdb-118`): zmiany po ostatnim commicie to m.in. poprawka klucza (`decodeResultMethod.name()`), logowanie w `SharedCaseObjectStore`, rozmiar 128 MB w XML testu `mercury-srv`, `CacheMeasureScenario`/`CacheMeasureTest` (sonda kluczy), klucz `test.skip.package.CacheMeasureTest=true` w `scichy-test` (w `scichy` dopisać samemu).
 - `mercury-docker`, `mercury-cmd`: tylko pliki `ehcacheCommon.xml` i `ehcacheDefault.xml`.
 - `mercury-lib` 3.0.4.21 i `sccommon` 2.0.0.4 wydane (potwierdzone przez autora).
-- Workspace: `docker/terracotta/` (nowe), `tasks/hgdb/223-…` (nowe), ten plik i `plan-2026-11-04.md`.
+- Workspace: `docker/terracotta/` (nowe), `tasks/hgdb/226-…` (nowe), ten plik i `plan-2026-11-04.md`.
