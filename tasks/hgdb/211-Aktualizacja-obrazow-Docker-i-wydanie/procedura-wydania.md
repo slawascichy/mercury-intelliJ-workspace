@@ -133,7 +133,7 @@ Zgoda autora: katalog `mercury-docker/openldap` (własna kompilacja na CentOS 8,
 
 **Zrobione i zweryfikowane:** pakiet 3.0.4.14 (`...POSTGRESQL.20261105.zip`) w Nexusie raw; obrazy `ibpm/*` (`mercury` 3.0.4.14, `mercury-lb`, `postgres`, `activemq`, `ehcache`, `poi-server`) i `scisoftware/openldap:ubuntu-24.04` w `docker-hosted`; test dymny jednowęzłowy i dwuwęzłowy (z kontrolą heartbeatów) bez błędów; `verify-cache-config.sh` 0 błędów; kompozycje z `ulimits` (`nofile` 65536); `activemq.xml` z Virtual Topic (obs. 149); wzorce Ehcache zsynchronizowane z dev (obs. 150); `smoke-test.sh` obsługuje kompozycje wielowęzłowe (obs. 151).
 
-**Uruchomione u autora, nie przeze mnie:** kompozycja trzywęzłowa na `devops-box-01` z obrazami po poprawce ActiveMQ i `ulimits`. Obraz `ibpm/mercury` z nowymi wzorcami Ehcache: autor potwierdził tylko, że klaster „powinien być na najnowszych obrazach”.
+**Zweryfikowane przez autora (2026-11-05):** kompozycja trzywęzłowa na `devops-box-01` wstała na najnowszych obrazach (ActiveMQ z Virtual Topic, `ibpm/mercury` z wzorcami Ehcache, `ulimits`) i ma jednego MASTER-a.
 
 **Niesprawdzone:** kompozycja trzywęzłowa lokalnie (skrypt ją obsługuje, nie uruchamiałem), Helm `charts/mercury-single-node`, warstwy `LUCENE`/`ATTRIBUTES` pamięci podręcznej na żywym klastrze, import hurtowy, Tomcat 8.5 na dev z nowym realmem i LDAP, test negatywny kontroli heartbeatów.
 
