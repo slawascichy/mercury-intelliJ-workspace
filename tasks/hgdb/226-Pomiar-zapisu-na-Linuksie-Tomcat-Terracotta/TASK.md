@@ -30,3 +30,41 @@ szacujemy na 4–6 ms na zapis (**oszacowanie, nie pomiar**). To zadanie ma to z
 - Skrypty i testy: `docker/terracotta` (kompozycja, `bench`), `mercury-srv-slave` (`CacheClusterTest`), `mercury-srv` (`CacheMeasureTest`).
 - Pomiary dev (Windows) w `tasks/hgdb/118-…/TASK.md`; analiza pamięci w `analiza-pamieci-klaster.md`.
 - Notatka pamięci: opóźnienie Terracotty zależy od klienta (Windows 13–15 ms, Linux 0,3–0,9 ms).
+
+## Przygotowanie pomiaru (2026-11-05)
+
+**Środowisko.** Klaster trzywęzłowy na `devops-box-01` (Linux), uruchomiony i sprawdzony przez autora na obrazach 3.0.4.14: węzły `:28080`, `:28081`, `:28082`, LB `https://…:1443`. Ta maszyna ma do nich dostęp sieciowy (odczyt przez REST działa). Odczyt `TypeCodeRest/findAll` z maszyny roboczej do węzła: p50 ok. 20 ms na wywołanie (n = 12 na węzeł, min 17–18, max 35–45), więc to jest tło sieciowe pomiarów zdalnych. Najczystszy pomiar jest z samego hosta serwera.
+
+**Narzędzie:** `mierz-zapis.sh` (w tym folderze). CMIS Browser Binding, jedno żądanie naraz: odczyt folderu (czas odniesienia), `createFolder` i `createDocument` w własnym folderze `Perf226-<czas>`, rozgrzewka (domyślnie 5), `N` pomiarów (domyślnie 35 jak w 118), wynik p50/p90/max i wiersze do tabeli, na końcu `deleteTree` (chyba że `KEEP=1`). Sprawdzony lokalnie na pojedynczym węźle (Docker Desktop, Windows; nie jest to wynik do porównań). Użycie:
+```bash
+CMIS_USER=admin:<hasło> CMIS_BASE=http://127.0.0.1:8080/mercury-ws-app/browser/documents N=35 LABEL=A-regiony-klastrowe ./mierz-zapis.sh
+```
+
+**Warunek: klient OAuth dla CMIS.** W obrazie Docker CMIS odrzuca wszystko (HTTP 401, także `/browser` i Bearer), bo `mercury.properties` ma zakomentowane `mercury.cmis.security.oauthClientId` i `oauthClientSecret` (weryfikacja Basic idzie przez realm klienta OAuth). Plik jest nadpisywany z szablonu w obrazie przy każdym starcie kontenera. Na czas pomiaru podstaw własny szablon przez bind-mount (sprawdzone lokalnie, po tym `admin:admin` daje HTTP 200):
+```bash
+# szablon z tego samego obrazu, z odkomentowanym klientem (sekret z tabeli MRC_LDAP_OAUTH_CONFIG, nie z repozytorium)
+docker run --rm --entrypoint cat nexus.scisoftware.local:5000/ibpm/mercury:mercury-hgdb-3.0.4.14 \
+  /opt/mercury-3.0/docker-init-config/config/mercury.properties \
+  | sed "s|^#mercury.cmis.security.oauthClientId=.*|mercury.cmis.security.oauthClientId=GIUSoapUIClient|; s|^#mercury.cmis.security.oauthClientSecret=.*|mercury.cmis.security.oauthClientSecret=$CLIENT_SECRET|" > mercury.properties.cmis
+# docker-compose.override.yml (dla każdego węzła aplikacji):
+#   services:
+#     mercury-node1:
+#       volumes:
+#         - ./mercury.properties.cmis:/opt/mercury-3.0/docker-init-config/config/mercury.properties:ro
+docker compose up -d --force-recreate mercury-node1
+```
+**Trwała poprawka (obserwacja 152, 2026-11-05):** obraz `ibpm/mercury:mercury-hgdb-3.0.4.14` (nowy digest `sha256:f4068343…`) czyta zmienne `CMIS_OAUTH_CLIENT_ID` i `CMIS_OAUTH_CLIENT_SECRET`; bez obu CMIS Basic zostaje wyłączone. Zamiast bind-mountu wystarczy dopisać je do `.env` (id: `GIUSoapUIClient`; sekret z tabeli `MRC_LDAP_OAUTH_CONFIG`) i zrobić `docker compose pull` oraz `up -d --force-recreate` węzłów. Kompozycje przekazują obie zmienne do węzłów aplikacji.
+
+## Warianty A/B (ten sam klaster i klient, po jednym restarcie węzłów)
+
+| Wariant | Co zmienić | Jak |
+|---|---|---|
+| A | regiony klastrowe wg 118 (stan obecny obrazów) | bez zmian |
+| B | `default-update-timestamps-region` lokalny (bez `clustered-dedicated`) | własny `ehcacheDefault.xml` przez bind-mount na `/opt/mercury-3.0/docker-init-config/config/ehcacheDefault.xml`, region bez `terracotta:clustered-dedicated` i bez `clustered-store`; ta sama zmiana na wszystkich węzłach |
+| C | pamięć zapytań Hibernate wyłączona (`hibernate.cache.use_query_cache=false`) | parametr jest w `database-*.properties` w `mercury-entities-ids` (zmienna `${hibernate.cache.use_query_cache}` w `dao-context.xml`); czy wystarczy `-D` w `CATALINA_OPTS`, trzeba sprawdzić (przypuszczenie: Spring bierze właściwości z pliku przed systemowymi) |
+
+Dla każdego wariantu: `mierz-zapis.sh` na węźle 1 po rozgrzewce klastra, potem jeszcze raz na węźle 2 (ruch między węzłami), a w wariancie C dodatkowo liczba zapytań w logu `org.hibernate.SQL`.
+
+## Wyniki
+
+(do uzupełnienia po pomiarach; porównanie z 118: Windows p50 189 ms z regionami klastrowymi i 90 ms z lokalnymi, szacunek dla Linuksa 4–6 ms narzutu)
