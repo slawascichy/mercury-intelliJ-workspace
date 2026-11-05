@@ -67,4 +67,21 @@ Dla każdego wariantu: `mierz-zapis.sh` na węźle 1 po rozgrzewce klastra, pote
 
 ## Wyniki
 
-(do uzupełnienia po pomiarach; porównanie z 118: Windows p50 189 ms z regionami klastrowymi i 90 ms z lokalnymi, szacunek dla Linuksa 4–6 ms narzutu)
+### Wariant A: regiony klastrowe wg 118, pomiar zdalny (2026-11-05)
+
+Klaster trzywęzłowy na `devops-box-01` (Linux, obrazy 3.0.4.14 z wzorcami Ehcache po zadaniu 118), klient: maszyna robocza autora na tej samej sieci (zdalny pomiar, bo użytkownicy będą korzystać z serwera z maszyn klienckich; decyzja autora). CMIS Browser Binding, Basic, jedno żądanie naraz, 35 pomiarów po 5 rozgrzewkowych, ms:
+
+| węzeł | operacja | n | min | p50 | p90 | max |
+|---|---|---|---|---|---|---|
+| node1 (:28080) | read (odniesienie) | 35 | 19 | 21 | 28 | 42 |
+| node1 (:28080) | createFolder | 35 | 95 | 99 | 105 | 123 |
+| node2 (:28081) | read | 35 | 21 | 23 | 40 | 55 |
+| node2 (:28081) | createFolder | 35 | 95 | 102 | 113 | 130 |
+| node3 (:28082) | read | 35 | 20 | 23 | 43 | 49 |
+| node3 (:28082) | createFolder | 35 | 97 | 103 | 117 | 129 |
+| node1, drugi przebieg | read | 35 | 20 | 23 | 45 | 47 |
+| node1, drugi przebieg | createFolder | 35 | 95 | 99 | 114 | 123 |
+
+Wnioski (z zastrzeżeniami): `createFolder` p50 to ok. 100 ms na każdym z trzech węzłów i powtarza się między przebiegami (p50 99 i 99 ms na node1), a odczyt kosztuje ok. 22 ms (HTTP, uwierzytelnianie i sieć). Narzut zapisu ponad odczyt to więc ok. 75–80 ms. W 118 na Windowsie (localhost, inny sprzęt) `createFolder` trwał 189 ms z regionami klastrowymi i 90 ms z lokalnymi; Linux z klastrowymi regionami (ok. 100 ms) jest zatem wyraźnie bliżej wartości z lokalnymi pamięciami niż z klastrowymi na Windowsie. **To jeszcze nie jest porównanie A/B**: brakuje wariantu B (lokalny region znaczników czasu) i C na tym samym klastrze i sprzęcie, więc nie wiemy, ile z tych ok. 100 ms to koszt Terracotty. Różnice między węzłami są w granicach rozrzutu.
+
+**`createDocument` nie działa na tym klastrze (HTTP 500, `Cannot store the content … FileNotFoundException`).** Przyczyna: katalog `/opt/mercury-3.0/upload` w obrazie należał do `root` (powstawał dopiero przez `VOLUME`, po `chown`), a serwer działa jako `mercury` (UID 1000); dodatkowo katalog hosta podmontowany do `mercury-upload-*` musi mieć właściciela UID 1000. Poprawka w Dockerfile (katalog tworzony przed `chown`) w obserwacji 153. Do czasu aktualizacji obrazu i `sudo chown -R 1000:1000` na katalogach `mercury-upload-*` (i `mercury-lucene-*`, `poi-server-*`) mierzone są tylko `read` i `createFolder` (`OPS="read createFolder"`).
