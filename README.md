@@ -190,6 +190,7 @@ Używaj ich do pomiarów (zadanie 119), obok indeksu wygenerowanego testem `Luce
 - [Analiza `JOIN FETCH` w zapytaniach nazwanych encji (N+1)](docs/analiza-join-fetch-zapytan-nazwanych.md)
 - [Dane pomiarowe CMIS (3250 folderów) i skrypt odtwarzania](docs/dane-pomiarowe-cmis.md)
 - [Raport optymalizacji N+1 (`JOIN FETCH`, pamięć zapytań), 2026-11-02](docs/raport-join-fetch-2026-11-02.md)
+- [Rejestr obrazów w Nexusie: konfiguracja demona Dockera na Linuksie](docs/docker-rejestr-nexus-linux.md)
 
 ## Licencja
 
