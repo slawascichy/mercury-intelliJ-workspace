@@ -1,0 +1,12 @@
+# Wariant C zadania 226: hibernate.cache.use_query_cache=false (plik w classes obrazu, bez zmiany obrazu).
+# Skopiuj obok docker-compose.yml na devops-box-01 razem z plikiem database-postgresql.properties z tego katalogu.
+services:
+  mercury-node1:
+    volumes:
+      - ./database-postgresql.properties:/opt/mercury-3.0/classes/mercury-ws-app/database-postgresql.properties:ro
+  mercury-node2:
+    volumes:
+      - ./database-postgresql.properties:/opt/mercury-3.0/classes/mercury-ws-app/database-postgresql.properties:ro
+  mercury-node3:
+    volumes:
+      - ./database-postgresql.properties:/opt/mercury-3.0/classes/mercury-ws-app/database-postgresql.properties:ro

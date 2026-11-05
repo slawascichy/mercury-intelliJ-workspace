@@ -1,0 +1,12 @@
+# Wariant B zadania 226: region default-update-timestamps-region lokalny (bez clustered-dedicated i clustered-store).
+# Skopiuj obok docker-compose.yml na devops-box-01 razem z plikiem ehcacheDefault.xml z tego katalogu.
+services:
+  mercury-node1:
+    volumes:
+      - ./ehcacheDefault.xml:/opt/mercury-3.0/docker-init-config/config/ehcacheDefault.xml:ro
+  mercury-node2:
+    volumes:
+      - ./ehcacheDefault.xml:/opt/mercury-3.0/docker-init-config/config/ehcacheDefault.xml:ro
+  mercury-node3:
+    volumes:
+      - ./ehcacheDefault.xml:/opt/mercury-3.0/docker-init-config/config/ehcacheDefault.xml:ro
