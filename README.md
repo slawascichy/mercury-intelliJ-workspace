@@ -191,6 +191,7 @@ Używaj ich do pomiarów (zadanie 119), obok indeksu wygenerowanego testem `Luce
 - [Dane pomiarowe CMIS (3250 folderów) i skrypt odtwarzania](docs/dane-pomiarowe-cmis.md)
 - [Raport optymalizacji N+1 (`JOIN FETCH`, pamięć zapytań), 2026-11-02](docs/raport-join-fetch-2026-11-02.md)
 - [Rejestr obrazów w Nexusie: konfiguracja demona Dockera na Linuksie](docs/docker-rejestr-nexus-linux.md)
+- [PostgreSQL w klastrze: limit połączeń `max_connections` i pule węzłów](docs/postgresql-max-connections-klaster.md)
 
 ## Licencja
 

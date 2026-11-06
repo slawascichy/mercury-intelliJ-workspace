@@ -118,7 +118,7 @@ https://github.com/slawascichy/hgdb/issues/118
   D171-Optymalizacja-optymalizatora-kosztowego
   D180-Problem-z-niektórymi-metodami-w-usłudze-CaseIndexerFieldsManagerAction
   D190-Dokumentacja-metadane-typow
->191-Rewizja-wersji-migracja-Java17
+191-Rewizja-wersji-migracja-Java17
   D192-Lokalizacja-opisow-specyfikacji-i-tekstow-stalych
    B193-Analiza-typu-porownanie-wektorowe
    B195-Lokalizacja-interfejsu-Swagger-UI
@@ -135,4 +135,4 @@ https://github.com/slawascichy/hgdb/issues/118
   D222-[GUI]-Panel-monitorowania-sekretarzy
 >226-Pomiar-zapisu-na-Linuksie-Tomcat-Terracotta
 227-Logowanie-w-klastrze-sesje-Tomcat
- 
+229-Adaptacyjne-przekazywanie-dokumentów-Lucene-w-klastrze
