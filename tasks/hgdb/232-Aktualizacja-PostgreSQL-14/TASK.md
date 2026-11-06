@@ -1,6 +1,6 @@
 # [232] Aktualizacja PostgreSQL 14 (koniec wsparcia 2026-11-12)
 
-Status: **w toku (2026-11-06)**: implementacja i testy lokalne wykonane, czeka na commit autora, wydanie wersji mercury (3.0.4.20), obrazy i migrację klastra. Numer zadania tymczasowy: autor może go zmienić (numeracja zadań bywa przesuwana przez numery PR).
+Status: **w toku (2026-11-06)**: implementacja i testy lokalne wykonane, wersja 3.0.4.20 wydana, obrazy w Nexusie (2026-11-06), czeka na migrację klastra przez autora i pomiary. Numer zadania tymczasowy: autor może go zmienić (numeracja zadań bywa przesuwana przez numery PR).
 
 ## Po co
 
@@ -66,7 +66,7 @@ Z tego wynika:
 
 ## Do zrobienia
 
-1. Autor: commit zmian, wydanie lokalne mercury 3.0.4.20 (README zakłada „3.0.4.20 and later”; poprawić, jeśli numer będzie inny).
-2. Claude po sygnale: `set-versions.sh`, pakiet mercury-cmd, build obrazów (przed pushem zachować rollback: stary obraz PG14 jako `ibpm/postgres:mercury-hgdb-3.0-pg14`), smoke test, push do Nexusa.
+1. ✅ 2026-11-06: autor wydał mercury 3.0.4.20 (zgodne z README „3.0.4.20 and later”).
+2. ✅ 2026-11-06: pakiet, obrazy `mercury` 3.0.4.20, `postgres` 17.11, `activemq`, rollback `postgres:mercury-hgdb-3.0-pg14` w Nexusie; smoke OK. Plan był: `set-versions.sh`, pakiet mercury-cmd, build obrazów (przed pushem zachować rollback: stary obraz PG14 jako `ibpm/postgres:mercury-hgdb-3.0-pg14`), smoke test, push do Nexusa.
 3. Autor: migracja klastra na `devops-box-01` wg `docs/005_Configuration/PostgreSQL_upgrade` lub README bazy; potem pomiary.
 4. Decyzje otwarte: wymiana jarów w katalogu dev-servera (obs. 161), test Helm (obs. 162).
