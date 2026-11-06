@@ -229,15 +229,55 @@ Porównanie z A (jeden wątek zapisujący, ten sam build 3.0.4.16, przebieg 2): 
 
 Do rozbicia składników potrzebne są logi z węzłów (`Sekretarz:` i `Odbiorca:`) z tego pomiaru i z wariantów `W1` (jeden wątek) i `W8` (osiem wątków): ile trwa `flush`, ile mapowanie, ile zapis i `commit`, jaka jest średnia długość zapisu do Terracotty (czas zapisów podzielony przez liczbę zapisów) i czy odbiorcy mają trafienia (CPU).
 
-#### Logi odbiorców z pomiaru (2026-11-06 14:23–, pliki `226-…/M1_mercury-three-node-cluster-mercury-node{1,2,3}-1.log`)
+### Błąd `Cannot commit when autoCommit is enabled` na MASTER i wariant AC (2026-11-06)
 
-Pliki dostarczył autor (`docker logs … | grep`). Plik node2 (MASTER) jest **pusty**: brak linii `Sekretarz:`; node1 i node3 mają po 79 linii `Odbiorca:`.
+**Znalezisko (autor, logi node2):** `PSQLException: Cannot commit when autoCommit is enabled` przy każdej archiwizacji paczki (ślad: `LucCaseSaveBufferLogic.archivePackage` → `ArchCaseSaveBufferDAO.insertList` → `AbstractDAO.insertList:330` → `commitTransaction:373` → `conn.commit()`). **Przyczyna:** szablon `context.xml.docker-init` obrazu nie ma `defaultAutoCommit="false"` dla `jdbc/MercuryDB` i `jdbc/MercuryDBCommon` (serwer dev ma), a JDBC DAO wywołuje `commit()` ręcznie. Ten sam brak jest w przykładzie `mercury-cmd/mercury-install-package/system-config-sample/linux/apache-tomcat/conf/context.xml`. Wystąpiło niezależnie od zadania 229 (kod archiwizacji bez zmian; od jakiej wersji obrazu, nie ustalono). Skutek danych: `igo_luc_save_buffer` ma 0 wierszy, a `igo_luc_arch_save_buffer` 145 375, więc archiwizacja działa (autocommit zatwierdza każde zapytanie osobno), a błąd pojawia się po fakcie. Skutki uboczne po wyjątku (zrzuty błędów `dumpErrorLog`, czas MASTER) **nie zostały sprawdzone w kodzie**.
 
-| odbiorca | paczek | wpisów | trafienia pamięci | chybienia | czas aktualizacji paczki, mediana (min–max) | paczki po 100 wpisów: mediana (min–max), ms na wpis |
-|---|---|---|---|---|---|---|
-| node1 | 79 | 9709 | 9552 | 1 | 268 ms (46–570) | 212 ms (111–404), 2,1 ms |
-| node3 | 79 | 9709 | 9552 | 1 | 275 ms (63–561) | 252 ms (94–521), 2,5 ms |
+**Poprawka na stałe (gałęzie `hgdb-229`, niezacommitowane):** `defaultAutoCommit="false"` dla `jdbc/MercuryDB` i `jdbc/MercuryDBCommon` w `mercury-docker/mercury-3.0/docker-init-config/apache-tomcat/conf/context.xml.docker-init` i w przykładzie `context.xml` w `mercury-cmd`. Do testu bez przebudowy obrazu: `warianty/AC` (zamontowany szablon `context.xml.docker-init`).
 
-Wnioski z logów odbiorców: (1) **przekazywanie dokumentów działa: 9552 trafień i 1 chybienie** (odbiorca praktycznie nigdy nie mapuje sam; liczba wpisów jest większa od liczby trafień o wpisy usunięć z czyszczenia), (2) odbiorca potrzebuje ok. 2–2,5 ms na wpis (paczka 100 wpisów: ok. 210–250 ms: odczyt `Case` z bazy, `take` z Terracotty, zapis do indeksu i `commit`), więc **nawet bez mapowania aktualizacja indeksu przez odbiorcę nie jest tania**; (3) paczki od MASTER mają do 100 wpisów (76, 24, 88, 100, …): sekretarz dzieli większy ruch na paczki po ok. 100.
+#### Wariant AC (konfiguracja domyślna 3.0.4.17 + `defaultAutoCommit=false`), czas do indeksu (p50, ms) i CPU
 
-**Brak linii `Sekretarz:` w logu node2 wymaga wyjaśnienia:** możliwe, że node2 pracuje na obrazie 3.0.4.16 (publikuje dokumenty, ale nie ma logu rozbicia czasu i ma jeden wątek zapisujący), np. kontener nie został odtworzony na 3.0.4.17; wtedy pomiar „D4” nie odzwierciedla zmiany wielowątkowej. Do sprawdzenia: obraz kontenera node2 i linia startowa `Przekazywanie dokumentów Lucene włączone (… wątki zapisujące: N)`.
+| scenariusz | przebieg | node1 | node2 | node3 | CPU netto na paczkę |
+|---|---|---|---|---|---|
+| 1 węzeł × 100 | 1 | 601 | 689 (zapis) | 634 | 8,76 core-s |
+| 1 węzeł × 100 | 2 | 581 | 623 (zapis) | 597 | 5,22 core-s |
+| 3 węzły × 100 | 1 | 1003 | 1101 | 1008 | 18,99 core-s |
+| 3 węzły × 100 | 2 | 1001 | 1071 | 1019 | 14,59 core-s |
+
+Porównanie z D4 (konfiguracja domyślna, przebieg 2, najpóźniejszy węzeł): 1 × 100 **623 wobec 494 ms**, 3 × 100 **1071 wobec 1076 ms**; CPU 5,22 wobec 4,66 i 14,59 wobec 14,54 core-s. **Poprawka autocommit nie skraca czasu do indeksu** (3 × 100 bez różnicy, 1 × 100 wolniej o ok. 130 ms, co jest w zakresie rozrzutu między seriami tego pomiaru, do 20%); sam błąd jest szumem w logu i kosztem pojedynczych wyjątków na paczkę, a nie głównym składnikiem czasu. Potwierdzenie zniknięcia błędu i rozbicie czasu sekretarza wymagają logów node2 z tego pomiaru (`grep -E "Cannot commit|Sekretarz:"`).
+
+### Logi z węzłów po poprawce autocommit (wariant AC, 3.0.4.17, 2026-11-06 15:04–; pliki `226-…/AC_mercury-three-node-cluster-mercury-node{1,2,3}-1.log`)
+
+Wcześniejsze logi (`M1_…`) odrzucone decyzją autora (węzły na niepewnym obrazie); poniżej tylko nowe. Wszystkie trzy węzły na 3.0.4.17: node2 ma 25 linii `Sekretarz:`, node1 i node3 po 79 linii `Odbiorca:`, błędu `Cannot commit` nie ma, `wątki zapisujące 4`, odrzuconych zapisów 0.
+
+**Sekretarz (node2, 25 paczek, naprzemiennie duże ok. 250 i małe ok. 50 wpisów, kolejność „przed zapisem do indeksu”):**
+
+| paczki | n | średni rozmiar | przygotowanie dokumentów | flush pamięci | JMS i wybudzenie | zapis do indeksu i commit | razem |
+|---|---|---|---|---|---|---|---|
+| duże (≥ 200 wpisów) | 12 | 249 | 429 ms | 0 ms | 13 ms | 308 ms | 753 ms |
+| małe (30–80 wpisów) | 12 | 50 | 74 ms | 0 ms | 16 ms | 334 ms | 426 ms |
+
+Zależność od rozmiaru paczki (regresja liniowa): przygotowanie ≈ −15 ms + 1,78 ms na wpis (równolegle na 10 wątkach), **zapis do indeksu i commit ≈ 343 ms + (−0,14) ms na wpis, czyli stałe ok. 300–350 ms niezależnie od rozmiaru**, razem ≈ 347 ms + 1,62 ms na wpis.
+
+**Odbiorcy (node1 i node3, 158 paczek):** 19 120 trafień i **0 chybień** (przekazywanie dokumentów działa w pełni). Czas aktualizacji indeksu paczki ≈ **298 ms + 0,10 ms na wpis**: mediana 243 ms dla paczek ok. 45 wpisów, 321 ms dla ok. 90 i 300 ms dla ok. 243; czyli **także u odbiorcy dominuje stały koszt ok. 250–300 ms na paczkę, a nie praca na dokument**.
+
+**Wnioski:**
+1. **Hipoteza z pomiaru A obalona:** `flush` pamięci trwa 0 ms (zapisy dokumentów, ok. 1,1 ms na zapis przy 4 wątkach, kończą się w trakcie mapowania), wysyłka JMS i wybudzenie ok. 12 ms. Jeden wątek zapisujący byłby jednak wąskim gardłem: łączny czas zapisów to ok. 270 ms na 240 zapisów przy 4 wątkach wobec ok. 1000 ms przy jednym (zmiana wielowątkowa ma sens, ale nie jest głównym składnikiem czasu).
+2. **Dominuje stały koszt zapisu do indeksu i `commit` na każdym węźle: ok. 300–350 ms na paczkę.** W wariancie M0 (bez przekazywania) odbiorca mapuje sam (ok. 1,8 ms na wpis równolegle), a potem płaci ten sam stały koszt; w M1 mapowanie znika, a stały koszt zostaje. Stąd brak zysku w czasie: koszt `commit` nakłada się u wszystkich węzłów równolegle, a przekazywanie oszczędza tylko mapowanie (CPU), co pasuje do wcześniejszych pomiarów (M1 i M0 o podobnym czasie, M1 o kilkanaście procent mniej CPU przy jednym piszącym węźle).
+3. **Gdzie leży stały koszt, nie wiadomo:** możliwe źródła to `indexWriter.commit()` z `fsync` plików na woluminie z indeksem (`/opt/mercury/mercury-lucene-N`), `LuceneReaderPool.markChanged` i ponowne otwarcie czytnika, praca przygotowawcza `updateIndex` (`setUpdate`, `getCaseAttributes`, otwarcie czytnika). Do rozbicia potrzebny pomiar wewnątrz fazy zapisu (flush, commit, odświeżenie czytnika osobno) i test opóźnienia `fsync` dysku z indeksem.
+
+**Proponowane kolejne kroki (do decyzji autora):** (a) test `fsync` na hoście: `dd if=/dev/zero of=<katalog indeksu>/dsync.test bs=4k count=500 oflag=dsync` (czas na zapis); (b) w kolejnej wersji dodać do logu czasy `flush`, `commit` i odświeżenia czytnika w `CaseIndexerBusinessSupport.updateIndex` (u sekretarza i u odbiorcy); (c) po ustaleniu składników rozważyć zmniejszenie stałego kosztu (rzadszy `commit` z odświeżaniem czytnika bez `commit`, większe paczki, szybszy dysk), co jest zmianą trwałości i wymaga osobnej decyzji.
+
+### Test `fsync` dysku z indeksem i zapis dokumentów jednym wątkiem (2026-11-06)
+
+**Test autora (devops-box-01, `dd … bs=4k count=500 oflag=dsync` w katalogach `/opt/mercury/mercury-lucene-{1,2,3}/index/Case`):** 500 synchronicznych zapisów w 2,55–2,59 s na każdym z trzech indeksów, czyli **ok. 5,1 ms na synchroniczny zapis** (ok. 800 kB/s). To wolny dysk (typowy SSD: poniżej 1 ms).
+
+**Hipoteza (do potwierdzenia pomiarem):** `IndexWriter` ma osobny bufor (segment) na każdy wątek dodający dokumenty. Dotąd 10 zadań (`caseId mod 10`) mapowało i zapisywało dokumenty równolegle, więc paczka dawała do 10 segmentów, a `commit` synchronizuje na dysku pliki każdego z nich (kilka plików na segment, plus `segments_N` i katalog), po ok. 5 ms każdy. To tłumaczy stały koszt ok. 300 ms na paczkę niezależny od rozmiaru (zapis sekretarza 343 ms − 0,14 ms na wpis, odbiorcy 298 ms + 0,10 ms na wpis). Faza przygotowania jest już oddzielona od zapisu, więc zapis można wykonać **jednym wątkiem** (jeden segment na paczkę, kilka `fsync`).
+
+**Zmiana (repozytorium `mercury`, gałąź `hgdb-229`):**
+- `CaseIndexerUpdateRunner.run(pool, zadania, wywołanie zwrotne, writeThreads)` zwraca `Result` (liczba dokumentów, czasy: przygotowanie, wywołanie zwrotne, zapis). Faza 1 (przygotowanie, odczyt spraw i mapowanie lub `take`) jest równoległa jak dotąd; faza 2 (zapis do indeksu) przy `writeThreads=1` (domyślnie) idzie jednym wątkiem (wątek wywołujący), przy `n > 1` w co najwyżej `n` zadaniach, a `0` przywraca dawne zachowanie (bez wywołania zwrotnego jedna faza, z wywołaniem zwrotnym zapis jednym zadaniem na grupę). Dotyczy sekretarza, odbiorcy i ścieżki bez klastra.
+- Parametr `mercury.lucene.indexer.writeThreads` (`CaseIndexerBusinessSupport`, domyślnie 1, zakres 0–32).
+- Log `Indeks: paczka N wpisów: przygotowanie dokumentów X ms, wywołanie po przygotowaniu X ms, zapis dokumentów X ms (wątki zapisu: N), flush indeksu X ms, commit X ms, odświeżenie czytnika X ms, razem X ms` (INFO od 20 wpisów, mniejsze DEBUG), u sekretarza i u odbiorcy; rozdziela koszt `flush`, `commit` i odświeżenia czytnika.
+- Testy: `CaseIndexerUpdateRunnerTest` (6: jedna faza dla `writeThreads=0`, wywołanie zwrotne raz po wszystkich przygotowaniach, zapis jednym wątkiem w wątku wywołującym po wszystkich przygotowaniach, najwyżej dwa wątki zapisu, błąd przygotowania bez wywołania i zapisu, puste zadania), `SharedStoreWritersTest` (4), `SharedLuceneDocumentStoreTest` (5), `DatasetScenario` na prawdziwym indeksie (1/1).
+
+Po wydaniu 3.0.4.18: pomiar domyślny (`writeThreads=1`) i porównanie z `writeThreads=0` (dawne, wariant do wygenerowania z `warianty/utworz-wariant.sh`), logi `Indeks:`, `Sekretarz:`, `Odbiorca:` z węzłów. Oczekiwany efekt: `commit` z ok. 300 ms do kilkudziesięciu ms (kilka `fsync` zamiast kilkudziesięciu) u sekretarza i odbiorców.

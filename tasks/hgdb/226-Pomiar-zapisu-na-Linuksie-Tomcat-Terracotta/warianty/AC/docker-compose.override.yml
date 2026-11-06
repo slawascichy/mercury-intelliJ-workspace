@@ -1,0 +1,14 @@
+# Wariant AC zadania 229: poprawka szablonu context.xml (defaultAutoCommit="false" dla jdbc/MercuryDB i jdbc/MercuryDBCommon),
+# bez przebudowy obrazu. Bez niej na MASTER-ze każda archiwizacja paczki kończy się błędem
+# "PSQLException: Cannot commit when autoCommit is enabled" (AbstractDAO.commitTransaction).
+# Skopiuj obok docker-compose.yml razem z plikiem context.xml.docker-init z tego katalogu.
+services:
+  mercury-node1:
+    volumes:
+      - ./context.xml.docker-init:/opt/mercury-3.0/apache-tomcat/conf/context.xml.docker-init:ro
+  mercury-node2:
+    volumes:
+      - ./context.xml.docker-init:/opt/mercury-3.0/apache-tomcat/conf/context.xml.docker-init:ro
+  mercury-node3:
+    volumes:
+      - ./context.xml.docker-init:/opt/mercury-3.0/apache-tomcat/conf/context.xml.docker-init:ro
