@@ -23,7 +23,7 @@ Obraz `ibpm/mercury` (`apache-tomcat/conf/context.xml`) definiuje pule połącze
 | `jdbc/MercuryLdapDBPoSql` | `mercury-ldap` | 20 | 1 |
 | razem na węzeł | | **200** | 36 |
 
-Przy trzech węzłach teoretyczny maksimum to 3 × 200 = 600 połączeń, a PostgreSQL w obrazie i w kompozycji ma domyślne `max_connections = 100` (w kompozycjach nie ma ustawienia tego parametru). Dochodzą połączenia narzędzi administracyjnych i `superuser_reserved_connections` (domyślnie 3).
+Przy trzech węzłach teoretyczny maksimum to 3 × 200 = 600 połączeń, a PostgreSQL ma domyślne `max_connections = 100`. Od 2026-11-06 kompozycje dwu- i trzywęzłowa w `mercury-docker` uruchamiają `postgres-db` z `max_connections=400` (`command: ["postgres", "-c", "max_connections=400"]`), a README kompozycji opisuje ten limit; dla innych wdrożeń (Helm, instalacje bez kompozycji) trzeba go ustawić samemu. Dochodzą połączenia narzędzi administracyjnych i `superuser_reserved_connections` (domyślnie 3).
 
 ## Ile ustawić
 
@@ -31,7 +31,7 @@ Przy trzech węzłach teoretyczny maksimum to 3 × 200 = 600 połączeń, a Post
 - Pełny zapas dla trzech węzłów to ok. 600 + rezerwa, ale każde połączenie zajmuje kilka MB pamięci serwera (`work_mem` i pamięć procesu), więc nie ustawiaj więcej, niż potrzeba.
 - Zasada: `max_connections` ≥ liczba węzłów × suma `maxTotal` pul **albo** zmniejsz `maxTotal` w `context.xml`, żeby suma pul wszystkich węzłów mieściła się w limicie. Dla większych klastrów rozważ pulę pośrednią (np. PgBouncer).
 
-## Jak zmienić (bez zmiany kompozycji)
+## Jak zmienić na działającym klastrze (bez zmiany kompozycji)
 
 Zmiana wymaga **restartu** PostgreSQL; samo przeładowanie konfiguracji nie wystarcza. Parametr ustawia się w `postgresql.conf` (nie w `pg_hba.conf`, który dotyczy tylko uwierzytelniania).
 
