@@ -281,3 +281,56 @@ Zależność od rozmiaru paczki (regresja liniowa): przygotowanie ≈ −15 ms +
 - Testy: `CaseIndexerUpdateRunnerTest` (6: jedna faza dla `writeThreads=0`, wywołanie zwrotne raz po wszystkich przygotowaniach, zapis jednym wątkiem w wątku wywołującym po wszystkich przygotowaniach, najwyżej dwa wątki zapisu, błąd przygotowania bez wywołania i zapisu, puste zadania), `SharedStoreWritersTest` (4), `SharedLuceneDocumentStoreTest` (5), `DatasetScenario` na prawdziwym indeksie (1/1).
 
 Po wydaniu 3.0.4.18: pomiar domyślny (`writeThreads=1`) i porównanie z `writeThreads=0` (dawne, wariant do wygenerowania z `warianty/utworz-wariant.sh`), logi `Indeks:`, `Sekretarz:`, `Odbiorca:` z węzłów. Oczekiwany efekt: `commit` z ok. 300 ms do kilkudziesięciu ms (kilka `fsync` zamiast kilkudziesięciu) u sekretarza i odbiorców.
+
+### Pomiar na buildzie 3.0.4.18: zapis do indeksu jednym wątkiem (2026-11-06, konfiguracja domyślna, bez override)
+
+Build 3.0.4.18 (obraz `sha256:accbfcc3…d59e`): nowa kolejność powiadomienia, `writerThreads=4`, **`mercury.lucene.indexer.writeThreads=1` (zapis do indeksu jednym wątkiem)**, poprawka `defaultAutoCommit`. Czas do indeksu (p50, ms) i CPU netto na paczkę 100 spraw:
+
+| scenariusz | przebieg | node1 | node2 | node3 | CPU netto na paczkę |
+|---|---|---|---|---|---|
+| 1 węzeł × 100 | 1 | 400 | 335 (zapis) | 401 | 8,00 core-s |
+| 1 węzeł × 100 | 2 | 371 | 333 (zapis) | 362 | 4,76 core-s |
+| 3 węzły × 100 | 1 | 780 | 740 | 786 | 16,33 core-s |
+| 3 węzły × 100 | 2 | 618 | 592 | 615 | 13,14 core-s |
+
+**Porównanie przebiegu 2 (najpóźniejszy węzeł) z poprzednimi buildami:**
+
+| wariant | 1 × 100 | 3 × 100 |
+|---|---|---|
+| M1 3.0.4.15 (stara kolejność, dawny zapis) | 826 ms | 1654 ms |
+| M0 3.0.4.15 (bez przekazywania) | 511 ms | 1020 ms |
+| 3.0.4.17 domyślny (4 wątki zapisu pamięci, nowa kolejność, dawny zapis do indeksu) | 494 ms | 1076 ms |
+| **3.0.4.18 domyślny (zapis do indeksu jednym wątkiem)** | **371 ms** | **618 ms** |
+
+Względem 3.0.4.17: **−25% (1 × 100) i −43% (3 × 100)** przy niezmienionym CPU (4,76 wobec 4,66 i 13,14 wobec 14,54 core-s). Względem M0 na 3.0.4.15: −27% i −39% (M0 na nowym buildzie nie zmierzono: zmiana zapisu do indeksu dotyczy także M0, więc porównanie z M0 wymaga jego pomiaru na 3.0.4.18). Zgodnie z hipotezą: zapis do indeksu jednym wątkiem (jeden segment na paczkę, kilka `fsync` zamiast kilkudziesięciu na dysku z 5 ms na synchroniczny zapis) usunął główny, stały składnik czasu. Potwierdzenie liczbowe i rozbicie wymagają logów `Indeks:` z węzłów.
+
+Do wykonania na tym buildzie: logi z węzłów (`Indeks:`, `Sekretarz:`, `Odbiorca:`), wariant `WR0` (`writeThreads=0`, dawny zapis wieloma wątkami: izoluje wpływ zmiany) oraz M0 (przekazywanie wyłączone) dla uczciwego porównania.
+
+#### Logi z węzłów na 3.0.4.18 (pliki `226-…/18_mercury-three-node-cluster-mercury-node{1,2,3}-1.log`)
+
+node2: 21 linii `Sekretarz:` (20 z przygotowaniem > 0), node1 i node3: po 78 linii `Odbiorca:`, błędu `Cannot commit` brak. **Linii `Indeks:` (rozbicie flush, commit, odświeżenie czytnika) w plikach nie ma**: do wyjaśnienia, czy nie zostały zebrane (wzorzec `grep`), czy nie są wypisywane (kod wywołuje `logIndexTiming` po `commit` przy `INFO` dla paczek od 20 wpisów).
+
+| składnik | 3.0.4.17 (zapis wieloma wątkami) | 3.0.4.18 (zapis jednym wątkiem) |
+|---|---|---|
+| sekretarz: zapis do indeksu i commit | ≈ 343 ms stałe (308 ms dla paczek ≈ 250, 334 ms dla ≈ 50) | **≈ 127 ms stałe** (125 ms dla ≈ 250, 124 ms dla ≈ 50) |
+| sekretarz: razem, paczka ≈ 250 wpisów | 753 ms | **526 ms** (przygotowanie 385, JMS 14, flush 0, zapis i commit 125) |
+| sekretarz: razem, paczka ≈ 50 wpisów | 426 ms | **210 ms** |
+| odbiorca: aktualizacja indeksu | ≈ 298 ms + 0,10 ms na wpis (medianę 243 / 321 / 300 ms dla paczek ≈ 45 / 90 / 243) | **≈ 110 ms + 0,49 ms na wpis** (mediana 97 / 122 / 219 ms) |
+| odbiorca: trafienia / chybienia pamięci współdzielonej | 19 120 / 0 | 19 154 / 0 |
+
+Stały koszt zapisu do indeksu i `commit` spadł z ok. 300–340 ms do ok. 110–127 ms (ok. −60%), czyli tyle, ile przewidywała hipoteza o liczbie segmentów i `fsync`. Koszt na wpis u odbiorcy wzrósł z 0,10 do 0,49 ms, bo zapis dokumentów (`searchById` i `addDocument`) idzie teraz jednym wątkiem (u odbiorcy paczka ≈ 243 wpisów: ok. 120 ms w fazie zapisu). Pozostałe ok. 110–125 ms stałego kosztu nie jest jeszcze rozbite: do tego potrzebne są linie `Indeks:` (flush, commit, odświeżenie czytnika).
+
+#### Logi `Indeks:` z 3.0.4.18 (pliki `226-…/18i_mercury-three-node-cluster-mercury-node{1,2,3}-1.log`): rozbicie czasu paczki
+
+Linie `Indeks:` (po poprawce wzorca `grep`): node2 20 paczek, node1 i node3 po 74. Średnie (ms; `inne` = `razem` minus suma pozostałych składników, czyli praca w `updateIndex` poza fazami: otwarcie indeksu i czytnika, pętla po wpisach z `containsInActiveTransactions`, usunięcia):
+
+| węzeł, paczki | n | rozmiar | przygotowanie | wywołanie po przyg. | zapis dok. | flush | commit | **inne** | razem |
+|---|---|---|---|---|---|---|---|---|---|
+| sekretarz, duże | 10 | 252 | 130 | 14 | 24 | 2 | 96 | **257** | 525 |
+| sekretarz, małe | 10 | 48 | 35 | 17 | 5 | 2 | 116 | **33** | 210 |
+| odbiorcy, duże | 44 | 246 | 12 | 0 | 22 | 2 | 150 | **44** | 233 |
+| odbiorcy, małe | 96 | 75 | 10 | 0 | 11 | 2 | 106 | **17** | 147 |
+
+**Wnioski:** (1) u sekretarza **ok. połowa czasu paczki (257 z 525 ms) to praca poza fazami**, rosnąca z liczbą wpisów (ok. 1 ms na wpis; 33 ms dla paczki 48 wpisów). Przyczyna (z kodu): pętla po wpisach woła po kolei `containsInActiveTransactions`, a to zdalny odczyt z klastrowej pamięci `CaseGlobalTransactionCache` (z `consistency="strong"`), a dla zakończonych transakcji także zdalne `remove`; sekretarz robi to pierwszy, odbiorcy trafiają już na usunięte wpisy (u nich tylko ok. 0,18 ms na wpis). (2) `commit` ma teraz 65–200 ms (mediana 71–134, wartości skrajne do 330 ms) przy jednym segmencie na paczkę; to nadal największy pojedynczy koszt po stronie odbiorców (134–150 ms dla dużych paczek). (3) `flush` 2 ms, odświeżenie czytnika 0 ms, zapis dokumentów 5–24 ms: pomijalne.
+
+**Zmiana w 3.0.4.19 (repozytorium `mercury`, gałąź `hgdb-229`):** sprawdzenie aktywnych transakcji spraw paczki **równolegle** w puli wątków (od 16 spraw; mniejsze paczki po kolei), przed pętlą po wpisach (`CaseIndexerBusinessSupport.findCasesInActiveTransactions`); wynik taki sam jak przy sprawdzaniu po kolei (zbiór spraw w transakcji, wpisy usunięć pomijane, błąd z puli propagowany). Nowy składnik logu `Indeks:`: `sprawdzenie transakcji N ms`. Testy: `CaseIndexerTransactionCheckTest` (5: mała paczka po kolei, duża równolegle z tym samym wynikiem i czasem poniżej 500 ms wobec 800 ms po kolei, usunięcia pomijane, brak menedżera lub pusta lista, błąd propagowany), `CaseIndexerUpdateRunnerTest` (6), `DatasetScenario` (1/1). Oczekiwany efekt u sekretarza: `inne` z ok. 257 do kilkudziesięciu ms dla paczki ok. 250 wpisów, `razem` z ok. 525 do ok. 300 ms.
