@@ -31,6 +31,13 @@ Gałąź `hgdb-229` w trzech repozytoriach. Kolejność merge: `mercury` (kod), 
 - Szablon `context.xml.docker-init`: `defaultAutoCommit="false"` dla `jdbc/MercuryDB` i `jdbc/MercuryDBCommon`. Bez tego każda archiwizacja paczki bufora indeksu kończyła się błędem `PSQLException: Cannot commit when autoCommit is enabled` (`AbstractDAO.commitTransaction`) na MASTER-ze.
 - Kompozycje dwu- i trzywęzłowa: `postgres-db` z `max_connections=400` (pule JDBC do 200 połączeń na węzeł; przy zapisie z kilku węzłów naraz błąd `too many clients already`), opis w README; wykres Helm: `postgres.maxConnections` (domyślnie 200 dla jednego węzła; nieprzetestowane, brak `helm` na maszynie roboczej).
 
+## docusaurus-hgdb (`hgdb-229`, niezacommitowane, EN i PL)
+
+- `docs/003_Architecture/003_Index_Lucene/index.mdx`: zaktualizowany opis „How it works” (fazy: przygotowanie i publikacja dokumentów, powiadomienie, zapis jednym wątkiem), nowe parametry w tabeli regionu, nowa sekcja „Performance of the index update” (rozbicie czasu paczki, zapis jednym wątkiem, równoległe sprawdzanie transakcji, dysk indeksu i test `fsync`, tabela czasu do indeksu przed i po zmianach, parametry, logi `Indeks:`, `Sekretarz:`, `Odbiorca:`).
+- `docs/005_Configuration/Cache_configuration.mdx`: parametry `mercury.cache.luceneDocument.shared.writerThreads` i `notifyBeforeWrite`, odsyłacz do logów w sekcji Monitoring.
+- Nowa strona `docs/005_Configuration/Database_connections.mdx`: pule połączeń węzła, limit `max_connections` PostgreSQL w klastrze, `defaultAutoCommit="false"`; wpis w spisie `docs/005_Configuration/index.mdx`.
+- Wersje polskie w `i18n/pl/docusaurus-plugin-content-docs/current/` (te same pliki). Składnię MDX sprawdziłem kompilatorem `@mdx-js/mdx` (8 plików OK); pełnego `docusaurus build` nie uruchamiano (ciężki dla pamięci).
+
 ## Do zrobienia po merge
 
 - Zaciągnąć `master` (`mercury`, `mercury-cmd`) i `main` (`mercury-docker`), zamknąć zadanie 229 na GitHubie, dopiero potem zakładać gałąź następnego zadania.
