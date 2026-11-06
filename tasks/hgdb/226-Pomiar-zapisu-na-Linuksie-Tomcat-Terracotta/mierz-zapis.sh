@@ -17,6 +17,7 @@
 #          KEEP=1     nie usuwaj folderu pomiarowego (domyślnie usuwany na końcu, także po błędzie lub Ctrl+C)
 #          OPS        które operacje mierzyć, domyślnie "read createFolder createDocument"
 # Wynik:   wiersz na rodzaj operacji (ms): n, min, p50, p90, max; po nim tabela wierszy do wklejenia do TASK.md.
+# Uwaga:   błąd klienta (HTTP 000) pomija tylko jedno żądanie (obserwacja 157); inny kod błędu przerywa daną operację.
 # Uwaga:   uruchamiaj z maszyny o znanym opóźnieniu do serwera. Najczystszy pomiar jest z samego hosta serwera
 #          (devops-box-01); z innej maszyny czas odczytu pokazuje, ile dochodzi na sieć.
 set -u
@@ -75,6 +76,11 @@ run() { # $1 nazwa, $2 polecenie (funkcja) ; rozgrzewka + N pomiarów; błąd op
 		t=$($fn "$i")
 		case "$(cat "$tmp/code")" in
 		200 | 201) ;;
+		000)
+			# błąd po stronie klienta (curl nie dokończył odczytu, mimo że serwer mógł odpowiedzieć; ok. 3 na 1000 żądań na
+			# Windowsie, obserwacja 157): pomijam tylko to żądanie, pozostałe pomiary zostają
+			echo "UWAGA: $name nr $i: HTTP 000 (błąd klienta): $(head -c 120 "$tmp/out"); to żądanie pominięte w wyniku"
+			continue ;;
 		*) echo "UWAGA: $name nr $i: HTTP $(cat "$tmp/code"): $(head -c 200 "$tmp/out"); operacja pominięta w wyniku"
 			: > "$tmp/$name.ms"; return 1 ;;
 		esac

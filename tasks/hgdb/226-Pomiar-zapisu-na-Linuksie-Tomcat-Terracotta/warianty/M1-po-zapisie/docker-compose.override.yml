@@ -1,0 +1,14 @@
+# Wariant M1-po-zapisie zadania 229: powiadomienie innych węzłów po zapisie do indeksu (stara kolejność, przekazywanie dokumentów włączone)
+# (mercury.cache.luceneDocument.shared.notifyBeforeWrite=false).
+# Szablon mercury.properties z obrazu 3.0.4.15 + jedna linia na końcu; serwer kopiuje go przy starcie i podstawia zmienne.
+# Skopiuj obok docker-compose.yml razem z plikiem mercury.properties z tego katalogu.
+services:
+  mercury-node1:
+    volumes:
+      - ./mercury.properties:/opt/mercury-3.0/docker-init-config/config/mercury.properties:ro
+  mercury-node2:
+    volumes:
+      - ./mercury.properties:/opt/mercury-3.0/docker-init-config/config/mercury.properties:ro
+  mercury-node3:
+    volumes:
+      - ./mercury.properties:/opt/mercury-3.0/docker-init-config/config/mercury.properties:ro
