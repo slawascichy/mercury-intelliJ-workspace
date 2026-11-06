@@ -1,0 +1,16 @@
+== PG17_1x100_p2: węzły mercury-docker.scisoftware.local:28080,mercury-docker.scisoftware.local:28081,mercury-docker.scisoftware.local:28082, zapis na mercury-docker.scisoftware.local:28081, sprawa wzorcowa FSMServiceOrder.2699, 10 pomiarów po 2 rozgrzewkowych, 2026-11-06 20:57
+CPU bazowe hosta bez obciążenia: 1.27% (okno 506 core-s)
+CPU hosta w oknie serii: okno 396 core-s, zajęte 49.8 core-s (12.6%), netto po odjęciu CPU bazowego 44.8 core-s, na paczkę 4.48 core-s
+
+paczka 100 spraw (8 równoległych zapisów): czas do pojawienia się OSTATNIEJ sprawy w indeksie węzła (ms)
+niekompletnych paczek (w chwili kontroli brakowało spraw): 0
+węzeł                                         n   p50 koniec   p90 koniec p50 początek
+mercury-docker.scisoftware.local:28080 (pozostały)   10          260          339         1324
+mercury-docker.scisoftware.local:28081 (zapis)   10          254          359         1314
+mercury-docker.scisoftware.local:28082 (pozostały)   10          262          396         1341
+
+| wariant | paczka | węzeł | n | min | p50 | p90 | max (od końca zapisów, ms) | niekompletne |
+| PG17_1x100_p2 | 100 | mercury-docker.scisoftware.local:28080 (pozostały) | 10 | 220 | 260 | 339 | 422 | 0 |
+| PG17_1x100_p2 | 100 | mercury-docker.scisoftware.local:28081 (zapis) | 10 | 163 | 254 | 359 | 421 | 0 |
+| PG17_1x100_p2 | 100 | mercury-docker.scisoftware.local:28082 (pozostały) | 10 | 219 | 262 | 396 | 484 | 0 |
+usunięto 1200 z 1200 nowych spraw

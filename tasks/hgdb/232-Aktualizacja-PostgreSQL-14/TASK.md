@@ -1,6 +1,6 @@
 # [232] Aktualizacja PostgreSQL 14 (koniec wsparcia 2026-11-12)
 
-Status: **w toku (2026-11-06)**: implementacja i testy lokalne wykonane, wersja 3.0.4.20 wydana, obrazy w Nexusie (2026-11-06), czeka na migrację klastra przez autora i pomiary. Numer zadania tymczasowy: autor może go zmienić (numeracja zadań bywa przesuwana przez numery PR).
+Status: **w toku (2026-11-06)**: implementacja i testy lokalne wykonane, wersja 3.0.4.20 wydana, klaster zmigrowany przez autora, pomiary wydajności wykonane (2026-11-07); do zamknięcia: rytuał (PR, merge). Numer zadania tymczasowy: autor może go zmienić (numeracja zadań bywa przesuwana przez numery PR).
 
 ## Po co
 
@@ -70,3 +70,18 @@ Z tego wynika:
 2. ✅ 2026-11-06: pakiet, obrazy `mercury` 3.0.4.20, `postgres` 17.11, `activemq`, rollback `postgres:mercury-hgdb-3.0-pg14` w Nexusie; smoke OK. Plan był: `set-versions.sh`, pakiet mercury-cmd, build obrazów (przed pushem zachować rollback: stary obraz PG14 jako `ibpm/postgres:mercury-hgdb-3.0-pg14`), smoke test, push do Nexusa.
 3. Autor: migracja klastra na `devops-box-01` wg `docs/005_Configuration/PostgreSQL_upgrade` lub README bazy; potem pomiary.
 4. Decyzje otwarte: wymiana jarów w katalogu dev-servera (obs. 161), test Helm (obs. 162).
+
+## Pomiar wydajności po migracji klastra (2026-11-07)
+
+Klaster 3 węzły na `devops-box-01`, PostgreSQL 17.11, `mercury` 3.0.4.20, konfiguracja domyślna bez override, MASTER na node2. Narzędzie `mierz-indeks.py --cpu` (10 paczek po 2 rozgrzewkowych, 2 przebiegi), logi `PG17_*.log`. Czas do indeksu węzła, p50 w ms (od końca zapisów), 0 niekompletnych paczek, wszystkie sprawy usunięte po teście.
+
+| scenariusz | przebieg | node1 | node2 | node3 | CPU netto na paczkę |
+|---|---|---|---|---|---|
+| 1 × 100 z node2 | 1 | 320 | 323 | 328 | 8,25 core-s |
+| 1 × 100 z node2 | 2 | 260 | 254 | 262 | 4,48 core-s |
+| 3 × 100 naraz | 1 | 428 | 434 | 429 | 17,5 core-s |
+| 3 × 100 naraz | 2 | 514 | 488 | 499 | 12,8 core-s |
+
+Odniesienie z zadania 229 (3.0.4.19, PostgreSQL 14, najpóźniejszy węzeł, przebieg 2): **322 ms** (1 × 100) i **549 ms** (3 × 100).
+
+Wniosek: po przejściu na PostgreSQL 17 i pgjdbc 42.7.14 czas do indeksu jest taki sam lub nieco lepszy (1 × 100: 262–328 ms, 3 × 100: 429–514 ms). Różnice między przebiegami (ok. 20%) są większe niż różnica względem 229, więc nie przypisuję poprawy PostgreSQL 17 (przypuszczenie: rozrzut hosta, CPU zmierzone dla całego hosta). Regresji nie ma. CPU netto na paczkę ma duży rozrzut między przebiegami (4,5–8,3 i 12,8–17,5 core-s), więc nie służy do porównania z 229.
