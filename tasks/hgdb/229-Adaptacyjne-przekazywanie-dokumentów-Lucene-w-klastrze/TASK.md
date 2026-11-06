@@ -213,3 +213,31 @@ Decyzja autora po pomiarze A: (1) logi rozbicia czasu u sekretarza i odbiorcy, (
 - Testy: `SharedStoreWritersTest` (4: `flush` czeka na zapisy z czterech wątków i wynik jest równoległy, jeden wątek, pełna kolejka z odrzuceniami bez zawieszenia `flush`, magazyn bez pamięci), `SharedCaseObjectStoreTest` (6) i `SharedLuceneDocumentStoreTest` (4), `CaseIndexerUpdateRunnerTest` (4) bez zmian.
 
 Po wydaniu 3.0.4.17 autor porównuje: zależność czasu od liczby wątków (`writerThreads` 1, 4, 8; parametr w `mercury.properties` węzłów jak `notifyBeforeWrite`), nowa i stara kolejność, logi z węzłów (`docker logs … | grep -E "Sekretarz:|Odbiorca:"`).
+
+### Pomiar po wielu wątkach zapisujących (2026-11-06, build 3.0.4.17, konfiguracja domyślna: nowa kolejność, `writerThreads=4`)
+
+Ten sam tryb pomiaru (`mierz-indeks.py --cpu`, 10 paczek po 2 rozgrzewkowych, 2 przebiegi). Czas do indeksu (p50, ms) i CPU netto na paczkę 100 spraw:
+
+| scenariusz | przebieg | node1 | node2 | node3 | CPU netto na paczkę |
+|---|---|---|---|---|---|
+| 1 węzeł × 100 | 1 | 530 | 609 (zapis) | 546 | 8,71 core-s |
+| 1 węzeł × 100 | 2 | 466 | 494 (zapis) | 446 | 4,66 core-s |
+| 3 węzły × 100 | 1 | 970 | 1111 | 1013 | 18,60 core-s |
+| 3 węzły × 100 | 2 | 1009 | 1076 | 966 | 14,54 core-s |
+
+Porównanie z A (jeden wątek zapisujący, ten sam build 3.0.4.16, przebieg 2): 1 × 100 najpóźniejszy węzeł **494 wobec 610 ms (ok. −19%)**, 3 × 100 **1076 wobec 1293 ms (ok. −17%)**; CPU netto 4,66 wobec 5,33 i 14,54 wobec 15,94 core-s (ok. −13% i −9%, w granicach rozrzutu). Wynik zbliża się do M0 (511 i 1020 ms na starym buildzie) i jest poniżej starej kolejności na 3.0.4.16 tylko dla 1 × 100 (610 ms); dla 3 × 100 stara kolejność (989 ms) jest nadal o ok. 90 ms szybsza. Poprawa jest więc wyraźna, ale umiarkowana (kilkanaście procent), a nie rzędu wielkości: **publikacja nie była jedynym składnikiem czasu**.
+
+Do rozbicia składników potrzebne są logi z węzłów (`Sekretarz:` i `Odbiorca:`) z tego pomiaru i z wariantów `W1` (jeden wątek) i `W8` (osiem wątków): ile trwa `flush`, ile mapowanie, ile zapis i `commit`, jaka jest średnia długość zapisu do Terracotty (czas zapisów podzielony przez liczbę zapisów) i czy odbiorcy mają trafienia (CPU).
+
+#### Logi odbiorców z pomiaru (2026-11-06 14:23–, pliki `226-…/M1_mercury-three-node-cluster-mercury-node{1,2,3}-1.log`)
+
+Pliki dostarczył autor (`docker logs … | grep`). Plik node2 (MASTER) jest **pusty**: brak linii `Sekretarz:`; node1 i node3 mają po 79 linii `Odbiorca:`.
+
+| odbiorca | paczek | wpisów | trafienia pamięci | chybienia | czas aktualizacji paczki, mediana (min–max) | paczki po 100 wpisów: mediana (min–max), ms na wpis |
+|---|---|---|---|---|---|---|
+| node1 | 79 | 9709 | 9552 | 1 | 268 ms (46–570) | 212 ms (111–404), 2,1 ms |
+| node3 | 79 | 9709 | 9552 | 1 | 275 ms (63–561) | 252 ms (94–521), 2,5 ms |
+
+Wnioski z logów odbiorców: (1) **przekazywanie dokumentów działa: 9552 trafień i 1 chybienie** (odbiorca praktycznie nigdy nie mapuje sam; liczba wpisów jest większa od liczby trafień o wpisy usunięć z czyszczenia), (2) odbiorca potrzebuje ok. 2–2,5 ms na wpis (paczka 100 wpisów: ok. 210–250 ms: odczyt `Case` z bazy, `take` z Terracotty, zapis do indeksu i `commit`), więc **nawet bez mapowania aktualizacja indeksu przez odbiorcę nie jest tania**; (3) paczki od MASTER mają do 100 wpisów (76, 24, 88, 100, …): sekretarz dzieli większy ruch na paczki po ok. 100.
+
+**Brak linii `Sekretarz:` w logu node2 wymaga wyjaśnienia:** możliwe, że node2 pracuje na obrazie 3.0.4.16 (publikuje dokumenty, ale nie ma logu rozbicia czasu i ma jeden wątek zapisujący), np. kontener nie został odtworzony na 3.0.4.17; wtedy pomiar „D4” nie odzwierciedla zmiany wielowątkowej. Do sprawdzenia: obraz kontenera node2 i linia startowa `Przekazywanie dokumentów Lucene włączone (… wątki zapisujące: N)`.
