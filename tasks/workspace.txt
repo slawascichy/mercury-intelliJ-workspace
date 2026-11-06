@@ -66,13 +66,13 @@ netsh winsock reset
 
 * Obsługa Git
 ```bash
-export TAG_VERSION="3.0.4.14"
+export TAG_VERSION="3.0.4.15"
 git tag -a ${TAG_VERSION} -m "Wersja ${TAG_VERSION}"
 git push origin
 git push origin ${TAG_VERSION}
 ```
 ```bash
-export BRANCH_VERSION=hgdb-211
+export BRANCH_VERSION=hgdb-226
 git push origin ${BRANCH_VERSION}
 ```
 ```bash
@@ -133,6 +133,6 @@ https://github.com/slawascichy/hgdb/issues/118
 219-Wydajność-generowania-plików-Excel
    B220-Filtry-i-sortowanie-w-eksporcie-widoków
   D222-[GUI]-Panel-monitorowania-sekretarzy
->226-Pomiar-zapisu-na-Linuksie-Tomcat-Terracotta
+  D226-Pomiar-zapisu-na-Linuksie-Tomcat-Terracotta
 227-Logowanie-w-klastrze-sesje-Tomcat
 229-Adaptacyjne-przekazywanie-dokumentów-Lucene-w-klastrze

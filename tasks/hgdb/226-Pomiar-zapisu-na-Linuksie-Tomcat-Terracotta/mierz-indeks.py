@@ -77,6 +77,8 @@ def main():
     ap.add_argument("--batch", type=int, default=1, help="liczba spraw wstawianych naraz w jednym pomiarze")
     ap.add_argument("--threads", type=int, default=8, help="liczba równoległych zapisów w paczce (na każdy piszący węzeł)")
     ap.add_argument("--all-writers", action="store_true", help="tryb paczki: zapisy jednocześnie na wszystkich węzłach (batch spraw na każdy)")
+    ap.add_argument("--cpu", action="store_true", help="tryb paczki: zmierz zużycie CPU hosta (NodeMonitorRest) w oknie serii; bez kontroli kompletności i z rzadszym odpytywaniem")
+    ap.add_argument("--cpu-baseline", type=float, default=30.0, help="czas pomiaru bazowego CPU bez obciążenia, s (przed serią)")
     a = ap.parse_args()
     secret = os.environ["CLIENT_SECRET"]
     nodes = [Node(x) for x in a.nodes.split(",")]
@@ -121,7 +123,36 @@ def main():
         results = {i: [] for i in range(len(nodes))}
         totals = {i: [] for i in range(len(nodes))}
         incomplete = 0
+
+        def cpu_now():
+            """Liczniki CPU hosta z NodeMonitorRest (ostatnie bicie serca węzła; liczniki są wspólne dla hosta)."""
+            st, out = nodes[0].post("/mercury-ws-app/monitor/NodeMonitorRest/load", {"context": {"userName": "admin"}}, tok)
+            dto = json.loads(out).get("dto") or []
+            r = {n["nodeName"]: (n["cpuTotalMillis"], n["cpuIdleMillis"]) for n in dto if n.get("cpuTotalMillis")}
+            return r
+
+        def cpu_fresh():
+            """Czeka na nowy odczyt (kolejne bicie serca), zwraca (total, idle) średnio po węzłach."""
+            first = cpu_now()
+            while True:
+                time.sleep(0.5)
+                cur = cpu_now()
+                if cur and cur != first:
+                    vals = list(cur.values())
+                    return (sum(v[0] for v in vals) / len(vals), sum(v[1] for v in vals) / len(vals))
+
+        f0 = None
+        if a.cpu:
+            b0 = cpu_fresh()
+            time.sleep(a.cpu_baseline)
+            b1 = cpu_fresh()
+            dt, di = b1[0] - b0[0], b1[1] - b0[1]
+            f0 = (dt - di) / dt if dt > 0 else 0.0
+            print("CPU bazowe hosta bez obciążenia: %.2f%% (okno %.0f core-s)" % (f0 * 100, dt / 1000.0))
+        cpu0 = None
         for i in range(1, a.warm + a.n + 1):
+            if a.cpu and i == a.warm + 1:
+                cpu0 = cpu_fresh()
             ids, lock = [], threading.Lock()
             errors = []
             last_by_writer = {}
@@ -164,6 +195,8 @@ def main():
                         now = time.perf_counter()
                         times[idx] = ((now - t0) * 1000.0, (now - t_start) * 1000.0)
                         return
+                    if a.cpu:
+                        time.sleep(0.05)  # rzadsze odpytywanie, by nie zawyżać CPU
                 times[idx] = None
 
             th = [threading.Thread(target=poll, args=(k, n)) for k, n in enumerate(nodes)]
@@ -173,8 +206,9 @@ def main():
                 t.join()
             # kontrola kompletności (poza pomiarem czasu): czy wszystkie sprawy paczki są w indeksie każdego węzła
             missing = 0
-            for node in nodes:
-                missing += sum(1 for cid in ids if not found(node, cid))
+            if not a.cpu:
+                for node in nodes:
+                    missing += sum(1 for cid in ids if not found(node, cid))
             if missing:
                 incomplete += 1
             if i > a.warm:
@@ -182,6 +216,15 @@ def main():
                     results[k].append(times[k][0] if times.get(k) else None)
                     totals[k].append(times[k][1] if times.get(k) else None)
             time.sleep(1.0)
+        cpu_line = None
+        if a.cpu and cpu0 is not None:
+            cpu1 = cpu_fresh()
+            dt, di = cpu1[0] - cpu0[0], cpu1[1] - cpu0[1]
+            busy = dt - di
+            net = busy - (f0 or 0.0) * dt
+            cpu_line = ("CPU hosta w oknie serii: okno %.0f core-s, zajęte %.1f core-s (%.1f%%), netto po odjęciu CPU bazowego %.1f core-s, "
+                        "na paczkę %.2f core-s" % (dt / 1000.0, busy / 1000.0, busy / dt * 100 if dt else 0, net / 1000.0, net / 1000.0 / a.n))
+            print(cpu_line)
         print("\npaczka %d spraw (%d równoległych zapisów): czas do pojawienia się OSTATNIEJ sprawy w indeksie węzła (ms)" % (a.batch, a.threads))
         print("niekompletnych paczek (w chwili kontroli brakowało spraw): %d" % incomplete)
         print("%-42s %4s %12s %12s %12s" % ("węzeł", "n", "p50 koniec", "p90 koniec", "p50 początek"))

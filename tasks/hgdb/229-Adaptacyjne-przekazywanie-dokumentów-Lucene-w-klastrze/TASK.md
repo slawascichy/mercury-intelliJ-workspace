@@ -81,4 +81,40 @@ u sekretarza. Nie zmierzono jedynego spodziewanego zysku: oszczędności CPU odb
 
 ## Wyniki
 
-(do uzupełnienia)
+### Pomiar CPU hosta podczas paczki (2026-11-06)
+
+Źródło: `NodeMonitorRest/load` (`/mercury-ws-app/monitor/NodeMonitorRest/load`, pola `cpuTotalMillis` i `cpuIdleMillis` z `NodeStatusDto`, odświeżane z biciem serca co 5 s). Liczniki są **wspólne dla hosta** (trzy węzły na `devops-box-01` zwracają niemal identyczne wartości), więc mierzymy łączne zużycie CPU maszyny, a nie CPU poszczególnych węzłów. Narzędzie: `226-…/mierz-indeks.py --cpu`: 2 paczki rozgrzewkowe, potem 10 paczek po 100 spraw (z jednego węzła albo `--all-writers`: po 100 z każdego), bez kontroli kompletności i z rzadszym odpytywaniem indeksu (50 ms); CPU bazowe hosta bez obciążenia mierzone 20 s przed serią i odejmowane (`netto = zajęte − bazowe × okno`). Host ma ok. 16 rdzeni (okno 346 core-s na ok. 22 s). Wartości w core-s (sekundy CPU wszystkich rdzeni).
+
+#### M1 (przekazywanie dokumentów włączone)
+
+| scenariusz | przebieg | CPU bazowe | netto, 10 paczek | netto na paczkę |
+|---|---|---|---|---|
+| 1 węzeł × 100 spraw | 1 | 0,83% | 50,0 core-s | 5,00 core-s |
+| 1 węzeł × 100 spraw | 2 | 2,53% | 37,3 core-s | 3,73 core-s |
+| 3 węzły × 100 spraw | 1 | 1,56% | 159,3 core-s | 15,93 core-s |
+| 3 węzły × 100 spraw | 2 | 2,50% | 147,0 core-s | 14,70 core-s |
+
+Uwaga: CPU bazowe hosta waha się 0,8–2,5% (inne obciążenie maszyny), a zużycie netto różni się między przebiegami o ok. 25% (1 węzeł) i ok. 8% (3 węzły), więc pomiar ma duży rozrzut; do porównania z M0 potrzeba co najmniej 2 przebiegów każdego wariantu.
+
+
+#### M0 (przekazywanie dokumentów wyłączone)
+
+| scenariusz | przebieg | CPU bazowe | netto, 10 paczek | netto na paczkę |
+|---|---|---|---|---|
+| 1 węzeł × 100 spraw | 1 | 1,03% | 88,7 core-s | 8,87 core-s |
+| 1 węzeł × 100 spraw | 2 | 1,18% | 53,8 core-s | 5,38 core-s |
+| 3 węzły × 100 spraw | 1 | 1,32% | 187,0 core-s | 18,70 core-s |
+| 3 węzły × 100 spraw | 2 | 1,12% | 147,3 core-s | 14,73 core-s |
+
+#### Porównanie CPU hosta M1 i M0 (netto na paczkę, core-s; przebieg 1 / 2)
+
+| scenariusz | M1 (przekazywanie włączone) | M0 (wyłączone) | M0 − M1 |
+|---|---|---|---|
+| 1 węzeł × 100 spraw | 5,00 / 3,73 | 8,87 / 5,38 | +3,9 / +1,7 (M0 zużywa o ok. 30–44% więcej) |
+| 3 węzły × 100 spraw | 15,93 / 14,70 | 18,70 / 14,73 | +2,8 / 0,0 (M0 o 0–15% więcej) |
+
+Wnioski:
+1. **Przekazywanie dokumentów oszczędza CPU hosta, choć wynik jest zaszumiony.** Dla paczki z jednego węzła M1 zużywa o ok. 30–44% mniej CPU niż M0 (3,7–5,0 wobec 5,4–8,9 core-s na 100 spraw), w obu przebiegach kierunek jest ten sam. Dla 3 × 100 różnica jest mniejsza (0–15%): w drugim przebiegu równa. Rozrzut między przebiegami tego samego wariantu (do 40%) jest porównywalny z częścią różnicy, więc wynik traktować jako kierunek, nie wartość.
+2. **Skala oszczędności zgadza się z kosztem mapowania.** Różnica 1,7–3,9 core-s na 100 spraw w scenariuszu z jednym zapisującym to ok. 17–39 ms CPU na sprawę dla dwóch odbiorców, czyli ok. 9–20 ms na odbiorcę, co mieści się w rzędzie mapowania `FSMServiceOrder` zmierzonym w zadaniu 118 (6,6–9,5 ms na typową sprawę, więcej dla ciężkich). W scenariuszu 3 × 100 oszczędność jest mała, bo CPU zdominował zapis (REST, baza) na trzech węzłach, a sekretarz mapuje wszystkie 300 spraw, więc odbiorca oszczędza tylko część mapowania.
+3. **Cena to opóźnienie (zadanie 226, etap 3):** w M1 odbiorcy mają indeks później o 40–70% (paczka 100: 780–840 wobec 450–485 ms; 3 × 100: 1,5 wobec 1,1 s). Przekazywanie opłaca się więc CPU, nie czasowi. **To uzasadnia zmianę z tego zadania:** zmiana kolejności (wiadomość JMS przed zapisem do własnego indeksu sekretarza, ale po publikacji dokumentów) powinna zachować oszczędność CPU i zlikwidować większość kary czasowej.
+4. **Ograniczenia pomiaru:** liczniki CPU są wspólne dla hosta (nie da się rozdzielić CPU na węzły ani odróżnić mapowania od zapisu do bazy i REST), baza zajmuje część CPU w obu wariantach, CPU bazowe maszyny zmienia się 0,8–2,5%. Do dokładnego rozdzielenia kosztu mapowania potrzebny jest licznik czasu mapowania w `CaseIndexer` (log na poziomie debug lub metryka), czego nie zrobiono.
