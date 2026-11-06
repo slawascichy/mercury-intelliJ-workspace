@@ -1,0 +1,12 @@
+# Wariant WR0 zadania 229: szablon mercury.properties z obrazu mercury-hgdb-3.0.4.18 + parametry: mercury.lucene.indexer.writeThreads=0
+# Skopiuj obok docker-compose.yml razem z plikiem mercury.properties z tego katalogu.
+services:
+  mercury-node1:
+    volumes:
+      - ./mercury.properties:/opt/mercury-3.0/docker-init-config/config/mercury.properties:ro
+  mercury-node2:
+    volumes:
+      - ./mercury.properties:/opt/mercury-3.0/docker-init-config/config/mercury.properties:ro
+  mercury-node3:
+    volumes:
+      - ./mercury.properties:/opt/mercury-3.0/docker-init-config/config/mercury.properties:ro
