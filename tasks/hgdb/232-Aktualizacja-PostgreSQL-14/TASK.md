@@ -1,6 +1,6 @@
 # [232] Aktualizacja PostgreSQL 14 (koniec wsparcia 2026-11-12)
 
-Status: **założone 2026-11-06**, rozpoznanie wykonane, decyzja o wersji docelowej do podjęcia przez autora. Numer zadania tymczasowy: autor może go zmienić (numeracja zadań bywa przesuwana przez numery PR).
+Status: **w toku (2026-11-06)**: implementacja i testy lokalne wykonane, czeka na commit autora, wydanie wersji mercury (3.0.4.20), obrazy i migrację klastra. Numer zadania tymczasowy: autor może go zmienić (numeracja zadań bywa przesuwana przez numery PR).
 
 ## Po co
 
@@ -43,12 +43,30 @@ Z tego wynika:
 5. **Migracja danych:** skrypt i opis w README kompozycji i w docusaurusie (dump `pg_dumpall` z kontenera 14 i odtworzenie w 17, albo `pg_upgrade`), z kopią zapasową przed migracją i zmianą wolumenów; Helm (`image.mainTag`, wolumen).
 6. **Wydanie:** nowe obrazy, test dymny, wypchnięcie do Nexusa, informacja o migracji w notatkach wydania.
 
-## Decyzje autora
+## Decyzje autora (2026-11-06)
 
-- Wersja docelowa: 17 czy 18.
-- Zakres wymiany sterownika JDBC (obraz serwera i `mercury-cmd`) w tym zadaniu czy osobno.
-- Czy klaster na `devops-box-01` migrujemy w ramach zadania (dane testowe: archiwum bufora indeksu ok. 145 tys. wierszy, dane CMIS i `FSMServiceOrder`), czy stawiamy go od nowa.
+1. Wersja docelowa: **17** (17.11).
+2. Wymiana sterownika JDBC jest **w tym zadaniu** (pgjdbc 42.7.14: obraz serwera, `mercury-cmd` w obrazie, ActiveMQ, zależność testowa w `mercury/pom.xml`).
+3. Klaster **migrujemy**, a przy okazji powstaje instrukcja migracji.
 
-## Wyniki
+## Zmiany
 
-(do uzupełnienia)
+- mercury: `pom.xml`, zależność testowa pgjdbc 42.7.14.
+- mercury-docker: `postgresql/Dockerfile` (`ARG POSTGRES_VERSION=17.11`), `activemq/Dockerfile` i `activemq/lib/postgresql-42.7.14.jar`, `mercury-3.0/Dockerfile` (usunięcie starych jarów, kopia 42.7.14 z `docker-init-config/jdbcdrivers`), `bin/postgres-migrate.sh`, README bazy i trzech kompozycji.
+- docusaurus-hgdb (EN i PL): `005_Configuration/PostgreSQL_upgrade.mdx`, wpis w `index.mdx`; składnia MDX sprawdzona.
+- Obserwacje 161 (jary w pakiecie `mercury-cmd`) i 162 (Helm, `pg_upgrade`).
+
+## Wyniki testów (PostgreSQL 17.11, pgjdbc 42.7.14)
+
+- Test dymny kompozycji jedno- i dwuwęzłowej: bez błędów.
+- Migracja PG14 → PG17 skryptem `postgres-migrate.sh`: liczby wierszy 147 tabel zgodne, odtwarzanie bez nieoczekiwanych błędów.
+- Skrypty partycjonowania `01`–`07`: 0 błędów.
+- `DatasetScenario`: 1/1.
+- Wydajności nie mierzono (pomiar `mierz-indeks.py` po migracji klastra, porównanie z zadaniem 229).
+
+## Do zrobienia
+
+1. Autor: commit zmian, wydanie lokalne mercury 3.0.4.20 (README zakłada „3.0.4.20 and later”; poprawić, jeśli numer będzie inny).
+2. Claude po sygnale: `set-versions.sh`, pakiet mercury-cmd, build obrazów (przed pushem zachować rollback: stary obraz PG14 jako `ibpm/postgres:mercury-hgdb-3.0-pg14`), smoke test, push do Nexusa.
+3. Autor: migracja klastra na `devops-box-01` wg `docs/005_Configuration/PostgreSQL_upgrade` lub README bazy; potem pomiary.
+4. Decyzje otwarte: wymiana jarów w katalogu dev-servera (obs. 161), test Helm (obs. 162).
