@@ -1,6 +1,6 @@
 # [229] Adaptacyjne przekazywanie dokumentów Lucene w klastrze (kolejność operacji sekretarza)
 
-Status: **założone 2026-11-05**, wniosek z zadania 226 (etap 3).
+Status: **zrealizowane 2026-11-06** (zmiany w kodzie w wydaniach 3.0.4.16–3.0.4.19, wyniki pomiarów i rekomendacja: sekcja „Podsumowanie i rekomendacja” na końcu; zamknięcie po decyzji autora), wniosek z zadania 226 (etap 3).
 https://github.com/slawascichy/hgdb/issues/229
 
 ## Po co
@@ -334,3 +334,102 @@ Linie `Indeks:` (po poprawce wzorca `grep`): node2 20 paczek, node1 i node3 po 7
 **Wnioski:** (1) u sekretarza **ok. połowa czasu paczki (257 z 525 ms) to praca poza fazami**, rosnąca z liczbą wpisów (ok. 1 ms na wpis; 33 ms dla paczki 48 wpisów). Przyczyna (z kodu): pętla po wpisach woła po kolei `containsInActiveTransactions`, a to zdalny odczyt z klastrowej pamięci `CaseGlobalTransactionCache` (z `consistency="strong"`), a dla zakończonych transakcji także zdalne `remove`; sekretarz robi to pierwszy, odbiorcy trafiają już na usunięte wpisy (u nich tylko ok. 0,18 ms na wpis). (2) `commit` ma teraz 65–200 ms (mediana 71–134, wartości skrajne do 330 ms) przy jednym segmencie na paczkę; to nadal największy pojedynczy koszt po stronie odbiorców (134–150 ms dla dużych paczek). (3) `flush` 2 ms, odświeżenie czytnika 0 ms, zapis dokumentów 5–24 ms: pomijalne.
 
 **Zmiana w 3.0.4.19 (repozytorium `mercury`, gałąź `hgdb-229`):** sprawdzenie aktywnych transakcji spraw paczki **równolegle** w puli wątków (od 16 spraw; mniejsze paczki po kolei), przed pętlą po wpisach (`CaseIndexerBusinessSupport.findCasesInActiveTransactions`); wynik taki sam jak przy sprawdzaniu po kolei (zbiór spraw w transakcji, wpisy usunięć pomijane, błąd z puli propagowany). Nowy składnik logu `Indeks:`: `sprawdzenie transakcji N ms`. Testy: `CaseIndexerTransactionCheckTest` (5: mała paczka po kolei, duża równolegle z tym samym wynikiem i czasem poniżej 500 ms wobec 800 ms po kolei, usunięcia pomijane, brak menedżera lub pusta lista, błąd propagowany), `CaseIndexerUpdateRunnerTest` (6), `DatasetScenario` (1/1). Oczekiwany efekt u sekretarza: `inne` z ok. 257 do kilkudziesięciu ms dla paczki ok. 250 wpisów, `razem` z ok. 525 do ok. 300 ms.
+
+### Pomiar na buildzie 3.0.4.19: równoległe sprawdzanie transakcji (2026-11-06, konfiguracja domyślna, bez override)
+
+Czas do indeksu (p50, ms) i CPU netto na paczkę 100 spraw:
+
+| scenariusz | przebieg | node1 | node2 | node3 | CPU netto na paczkę |
+|---|---|---|---|---|---|
+| 1 węzeł × 100 | 1 | 358 | 298 (zapis) | 328 | 7,97 core-s |
+| 1 węzeł × 100 | 2 | 321 | 281 (zapis) | 322 | 4,70 core-s |
+| 3 węzły × 100 | 1 | 408 | 426 | 382 | 17,85 core-s |
+| 3 węzły × 100 | 2 | 549 | 546 | 547 | 13,53 core-s |
+
+Przebieg 2, najpóźniejszy węzeł (przebieg 1 dla 3 × 100: 426 ms wobec 786 ms w 3.0.4.18, ale w tym buildzie przebieg 2 jest wolniejszy niż 1, czego w 3.0.4.18 nie było: rozrzut między przebiegami do ok. 30%):
+
+| build | 1 × 100 | 3 × 100 |
+|---|---|---|
+| 3.0.4.17 (4 wątki zapisu pamięci, dawny zapis do indeksu) | 494 ms | 1076 ms |
+| 3.0.4.18 (zapis do indeksu jednym wątkiem) | 371 ms | 618 ms |
+| **3.0.4.19 (równoległe sprawdzanie transakcji)** | **322 ms** | **549 ms** |
+
+Względem 3.0.4.18: −13% (1 × 100) i −11% (3 × 100) w przebiegu 2; CPU 4,70 wobec 4,76 i 13,53 wobec 13,14 core-s (bez zmiany). Łącznie od 3.0.4.17: −35% i −49%. Rozbicie (czy `inne` u sekretarza faktycznie spadło) wymaga logów `Indeks:` z tego pomiaru.
+
+#### Logi z 3.0.4.19 (pliki `226-…/19_mercury-three-node-cluster-mercury-node{1,2,3}-1.log`): rozbicie czasu paczki
+
+node2: 18 linii `Indeks:` i 19 `Sekretarz:`; node1 i node3: po 75 `Indeks:` i 79 `Odbiorca:`; błędu `Cannot commit` brak. Średnie (ms):
+
+| węzeł, paczki | n | rozmiar | sprawdzenie transakcji | przygotowanie | wywołanie po przyg. | zapis dok. | flush | commit | inne | razem |
+|---|---|---|---|---|---|---|---|---|---|---|
+| sekretarz, duże | 9 | 246 | **74** | 190 | 19 | 27 | 3 | **174** | 2 | 491 |
+| sekretarz, małe | 9 | 53 | 7 | 31 | 26 | 5 | 2 | 142 | 2 | 218 |
+| odbiorcy, duże | 44 | 236 | 14 | 18 | 0 | 26 | 3 | **195** | 2 | 261 |
+| odbiorcy, małe | 102 | 79 | 5 | 11 | 0 | 12 | 2 | 110 | 2 | 145 |
+
+Odbiorcy: 19 092 trafienia pamięci współdzielonej, 0 chybień. Sekretarz, zapisy dokumentów do pamięci: ok. 2,2 ms na zapis na wątek (4 wątki), flush 0 ms.
+
+**Wnioski:**
+1. **Sprawdzenie transakcji po zrównolegleniu: 74 ms (paczka ≈ 246 wpisów) zamiast ok. 257 ms**, a `inne` spadło do 2 ms (wcześniej 257 ms): z logu znika cała nieopisana praca. Do momentu powiadomienia odbiorców sekretarz potrzebuje teraz ok. 265 ms (sprawdzenie 74 + przygotowanie 190) wobec ok. 385 ms w 3.0.4.18.
+2. **`commit` jest największym składnikiem po stronie odbiorców i drugim u sekretarza:** 195 ms średnio u odbiorców (mediana 188, zakres 127–411) i 174 ms u sekretarza (mediana 153) dla dużych paczek; w 3.0.4.18 było 150 i 96 ms. Rozrzut i wzrost między budowami wskazują, że `commit` zależy od obciążenia dysku (5 ms na synchroniczny zapis, scalanie segmentów w tle) bardziej niż od kodu.
+3. **Ścieżka krytyczna dużej paczki zgadza się z pomiarem:** sekretarz do powiadomienia ok. 265 ms + JMS 19 ms, potem odbiorca ok. 260 ms (sprawdzenie 14 + przygotowanie 18 + zapis 26 + commit 195) daje ok. 545 ms, czyli to, co pomiar pokazał dla 3 × 100 (549 ms). Zapis własny sekretarza (27 + 174 ms) idzie równolegle z odbiorcami.
+4. Pozostałe możliwości skrócenia (nie wprowadzone): przygotowanie dokumentów u sekretarza (190 ms, praca CPU 10 wątków współdzielona z trzema JVM, Terracottą i bazą na jednej maszynie), `commit` (rzadszy `commit` z czytnikiem NRT zmienia trwałość, wymaga osobnej decyzji; szybszy dysk na indeksy).
+
+Do domknięcia porównania na tym samym buildzie (3.0.4.19): M0 (przekazywanie wyłączone) oraz opcjonalnie WR0 (`writeThreads=0`).
+
+### M0 (przekazywanie wyłączone) na buildzie 3.0.4.19 (2026-11-06)
+
+Czas do indeksu (p50, ms) i CPU netto na paczkę 100 spraw:
+
+| scenariusz | przebieg | node1 | node2 | node3 | CPU netto na paczkę |
+|---|---|---|---|---|---|
+| 1 węzeł × 100 | 1 | 407 | 403 (zapis) | 408 | 9,21 core-s |
+| 1 węzeł × 100 | 2 | 327 | 333 (zapis) | 328 | 4,78 core-s |
+| 3 węzły × 100 | 1 | 478 | 501 | 479 | 17,86 core-s |
+| 3 węzły × 100 | 2 | 563 | 507 | 540 | 15,70 core-s |
+
+**Porównanie domyślnej konfiguracji (przekazywanie włączone) z M0 na tym samym buildzie 3.0.4.19** (najpóźniejszy węzeł, p50 w ms; CPU netto na paczkę 100 spraw w core-s; przebieg 1 / przebieg 2):
+
+| scenariusz | czas, przekazywanie włączone | czas, M0 | CPU, przekazywanie włączone | CPU, M0 |
+|---|---|---|---|---|
+| 1 węzeł × 100 | 358 / 322 | 408 / 333 | 7,97 / 4,70 | 9,21 / 4,78 |
+| 3 węzły × 100 | 426 / 549 | 501 / 563 | 17,85 / 13,53 | 17,86 / 15,70 |
+
+**Wniosek:** po usunięciu składników, które maskowały zysk (jednowątkowa publikacja i kosztowny `commit` na wielu segmentach, sekwencyjne sprawdzanie transakcji), przekazywanie dokumentów jest **nie wolniejsze niż M0** i miejscami szybsze (przebieg 1: −12% dla 1 × 100, −15% dla 3 × 100; przebieg 2: różnice poniżej rozrzutu), a zużycie CPU hosta jest o 0–14% niższe (3 × 100, przebieg 2: 13,53 wobec 15,70 core-s). Zysk jest umiarkowany, bo oszczędza tylko mapowanie dokumentów u odbiorców (w logach: ok. 2,2 ms na zapis, odbiorca ma 0 chybień), a czas paczki dominują `commit` i przygotowanie dokumentów u sekretarza.
+
+#### Logi M0 na 3.0.4.19 (pliki `226-…/19M0_mercury-three-node-cluster-mercury-node{1,2,3}-1.log`): praca na węzeł z przekazywaniem i bez
+
+Średnie z linii `Indeks:` (ms) dla dużych paczek (ok. 240 wpisów) i małych (ok. 50–80):
+
+| węzeł, paczki | tryb | sprawdzenie transakcji | przygotowanie dokumentów (mapowanie lub `take`) | zapis dok. | commit | razem |
+|---|---|---|---|---|---|---|
+| sekretarz, duże | przekazywanie włączone | 74 | 190 | 27 | 174 | **491** |
+| sekretarz, duże | M0 | 106 | 278 | 24 | 182 | **596** |
+| odbiorcy, duże | przekazywanie włączone | 14 | **18** | 26 | 195 | **261** |
+| odbiorcy, duże | M0 | 108 | **285** | 25 | 168 | **594** |
+| sekretarz, małe | włączone / M0 | 7 / 5 | 31 / 52 | 5 / 4 | 142 / 106 | 218 / 173 |
+| odbiorcy, małe | włączone / M0 | 5 / 15 | 11 / 107 | 12 / 10 | 110 / 95 | 145 / 234 |
+
+M0: odbiorcy 0 trafień i 0 chybień (przekazywanie wyłączone), mediana aktualizacji paczki 147 / 203 / 582 ms dla paczek ok. 44 / 89 / 238 wpisów (z przekazywaniem: 124 / 105 / 241 ms).
+
+**Co z tego wynika:** (1) przekazywanie dokumentów **skraca pracę odbiorcy nad dużą paczką z 594 do 261 ms (−56%)**, a przygotowanie dokumentów (mapowanie ok. 285 ms) zastępuje `take` w 18 ms; dla małych paczek z 234 do 145 ms (−38%). U sekretarza praca nad dużą paczką też spada (596 → 491 ms), bo mapowanie nie konkuruje o CPU z odbiorcami i sprawdzenie transakcji idzie 108 → 74 ms (w M0 trzy węzły naraz ścigają się o te same wpisy pamięci transakcji). (2) **Czas do indeksu całego klastra różni się w nieobciążonym klastrze mniej (549 wobec 563 ms)**, bo w M0 odbiorcy zaczynają od razu i pracują równolegle z sekretarzem, a z przekazywaniem czekają na jego przygotowanie (ok. 265 ms) i dopiero potem pracują (261 ms); w sumie ścieżka krytyczna jest podobna. (3) **Zysk przekazywania to zwolnienie ok. 330 ms pracy na odbiorcę na dużą paczkę:** w klastrze, który równocześnie obsługuje żądania użytkowników, ta oszczędność jest dostępna dla innych zadań węzła, czego pomiar na bezczynnym klastrze nie pokazuje (CPU hosta niższe o 0–14%, ale host ma 16 rdzeni i w pomiarze jest wykorzystany w 13–35%).
+
+## Podsumowanie i rekomendacja (2026-11-06)
+
+**Wynik:** czas do spójnych indeksów wszystkich węzłów dla paczki 100 spraw spadł z 826 ms (M1, 3.0.4.15) do 322 ms, a dla 3 × 100 z 1654 ms do 549 ms (przebieg 2, najpóźniejszy węzeł), czyli o ok. 60–67%, przy nie wyższym CPU. Przekazywanie dokumentów jest teraz równoważne z M0 pod względem czasu i niższe pod względem CPU (0–14%).
+
+**Co dało efekt (kolejno, 1 × 100 / 3 × 100 w przebiegu 2):**
+| zmiana | build | 1 × 100 | 3 × 100 |
+|---|---|---|---|
+| punkt wyjścia: M1 (przekazywanie, stara kolejność) | 3.0.4.15 | 826 ms | 1654 ms |
+| nowa kolejność, 4 wątki zapisu do pamięci współdzielonej (logi: flush 0 ms) | 3.0.4.17 | 494 ms | 1076 ms |
+| zapis do indeksu jednym wątkiem (jeden segment na paczkę, 5 ms na `fsync`) | 3.0.4.18 | 371 ms | 618 ms |
+| równoległe sprawdzanie aktywnych transakcji u sekretarza | 3.0.4.19 | 322 ms | 549 ms |
+
+**Rekomendacja:** zostawić przekazywanie dokumentów włączone (domyślne); zostawić `mercury.lucene.indexer.writeThreads=1` i `mercury.cache.luceneDocument.shared.writerThreads=4`; parametry `notifyBeforeWrite` (domyślnie `true`), `mercury.lucene.indexer.writeThreads=0` i `mercury.cache.luceneDocument.shared.enabled=false` zostają jako przełączniki diagnostyczne. Przyspieszenie pochodzi głównie z wyeliminowania kosztu, który nie był związany z samym przekazywaniem (zapis do indeksu wieloma wątkami, sekwencyjne zdalne sprawdzanie transakcji), więc zyskują także M0 i instalacje bez klastra (zapis do indeksu jednym wątkiem dotyczy każdego trybu).
+
+**Pozostałe możliwości (nie wprowadzone):** (1) `commit` (150–195 ms dla dużych paczek, rozrzut 38–411 ms) jest największym składnikiem po stronie odbiorców: szybszy dysk na indeksy (5 ms na synchroniczny zapis) albo rzadszy `commit` z czytnikiem NRT (zmiana trwałości, decyzja autora); (2) przygotowanie dokumentów u sekretarza (190 ms dla 246 spraw), praca CPU na jednej maszynie z trzema JVM; (3) wpis zbiorczy do pamięci współdzielonej (jeden wpis na grupę) nie jest potrzebny, bo `flush` trwa 0 ms.
+
+**Zmiany niezależne od zadania, wykonane przy okazji (obserwacje):** 156 (`mercury-transfer`), 157 (skrypty pomiarowe), 158 i 159 (`max_connections`, wątki zapisu pamięci współdzielonej), 160 (zapis do indeksu), poprawka `defaultAutoCommit="false"` w szablonie `context.xml.docker-init` obrazu i w przykładzie `mercury-cmd`.
+
+**Wydania i narzędzia:** obrazy `ibpm/mercury:mercury-hgdb-3.0.4.16` do `3.0.4.19` w Nexusie; `226-…/mierz-indeks.py` (tryby `--batch`, `--all-writers`, `--cpu`), `mierz-sprawe.sh`, `warianty/` (B, C, M0, M1-po-zapisie, W1, W8, W8-po-zapisie, AC, WR0) i `utworz-wariant.sh`; logi z węzłów (`AC_`, `18_`, `18i_`, `19_`).
