@@ -1,0 +1,12 @@
+# Wariant W8-po-zapisie zadania 229: szablon mercury.properties z obrazu mercury-hgdb-3.0.4.17 + parametry: mercury.cache.luceneDocument.shared.writerThreads=8 mercury.cache.luceneDocument.shared.notifyBeforeWrite=false
+# Skopiuj obok docker-compose.yml razem z plikiem mercury.properties z tego katalogu.
+services:
+  mercury-node1:
+    volumes:
+      - ./mercury.properties:/opt/mercury-3.0/docker-init-config/config/mercury.properties:ro
+  mercury-node2:
+    volumes:
+      - ./mercury.properties:/opt/mercury-3.0/docker-init-config/config/mercury.properties:ro
+  mercury-node3:
+    volumes:
+      - ./mercury.properties:/opt/mercury-3.0/docker-init-config/config/mercury.properties:ro
