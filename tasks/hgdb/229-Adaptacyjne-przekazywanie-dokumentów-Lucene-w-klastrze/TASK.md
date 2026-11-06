@@ -157,3 +157,59 @@ Zmiany (repozytorium `mercury`):
 Testy: `CaseIndexerUpdateRunnerTest` (4 testy: jedna faza bez wywołania, wywołanie dokładnie raz po wszystkich przygotowaniach i przed pierwszym zapisem, brak wywołania i zapisów po błędzie przygotowania, puste zadania), `SharedLuceneDocumentStoreTest` i `SerializableDocumentTest` bez zmian (9 testów) oraz `DatasetScenario` (indeksowanie zestawu 116 po refaktoryzacji: 1/1, wynik bez zmian). Test integracyjny na klastrze wymaga wydania `mercury` i obrazu (autor wydaje lokalnie; pakiet w `mercury-cmd` i obrazy buduję ja).
 
 Poniżej: wyniki pomiaru po zmianie (do uzupełnienia po wdrożeniu na klaster).
+
+### Pomiar po zmianie (2026-11-06, build 3.0.4.16)
+
+Obraz `ibpm/mercury:mercury-hgdb-3.0.4.16` (digest `sha256:b048fd65…effe`), klaster 3 węzły na `devops-box-01`, MASTER na node2; te same narzędzia i parametry co wyżej (`mierz-indeks.py --cpu`, paczka 100 spraw z jednego węzła i 3 × 100 naraz, 10 paczek po 2 rozgrzewkowych, 2 przebiegi).
+
+#### Stara kolejność na nowym buildzie (`notifyBeforeWrite=false`, `warianty/M1-po-zapisie`), czas do indeksu (p50, ms) i CPU
+
+| scenariusz | przebieg | node1 | node2 | node3 | CPU netto na paczkę |
+|---|---|---|---|---|---|
+| 1 węzeł × 100 | 1 | 638 | 352 (zapis) | 630 | 9,08 core-s |
+| 1 węzeł × 100 | 2 | 608 | 330 (zapis) | 610 | 4,47 core-s |
+| 3 węzły × 100 | 1 | 1024 | 693 | 975 | 16,93 core-s |
+| 3 węzły × 100 | 2 | 980 | 688 | 989 | 13,78 core-s |
+
+**Uwaga (do wyjaśnienia):** wyniki starej kolejności na nowym buildzie są szybsze niż M1 na buildzie 3.0.4.15 w tym samym trybie pomiaru (odbiorcy 1 × 100: 608–638 ms wobec 826–907 ms; 3 × 100: 975–1024 wobec ok. 1500–1650 ms; węzeł zapisujący 330–352 wobec 442–476 ms), czyli zbliżone do M0 (odbiorcy 511–606 ms). Dwie możliwe przyczyny: (a) refaktoryzacja `updateIndexByKeys` (najpierw mapowanie całej grupy, potem zapis) przyspieszyła sam sekretarz, (b) przełącznik `notifyBeforeWrite=false` nie został zastosowany na węzłach i klaster pracuje już w nowej kolejności. Rozstrzygnięcie: potwierdzenie na węzłach (`grep notifyBeforeWrite /opt/mercury-3.0/config/mercury.properties`) i porównanie z wariantem A (domyślnym) po przestawieniu klastra.
+
+#### Wariant A: nowa kolejność (konfiguracja domyślna, build 3.0.4.16), czas do indeksu (p50, ms) i CPU
+
+(Etykieta w skrypcie `M0n`, błędnie nazwana podczas pomiaru; według autora klaster pracował bez override, czyli w M1 z nową kolejnością.)
+
+| scenariusz | przebieg | node1 | node2 | node3 | CPU netto na paczkę |
+|---|---|---|---|---|---|
+| 1 węzeł × 100 | 1 | 809 | 792 (zapis) | 659 | 9,81 core-s |
+| 1 węzeł × 100 | 2 | 583 | 610 (zapis) | 596 | 5,33 core-s |
+| 3 węzły × 100 | 1 | 1109 | 1198 | 1150 | 20,38 core-s |
+| 3 węzły × 100 | 2 | 1169 | 1293 | 1214 | 15,94 core-s |
+
+#### Porównanie wszystkich wariantów (przebieg 2, czas do indeksu p50 w ms: najpóźniejszy węzeł; CPU netto na paczkę 100 spraw)
+
+| wariant | 1 × 100: czas (najpóźniejszy węzeł) | 1 × 100: CPU | 3 × 100: czas | 3 × 100: CPU |
+|---|---|---|---|---|
+| M1 build 3.0.4.15 (przekazywanie, stara kolejność) | 826 | 3,73 | 1654 | 14,70 |
+| M0 build 3.0.4.15 (bez przekazywania) | 511 | 5,38 | 1020 | 14,73 |
+| stara kolejność, build 3.0.4.16 (`notifyBeforeWrite=false`) | 610 | 4,47 | 989 | 13,78 |
+| **A: nowa kolejność, build 3.0.4.16** | 610 | 5,33 | 1293 | 15,94 |
+
+**Wnioski (ostrożne: pomiary na różnych buildach i po osobnych restartach klastra, CPU bazowe hosta 1–2,5%, rozrzut CPU do 40%):**
+1. **Nowa kolejność (A) nie poprawia czasu względem starej na tym samym buildzie:** dla 1 × 100 jest taki sam (610 ms, profil „wszystkie węzły naraz”: sekretarz kończy razem z odbiorcami, 592–610 ms, wobec 330–352 ms u sekretarza w starej kolejności), dla 3 × 100 jest gorszy (1293 wobec 989 ms). CPU w A jest taki sam albo wyższy (5,33 wobec 4,47 i 15,94 wobec 13,78 core-s). Zmiana kolejności samego powiadomienia nie usuwa wąskiego gardła.
+2. **Prawdopodobne wąskie gardło (z kodu, niezmierzone):** publikacja dokumentów to `SharedStoreSupport.writeAsync`: **jeden** wątek zapisujący (`ThreadPoolExecutor(1, 1)`), każdy dokument osobnym `cache.put` do regionu `CaseMapperShared` z `consistency="strong"` (odpowiedź serwera Terracotty przed kolejnym zapisem). `store.flush()` przed wysłaniem JMS czeka, aż ten jeden wątek opróżni kolejkę, więc czas do powiadomienia odbiorców rośnie liniowo z liczbą dokumentów (przy ok. 2–5 ms na zapis: 100 dokumentów ok. 200–500 ms, 300 dokumentów ok. 600–1500 ms) i to on wyznacza czas, w którym odbiorcy startują, niezależnie od tego, czy sekretarz zapisuje własny indeks przed czy po powiadomieniu. W nowej kolejności zapis własny sekretarza dochodzi na końcu ścieżki (po `flush` i wysłaniu), stąd gorszy wynik sekretarza i, przy 3 × 100, odbiorców (rywalizacja o CPU i Terracottę).
+3. **Porównanie ze starym buildem (M1 3.0.4.15 szybszy o ok. 40% po refaktoryzacji, M1po 610 wobec 826 ms) jest zaszumione**: inny stan środowiska (restart klastra, obciążenie hosta), więc nie przypisuję poprawy refaktoryzacji bez powtórzenia M1 na starym buildzie.
+
+**Proponowane kolejne kroki (do decyzji autora):**
+- **Pomiar rozbicia czasu u sekretarza** (jedna linia logu INFO na paczkę: czas mapowania, `flush`, wysyłki JMS, zapisu i `commit`, liczba dokumentów i zapisów z kolejki), żeby zmierzyć, ile trwa `flush` (potwierdzić lub obalić hipotezę z pkt 2). Logi z węzłów musi dostarczyć autor.
+- **Przyspieszenie publikacji dokumentów:** (a) wiele wątków zapisujących w `SharedStoreSupport` (parametr, np. 4–8 dla `CaseMapperShared`; domyślnie 1 dla pamięci obiektów spraw), albo (b) jeden wpis na grupę spraw (`SCN` i numer grupy zadania) zamiast jednego na sprawę, z odczytem całej grupy przez odbiorcę (kilkadziesiąt razy mniej obiegów do serwera). Po poprawie pomiary A, M0 i starej kolejności ponownie.
+- **Uwaga o kolejce:** `ArrayBlockingQueue(1000)` z `DiscardPolicy` odrzuca po cichu zapisy powyżej 1000 oczekujących (paczka ponad 1000 spraw publikowana nie w całości, odbiorca mapuje brakujące sam); do zapisania w obserwacjach.
+
+### Implementacja: logi rozbicia czasu i wiele wątków zapisujących (2026-11-06, po pomiarze A)
+
+Decyzja autora po pomiarze A: (1) logi rozbicia czasu u sekretarza i odbiorcy, (2) przyspieszenie publikacji dokumentów wieloma wątkami zapisującymi. Zmiany (repozytorium `mercury`, gałąź `hgdb-229`):
+- **`SharedStoreSupport`** (obserwacja 159): parametr liczby wątków zapisujących (domyślnie 1, jak dotąd, dla `SharedCaseObjectStore`), `flush()` oparty na liczniku oczekujących zapisów (poprzedni zakładał jeden wątek: zlecenie zatrzaskowe w kolejce), licznik odrzuceń (pełna kolejka 1000) i łącznego czasu zapisów; metody `getWriteMillis`, `getDiscarded`, `getWriterThreads`.
+- **`SharedLuceneDocumentStore`**: parametr `mercury.cache.luceneDocument.shared.writerThreads` (domyślnie 4, zakres 1–32), statystyki rozszerzone o czas zapisów, odrzucone i liczbę wątków.
+- **Log sekretarza** (`LucCaseSaveBufferBusiness`): jedna linia na paczkę z przekazywaniem dokumentów (INFO od 20 wpisów, mniejsze paczki DEBUG): `[SCN:n] Sekretarz: paczka N wpisów, powiadomienie przed/po zapisem do indeksu: przygotowanie dokumentów X ms, flush pamięci X ms, wysyłka JMS i wybudzenie X ms, zapis do indeksu i commit X ms, razem X ms; pamięć współdzielona: zapisy +N (czas zapisów +X ms), odrzucone +N, wątki zapisujące N`. Dla kolejności „po zapisie” (`notifyBeforeWrite=false`) przygotowanie wynosi 0, a mapowanie i zapis są w jednym czasie.
+- **Log odbiorcy** (`LuceneCaseSaveBuffersForIndexConsumer`): `Odbiorca: paczka N wpisów od węzła X: aktualizacja indeksu X ms, trafienia pamięci współdzielonej +N, chybienia +N` (trafienia to dokumenty pobrane z pamięci; chybienia oznaczają mapowanie na odbiorcy).
+- Testy: `SharedStoreWritersTest` (4: `flush` czeka na zapisy z czterech wątków i wynik jest równoległy, jeden wątek, pełna kolejka z odrzuceniami bez zawieszenia `flush`, magazyn bez pamięci), `SharedCaseObjectStoreTest` (6) i `SharedLuceneDocumentStoreTest` (4), `CaseIndexerUpdateRunnerTest` (4) bez zmian.
+
+Po wydaniu 3.0.4.17 autor porównuje: zależność czasu od liczby wątków (`writerThreads` 1, 4, 8; parametr w `mercury.properties` węzłów jak `notifyBeforeWrite`), nowa i stara kolejność, logi z węzłów (`docker logs … | grep -E "Sekretarz:|Odbiorca:"`).

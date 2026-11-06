@@ -83,14 +83,10 @@ git checkout master && git pull && git branch -d ${BRANCH_VERSION}
 ```bash
 claude --resume aa3430ea-1399-481a-aba9-9d5786b44249
 ```
+## Praca z docker na devops-box-01
+export HGDB_REGISTRY=nexus.scisoftware.local:5000/
+docker login nexus.scisoftware.local:5000 -u claude
 
-
-```
-hgdb-118 Poprawienie mechanizmów obsługi pamięci podręcznych
-
-https://github.com/slawascichy/hgdb/issues/118
-
-```
 
 ## Dodałem nowe zadanie:
 
