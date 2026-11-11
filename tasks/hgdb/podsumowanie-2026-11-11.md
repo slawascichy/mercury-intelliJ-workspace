@@ -12,7 +12,7 @@
 
 ## Do wiedzy
 
-- **Ujednolicenie zmienia decyzję z 2026-10-27:** `hgdb-client-open` jest teraz na `sccommon` 2.0.0.4, a SecurityProvider (IBM BPM) nie kompilował się nawet na 2.0.0.1. Nie sprawdzano zgodności stosu cache klienta z BPM.
+- **Klient a SecurityProvider (IBM BPM):** `hgdb-client-open` był już na stosie `sccommon` 2.x i ehcache 3.6.1 (decyzja z 2026-10-27, dziś 2.0.0.2 → 2.0.0.4 w tej samej linii), a SecurityProvider zostaje na `sccommon` 1.0.8.4-jdk1.7 i ehcache 2.10.1. Brak zależności kodu lub poma między nimi; styk jest tylko w BPM, przez `mercury-client` (zamrożony). Szczegóły w odpowiedzi z 2026-11-11.
 - Dependabot podbił w kliencie `commons-io` do 2.14.0, reszta projektów ma 2.11.0 (dryf).
 - Generator OpenAPI zgłasza brak klucza `schema.CaseHeader.isDocumentType` (obs. 164).
 - Dev-server: `ehcache.properties` nie znaleziony (stary wpis) i connector AJP 8009 bez `secret` (niezwiązane z PG).
