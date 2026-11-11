@@ -1,6 +1,6 @@
 # [232] Aktualizacja PostgreSQL 14 (koniec wsparcia 2026-11-12)
 
-Status: **w toku (2026-11-06)**: implementacja i testy lokalne wykonane, wersja 3.0.4.20 wydana, klaster zmigrowany przez autora, pomiary wydajności wykonane (2026-11-07); do zamknięcia: rytuał (PR, merge). Numer zadania tymczasowy: autor może go zmienić (numeracja zadań bywa przesuwana przez numery PR).
+Status: **w toku (2026-11-06)**: implementacja i testy lokalne wykonane, wersja 3.0.4.20 wydana, klaster zmigrowany przez autora, pomiary wydajności wykonane (2026-11-06); do zamknięcia: rytuał (PR, merge). Numer zadania tymczasowy: autor może go zmienić (numeracja zadań bywa przesuwana przez numery PR).
 
 ## Po co
 
@@ -71,7 +71,7 @@ Z tego wynika:
 3. Autor: migracja klastra na `devops-box-01` wg `docs/005_Configuration/PostgreSQL_upgrade` lub README bazy; potem pomiary.
 4. Decyzje otwarte: wymiana jarów w katalogu dev-servera (obs. 161), test Helm (obs. 162).
 
-## Pomiar wydajności po migracji klastra (2026-11-07)
+## Pomiar wydajności po migracji klastra (2026-11-06, wieczorem)
 
 Klaster 3 węzły na `devops-box-01`, PostgreSQL 17.11, `mercury` 3.0.4.20, konfiguracja domyślna bez override, MASTER na node2. Narzędzie `mierz-indeks.py --cpu` (10 paczek po 2 rozgrzewkowych, 2 przebiegi), logi `PG17_*.log`. Czas do indeksu węzła, p50 w ms (od końca zapisów), 0 niekompletnych paczek, wszystkie sprawy usunięte po teście.
 
