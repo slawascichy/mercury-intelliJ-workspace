@@ -72,7 +72,7 @@ git push origin
 git push origin ${TAG_VERSION}
 ```
 ```bash
-export BRANCH_VERSION=hgdb-232
+export BRANCH_VERSION=hgdb-161-sterownik-jdbc
 git push origin ${BRANCH_VERSION}
 ```
 ```bash
@@ -134,3 +134,4 @@ docker login nexus.scisoftware.local:5000 -u claude
 227-Logowanie-w-klastrze-sesje-Tomcat
   D229-Adaptacyjne-przekazywanie-dokumentów-Lucene-w-klastrze
   D232-Aktualizacja-PostgreSQL-14
+>234-NPE-w-MainController-dane-licencji
