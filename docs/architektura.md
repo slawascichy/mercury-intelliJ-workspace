@@ -62,7 +62,7 @@ flowchart TB
 | mercury-lib | – | `sccommon-utils`, `sccommon-cache`, `sccommon-eclipse-emf-api` |
 | mercury | mercury-lib | `sccommon-*` (utils, cache, ldap, mail, http-client, eclipse-emf-api), `ccrto-openapi`, `poi-toolkit` |
 | hgdb-client-open | mercury-lib, mercury (`hgdb-rmi-server-api`) | `sccommon-utils`, `sccommon-cache`, `ccrto-openapi`, `poi-toolkit` |
-| mercury-client | mercury-lib, hgdb-client-open (`hgdb-ws-client-cxf`, `hgdb-multi-client`) | `sccommon-*`, `tw4j`, biblioteki IBM BPM / WebSphere |
+| mercury-client (zamrożony) | mercury-lib 3.0.4.16, hgdb-client-open 3.0.3.3.0 (`hgdb-ws-client-cxf`, `hgdb-multi-client`, tranzytywnie `hgdb-rmi-server-api`) | `sccommon-utils` 1.0.8.4-jdk1.7, `sccommon-cache` 0.0.3-20180724, `tw4j` (z SecurityProvidera), biblioteki IBM BPM / WebSphere |
 | mercury-cmd | mercury-lib, mercury, hgdb-client-open | `sccommon-*`, `ccrto-openapi` |
 
 Biblioteki `sccommon`, `ccrto-openapi` i `poi-toolkit` też pochodzą od autora. Leżą
@@ -89,7 +89,7 @@ w `.idea/jarRepositories.xml`. Artefakty przekazuje się między projektami skry
    ```
 4. **mercury-client**: wymaga dostępu do bibliotek IBM BPM. README zaleca Javę 1.6/1.7
    i Maven 2.2.1, a POM ustawia `java.version=1.8`. Moduł `mercury-client-cmd` buduje się
-   osobno, z jego katalogu.
+   osobno, z jego katalogu (`./install.sh`). Projekt jest zamrożony; opis w `mercury-client/README.md`.
 5. **mercury-cmd**: buduje narzędzia oraz pakiet instalacyjny serwera.
 6. **docusaurus-hgdb** (niezależnie od powyższych): `npm install && npm run build`.
 
@@ -119,11 +119,11 @@ Wersja ma pięć pozycji (opis z `mercury-lib/README.md`):
 | Obszar | mercury (serwer) | mercury-lib | hgdb-client-open | mercury-client |
 |---|---|---|---|---|
 | Java | 1.8 | 1.8 | 1.8 | 1.8 wg POM (README: 1.6 / 1.7) |
-| Spring | 5.3.20 | 2.5.6 | 5.3.21 | 4.1.9.RELEASE |
-| Apache CXF | 3.0.12 | 3.0.10 | 3.0.10 | 2.7.15 |
+| Spring | 5.3.21 | 2.5.6 | 5.3.21 | 4.1.9.RELEASE |
+| Apache CXF | 3.0.12 | 3.0.12 | 3.0.12 | 2.7.15 |
 | Hibernate | 5.6.14.Final | – (JPA 2.1) | – | – |
 | Lucene | 7.5.0 | – | – | – |
-| Ehcache | 3.6.1 | 3.6.1 | 2.10.1 | 2.10.1 |
+| Ehcache | 3.6.1 | 3.6.1 | 3.6.1 | 2.10.1 |
 | Logowanie | slf4j 1.7.36 + Logback 1.2.13 | slf4j 1.7.36 + Logback 1.2.13 | slf4j 1.7.36 + Logback 1.2.13 | slf4j 1.7.36 + Logback 1.2.13 |
 | Serwer aplikacji | Tomcat 8.0.32 (`mercury-server`) | – | – | IBM WebSphere 8.5.5 |
-| Inne | ActiveMQ 5.16, OpenCMIS 1.1.0, POI 5.2.1, Jackson 2.13 | POI 5.2.1, Jackson 2.12 | – | IBM BPM 8.6.3, Axis 1.4 |
+| Inne | ActiveMQ 5.16, OpenCMIS 1.1.0, POI 5.2.1, Jackson 2.18.11 | POI 5.2.1, Jackson 2.18.11 | Jackson 2.18.11, commons-io 2.14.0 | IBM BPM 8.6.3, Axis 1.4 |

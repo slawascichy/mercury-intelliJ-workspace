@@ -32,7 +32,7 @@ to submoduł git repozytorium `scisoftware-webpage`, dostępny pod ścieżką
 | [`mercury-lib`](../mercury-lib) | Biblioteki współdzielone: rdzeń, encje, API usług, DTO | `io.hgdb.mercury:mercury-lib:3.0.4-SNAPSHOT` | [docs/moduly/mercury-lib.md](docs/moduly/mercury-lib.md) |
 | [`mercury`](../mercury) | Serwer: DAO, Lucene, logika biznesowa, WS, GUI, aplikacje WAR | `io.hgdb:mercury:3.0.4.2` | [docs/moduly/mercury.md](docs/moduly/mercury.md) |
 | [`hgdb-client-open`](../hgdb-client-open) | Publiczny klient Java (CXF, multi-instancja) | `io.hgdb.mercury:hgdb-client-open:3.1.4-SNAPSHOT` | [docs/moduly/hgdb-client-open.md](docs/moduly/hgdb-client-open.md) |
-| [`mercury-client`](../mercury-client) | Biblioteki klienckie i integracje dla IBM BPM | `io.hgdb.ibmbpm:mercury-client:3.0.8.6-SNAPSHOT` | [docs/moduly/mercury-client.md](docs/moduly/mercury-client.md) |
+| [`mercury-client`](../mercury-client) | Biblioteki klienckie i integracje dla IBM BPM | `io.hgdb.ibmbpm:mercury-client:4.0.4.17-SNAPSHOT` | [docs/moduly/mercury-client.md](docs/moduly/mercury-client.md) |
 | [`mercury-cmd`](../mercury-cmd) | Narzędzia linii komend, benchmark, transfer, pakiet instalacyjny | `io.hgdb.mercury:mercury-cmd:3.0.8.6-SNAPSHOT` | [docs/moduly/mercury-cmd.md](docs/moduly/mercury-cmd.md) |
 | [`mercury-docker`](../mercury-docker) | Obrazy i kompozycje Docker, wykresy Helm | – (nie jest projektem Maven) | [docs/moduly/mercury-docker.md](docs/moduly/mercury-docker.md) |
 | [`docusaurus-hgdb`](../scisoftware-webpage/docusaurus-hgdb) | Serwis [hgdb.org](https://hgdb.org): dokumentacja produktu, wsparcie techniczne, blog (Docusaurus 3) | – (projekt Node.js) | [docs/moduly/docusaurus-hgdb.md](docs/moduly/docusaurus-hgdb.md) |
@@ -105,8 +105,8 @@ Maven (📦). Pełne opisy są w plikach `docs/moduly/`.
 | `mercury-bpm` | Główna biblioteka dla IBM BPM: akcje i mapowanie obiektów |
 | `mercury-bpm-fix` | Elementy usunięte z `mercury-bpm`, zachowane dla zgodności wstecz |
 | `mercury-integrations` | Implementacja integracji IBM BPM z Mercury DB |
-| `mercury-client-cmd` ⚠️ 📦 | Polecenia CLI klienta BPM i instalacja bibliotek w `Lombardi/lib` serwera IBM BPM. Budowany osobno, wersja `3.20.8-SNAPSHOT` |
-| `mercury-data` ⚠️ | Szablon „Hello world” z nieaktualną zależnością. Poza reaktorem |
+| `mercury-client-cmd` ⚠️ 📦 | Polecenia CLI klienta BPM i instalacja bibliotek w `Lombardi/lib` serwera IBM BPM. Budowany osobno (`./install.sh` w katalogu modułu), rodzic i wersja `4.0.4.17-SNAPSHOT` |
+| `mercury-data` ⚠️ | Szablon „Hello world” zależny od klientów `hgdb-client-open`. Poza reaktorem |
 
 ### mercury-cmd – narzędzia linii komend
 
