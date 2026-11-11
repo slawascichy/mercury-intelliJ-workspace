@@ -1,6 +1,6 @@
 # [234] NullPointerException w `MainController.index` („Can't load license data.”)
 
-Status: **założone 2026-11-11, w kolejce (po obs. 161)**, przyczyna zidentyfikowana w kodzie (do potwierdzenia testem), poprawki jeszcze nie wprowadzono.
+Status: **w toku (2026-11-11)**: przyczyna potwierdzona testem, poprawka w `mercury-lib` (gałąź `hgdb-234`, niezacommitowana); do wydania `mercury-lib` i decyzji o `MainController`.
 
 ## Objaw
 
@@ -49,3 +49,16 @@ Ten sam błąd dotyka innych wywołań `getDateLoggerFormat()`: `CaseDAO.java:27
 
 - Nie odtworzono błędu na działającym serwerze. Z logu z 2026-11-05 nie wynika, która ścieżka wywołała wcześniej `getDateLongFormat()`.
 - Nie sprawdzono, od jakiej wersji `mercury-lib` istnieje błąd i czy wpływa na wersje wydane.
+
+## Wyniki (2026-11-11)
+
+- **Test odtwarzający:** `mercury-lib/mercury-core/src/test/java/pro/ibpm/mercury/config/MercuryConfigFormatsTest.java` (3 przypadki: logger po formacie daty długiej, odwrotna kolejność, niezależność formatów). Przed poprawką 2 z 3 czerwone (`getDateLoggerFormat()` zwraca `null`), czyli hipoteza z analizy potwierdzona.
+- **Poprawka:** `MercuryConfig.getDateLoggerFormat()` sprawdza `dateLoggerFormat == null` (było `dateLongFormat == null`), jedna linia.
+- **Po poprawce:** `MercuryConfigFormatsTest` 3/3 i `MercuryConfigTest` 1/1 zielone (`mvn -o test -pl mercury-core -Ddatabse.provider=POSTGRESQL -Duser=scichy -Dtest=MercuryConfigFormatsTest,MercuryConfigTest`).
+- **Przegląd getterów (punkt 3):** pozostałe gettery (`getDateFormat`, `getDateLongFormat`, `getLoggerAddDate`, `getNumberFormat`, `getCurrencyFormat`, `getCurrencyCode`, `getIntegerFormat`, `getSystemLang`, `getSystemTerritory`, `getSystemTimeZone`, `getSystemLocale`) sprawdzają to samo pole, które ustawiają. Błąd występował tylko w jednej metodzie.
+
+## Do zrobienia
+
+1. Autor: commit (`hgdb-234 Poprawka warunku w MercuryConfig.getDateLoggerFormat`), wydanie `mercury-lib` (kopie do `.m2`, numer wg rytuału), push, PR, merge.
+2. Decyzja: czy zabezpieczać `MainController.index` (błąd formatu daty kasuje całą sekcję danych licencji; `catch (Exception)`), czy zostawić po poprawce źródłowej. Przypuszczenie: po poprawce nie ma takiej potrzeby, bo `getDateLoggerFormat()` zawsze zwraca niepustą wartość.
+3. Po wydaniu `mercury-lib` w `mercury`: sprawdzić stronę `/` na dev-serverze (dane licencji) i brak wpisu `Can't load license data.` w logu.
