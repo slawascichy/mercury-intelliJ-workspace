@@ -120,7 +120,7 @@ Dokumentacja usług REST (zadanie 133, [etap 1](../../tasks/hgdb/133-Swagger-imp
 - **Zabezpieczenie.** Specyfikacja deklaruje schemat OAuth 2.0 `mercuryOAuth` (przepływ `password`, `POST /rest/token`) i wymaga go
   dla wszystkich operacji. Filtr `OAuthFilter` chroni ścieżki `/rest/service/**` (wzorzec z `mercury-security-config-db-1.0.0.xml`),
   a `/rest/openapi.json` i `/swagger-ui/` są publiczne.
-- **Jackson.** Serwer używa Jacksona 2.18.2 (`jackson.version` i `jackson.databind.version` w `mercury/pom.xml`; wcześniej 2.13.2).
+- **Jackson.** Serwer używa Jacksona 2.18.11 (`jackson.version` i `jackson.databind.version` w `mercury/pom.xml`; wcześniej 2.18.2, a przed tym 2.13.2).
   `org.mercury.gui.listeners.JacksonConstraintsListener` (`web.xml` obu aplikacji) znosi domyślny limit długości napisu w odczycie
   JSON-a (20 000 000 znaków od Jacksona 2.15), żeby duże wartości LOB w sprawach nadal się odczytywały.
 - **Języki** (zadanie 192, [TASK.md](../../tasks/hgdb/192-Lokalizacja-opisow-specyfikacji-i-tekstow-stalych/TASK.md)).

@@ -8,16 +8,17 @@
 | Źródła | `github.com/IBPM-S-A/mercury-docker`, `github.com/SciSoftwareSlawomirCichy/mercury-docker` |
 
 Definicje obrazów i kompozycji Docker do uruchomienia Mercury DB jako pojedynczego węzła
-lub klastra, oraz wykres Helm dla Kubernetes. Obrazy są publikowane w Docker Hub
-w przestrzeni `ibpm/`.
+lub klastra, oraz wykres Helm dla Kubernetes. Obrazy wydań ostatecznych są publikowane w Docker Hub
+w przestrzeni `ibpm/`. Obrazy robocze trafiają do Nexusa (`nexus.scisoftware.local:5000`, repozytorium
+`docker-hosted`).
 
 ## Obrazy
 
 | Katalog | Obraz | Baza | Opis |
 |---|---|---|---|
-| `mercury-3.0` | `ibpm/mercury:mercury-hgdb-3.0.3.2.11` | CentOS 8 | Serwer Mercury DB (Tomcat z aplikacjami serwera). |
+| `mercury-3.0` | `ibpm/mercury:mercury-hgdb-3.0.4.22` | CentOS 8 | Serwer Mercury DB (Tomcat z aplikacjami serwera). |
 | `mercury-lb` | `ibpm/mercury-lb:mercury-hgdb-3.0` | CentOS 8 | Nginx jako reverse proxy i load balancer węzłów klastra. Zawiera centrum certyfikatów. |
-| `postgresql` | `ibpm/postgres:mercury-hgdb-3.0` | – | Baza danych serwera i ActiveMQ. |
+| `postgresql` | `ibpm/postgres:mercury-hgdb-3.0` | `postgres:17.11` | Baza danych serwera i ActiveMQ. Od wydania 3.0.4.20 PostgreSQL 17 (wcześniej 14.24), wersję ustawia `ARG POSTGRES_VERSION`. Poprzednią wersję zachowuje tag `mercury-hgdb-3.0-pg14`. |
 | `activemq` | `ibpm/activemq:mercury-hgdb-3.0` | – | Broker JMS do komunikacji między węzłami. |
 | `ehcache` | `ibpm/ehcache:mercury-hgdb-3.0` | Oracle JDK 8 | Serwer Ehcache Clustered. Konfigurację wybierają zmienne `HGDB_NODE` (`node1`–`node3`) i `HGDB_NODES` (1–3). |
 | `openldap` | `ibpm/openldap:mercury-hgdb-3.0` | – | Katalog użytkowników. |
@@ -56,9 +57,24 @@ wdraża ten sam zestaw usług co kompozycja jednowęzłowa: ConfigMap, PV/PVC, P
 OpenLDAP, Ehcache, ActiveMQ, POI Server, węzeł Mercury i load balancer.
 `charts/README.md` opisuje dodanie sekretu do rejestru `docker.io`.
 
+## PostgreSQL 17 i migracja danych
+
+Wsparcie PostgreSQL 14 kończy się 2026-11-12, więc od wydania 3.0.4.20 obraz bazy jest oparty na
+PostgreSQL 17.11, a sterownik JDBC w obrazach serwera i ActiveMQ to pgjdbc 42.7.14.
+Katalog danych PostgreSQL nie jest zgodny między wersjami głównymi, więc istniejące instalacje muszą
+zmigrować dane przed pierwszym startem na nowych obrazach. Robi to skrypt `bin/postgres-migrate.sh`
+(dump `pg_dumpall` w kontenerze starej wersji, odtworzenie w nowej, porównanie liczby wierszy tabel,
+`vacuumdb`; stary katalog zostaje do wycofania zmian). Procedura jest w `postgresql/README.md`
+i na stronie `PostgreSQL_upgrade` w serwisie hgdb.org (EN, PL).
+
+W kompozycjach dwu- i trzywęzłowej `postgres-db` startuje z `max_connections=400` (pule JDBC do 200
+połączeń na węzeł), zob. [limit połączeń w klastrze](../postgresql-max-connections-klaster.md).
+Szablon `context.xml.docker-init` ustawia `defaultAutoCommit="false"` dla `jdbc/MercuryDB`
+i `jdbc/MercuryDBCommon` (wymaga tego `AbstractDAO.commitTransaction`).
+
 ## Licencja
 
 Przy pierwszym uruchomieniu serwer generuje 30-dniowy klucz próbny. Klucz produkcyjny
 wydaje IBPM S.A. na prośbę wysłaną na `mercury-key-registration@ibpm.pro`.
 
-Źródło: `mercury-docker/README.md` i README poszczególnych katalogów.
+Źródło: `mercury-docker/README.md`, `mercury-docker/postgresql/README.md` i README poszczególnych katalogów.
