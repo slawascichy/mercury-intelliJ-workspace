@@ -98,3 +98,14 @@ Klaster 3 węzły na `devops-box-01`, PostgreSQL 17.11, `mercury` 3.0.4.22 (pgjd
 | 3 × 100 naraz | 2 | 500 | 482 | 489 | 15,43 core-s |
 
 Wniosek: wyniki zgodne z pomiarem na 3.0.4.20 (1 × 100: 254–328 ms, 3 × 100: 428–514 ms). Regresji nie ma. CPU netto ma duży rozrzut między przebiegami, więc nie służy do porównań. Logów węzłów nie sprawdzono (kontenery klastra poza zasięgiem Claude'a).
+
+## Pomiar z pulami JDBC 85/25/15 (obs. 163, 2026-11-12)
+
+Klaster 3 węzły, obraz `mercury` 3.0.4.23 (wersja potwierdzona w `openapi.json` każdego węzła), pule `maxTotal` 85, 25, 15 (125 na węzeł, 375 przy `max_connections=400`). `mierz-indeks.py --cpu`, 3 × 100 naraz, 12 paczek po 2 rozgrzewkowych, 2 przebiegi, logi `T23_*.log`.
+
+| przebieg | node1 | node2 | node3 | CPU netto na paczkę |
+|---|---|---|---|---|
+| 1 | 387 | 385 | 392 | 19,35 core-s |
+| 2 | 393 | 417 | 367 | 15,19 core-s |
+
+Wynik jest w zakresie poprzednich pomiarów 3 × 100 (3.0.4.22, pule 140/40/20: 356–500 ms), 0 niekompletnych paczek, brak błędów zapisu. Ograniczenie pul nie pogorszyło czasu do indeksu. Nie sprawdzano logów węzłów pod kątem `too many clients already`.
