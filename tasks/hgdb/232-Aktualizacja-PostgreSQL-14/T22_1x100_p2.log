@@ -1,0 +1,16 @@
+== T22_1x100_p2: wêz³y mercury-docker.scisoftware.local:28080,mercury-docker.scisoftware.local:28081,mercury-docker.scisoftware.local:28082, zapis na mercury-docker.scisoftware.local:28081, sprawa wzorcowa FSMServiceOrder.2699, 12 pomiarów po 2 rozgrzewkowych, 2026-11-12 12:09
+CPU bazowe hosta bez obci¹¿enia: 1.42% (okno 505 core-s)
+CPU hosta w oknie serii: okno 475 core-s, zajête 68.7 core-s (14.5%), netto po odjêciu CPU bazowego 62.0 core-s, na paczkê 5.17 core-s
+
+paczka 100 spraw (8 równoleg³ych zapisów): czas do pojawienia siê OSTATNIEJ sprawy w indeksie wêz³a (ms)
+niekompletnych paczek (w chwili kontroli brakowa³o spraw): 0
+wêze³                                         n   p50 koniec   p90 koniec p50 pocz¹tek
+mercury-docker.scisoftware.local:28080 (pozosta³y)   12          301          393         1375
+mercury-docker.scisoftware.local:28081 (zapis)   12          271          387         1329
+mercury-docker.scisoftware.local:28082 (pozosta³y)   12          316          396         1380
+
+| wariant | paczka | wêze³ | n | min | p50 | p90 | max (od koñca zapisów, ms) | niekompletne |
+| T22_1x100_p2 | 100 | mercury-docker.scisoftware.local:28080 (pozosta³y) | 12 | 264 | 301 | 393 | 423 | 0 |
+| T22_1x100_p2 | 100 | mercury-docker.scisoftware.local:28081 (zapis) | 12 | 213 | 271 | 387 | 445 | 0 |
+| T22_1x100_p2 | 100 | mercury-docker.scisoftware.local:28082 (pozosta³y) | 12 | 264 | 316 | 396 | 418 | 0 |
+usuniêto 1400 z 1400 nowych spraw

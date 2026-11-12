@@ -85,3 +85,16 @@ Klaster 3 węzły na `devops-box-01`, PostgreSQL 17.11, `mercury` 3.0.4.20, konf
 Odniesienie z zadania 229 (3.0.4.19, PostgreSQL 14, najpóźniejszy węzeł, przebieg 2): **322 ms** (1 × 100) i **549 ms** (3 × 100).
 
 Wniosek: po przejściu na PostgreSQL 17 i pgjdbc 42.7.14 czas do indeksu jest taki sam lub nieco lepszy (1 × 100: 262–328 ms, 3 × 100: 429–514 ms). Różnice między przebiegami (ok. 20%) są większe niż różnica względem 229, więc nie przypisuję poprawy PostgreSQL 17 (przypuszczenie: rozrzut hosta, CPU zmierzone dla całego hosta). Regresji nie ma. CPU netto na paczkę ma duży rozrzut między przebiegami (4,5–8,3 i 12,8–17,5 core-s), więc nie służy do porównania z 229.
+
+## Pomiar po wymianie obrazów na 3.0.4.22 (2026-11-12)
+
+Klaster 3 węzły na `devops-box-01`, PostgreSQL 17.11, `mercury` 3.0.4.22 (pgjdbc 42.7.14), zapis na node2. Narzędzie `mierz-indeks.py --cpu` (12 paczek po 2 rozgrzewkowych, 2 przebiegi), logi `T22_*.log`. Czas do indeksu węzła, p50 w ms, 0 niekompletnych paczek, wszystkie sprawy usunięte po teście.
+
+| scenariusz | przebieg | node1 | node2 | node3 | CPU netto na paczkę |
+|---|---|---|---|---|---|
+| 1 × 100 z node2 | 1 | 363 | 276 | 348 | 10,45 core-s |
+| 1 × 100 z node2 | 2 | 301 | 271 | 316 | 5,17 core-s |
+| 3 × 100 naraz | 1 | 369 | 356 | 370 | 17,27 core-s |
+| 3 × 100 naraz | 2 | 500 | 482 | 489 | 15,43 core-s |
+
+Wniosek: wyniki zgodne z pomiarem na 3.0.4.20 (1 × 100: 254–328 ms, 3 × 100: 428–514 ms). Regresji nie ma. CPU netto ma duży rozrzut między przebiegami, więc nie służy do porównań. Logów węzłów nie sprawdzono (kontenery klastra poza zasięgiem Claude'a).
