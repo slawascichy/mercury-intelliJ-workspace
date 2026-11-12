@@ -52,10 +52,11 @@ flowchart LR
 
 ## Helm
 
-`charts/mercury-single-node` (wersja wykresu 0.1.0, `appVersion` 3.0.3.2.11, Kubernetes ≥ 1.16)
+`charts/mercury-single-node` (wersja wykresu 0.1.0, `appVersion` 3.0.4.23, Kubernetes ≥ 1.16)
 wdraża ten sam zestaw usług co kompozycja jednowęzłowa: ConfigMap, PV/PVC, PostgreSQL,
 OpenLDAP, Ehcache, ActiveMQ, POI Server, węzeł Mercury i load balancer.
 `charts/README.md` opisuje dodanie sekretu do rejestru `docker.io`.
+Wykres używa wolumenów NFS (sekcja `nfsVolumes`, nazwy PV stałe, więc jedno wydanie na klaster) i startuje od razu na PostgreSQL 17, więc migracja danych go nie dotyczy (obs. 162). Sprawdzony 2026-11-12 na klastrze kubeadm (Kubernetes 1.30, 3 węzły, NFS na masterze), szczegóły i znane ograniczenie (brak kolejności startu, obs. 165) w instrukcji na stronie `Kubernetes_installation` serwisu hgdb.org (EN, PL).
 
 ## PostgreSQL 17 i migracja danych
 
