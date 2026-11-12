@@ -126,4 +126,4 @@ Wersja ma pięć pozycji (opis z `mercury-lib/README.md`):
 | Ehcache | 3.6.1 | 3.6.1 | 3.6.1 | 2.10.1 |
 | Logowanie | slf4j 1.7.36 + Logback 1.2.13 | slf4j 1.7.36 + Logback 1.2.13 | slf4j 1.7.36 + Logback 1.2.13 | slf4j 1.7.36 + Logback 1.2.13 |
 | Serwer aplikacji | Tomcat 8.0.32 (`mercury-server`) | – | – | IBM WebSphere 8.5.5 |
-| Inne | ActiveMQ 5.16, OpenCMIS 1.1.0, POI 5.2.1, Jackson 2.18.11 | POI 5.2.1, Jackson 2.18.11 | Jackson 2.18.11, commons-io 2.14.0 | IBM BPM 8.6.3, Axis 1.4 |
+| Inne | ActiveMQ 5.16, OpenCMIS 1.1.0, POI 5.2.1, Jackson 2.18.11, commons-io 2.14.0 | POI 5.2.1, Jackson 2.18.11, commons-io 2.14.0 | Jackson 2.18.11, commons-io 2.14.0 | IBM BPM 8.6.3, Axis 1.4 |
