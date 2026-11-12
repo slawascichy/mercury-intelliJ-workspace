@@ -14,21 +14,32 @@ W zadaniu 226 (klaster trzywęzłowy na `devops-box-01`) wystąpił, gdy trzy w�
 
 ## Przyczyna
 
-Obraz `ibpm/mercury` (`apache-tomcat/conf/context.xml`) definiuje pule połączeń JDBC osobno dla trzech baz:
+Obraz `ibpm/mercury` (`apache-tomcat/conf/context.xml`) definiuje pule połączeń JDBC osobno dla trzech baz. Od wersji 3.0.4.23 (2026-11-12) wartość `maxTotal` każdej puli ustawia zmienna środowiskowa obrazu (domyślnie jak w tabeli):
 
-| źródło danych | baza | `maxTotal` | `minIdle` |
-|---|---|---|---|
-| `jdbc/MercuryDB` | `mercury-db` | 140 | 30 |
-| `jdbc/MercuryDBCommon` | `mercury-common` | 40 | 5 |
-| `jdbc/MercuryLdapDBPoSql` | `mercury-ldap` | 20 | 1 |
-| razem na węzeł | | **200** | 36 |
+| źródło danych | baza | zmienna | `maxTotal` (domyślnie) | `minIdle` |
+|---|---|---|---|---|
+| `jdbc/MercuryDB` | `mercury-db` | `POSTGRESQL_POOL_MAX_TOTAL` | 140 | 30 |
+| `jdbc/MercuryDBCommon` | `mercury-common` | `POSTGRESQL_POOL_COMMON_MAX_TOTAL` | 40 | 5 |
+| `jdbc/MercuryLdapDBPoSql` | `mercury-ldap` | `POSTGRESQL_POOL_LDAP_MAX_TOTAL` | 20 | 1 |
+| razem na węzeł | | | **200** | 36 |
 
-Przy trzech węzłach teoretyczny maksimum to 3 × 200 = 600 połączeń, a PostgreSQL ma domyślne `max_connections = 100`. Od 2026-11-06 kompozycje dwu- i trzywęzłowa w `mercury-docker` uruchamiają `postgres-db` z `max_connections=400` (`command: ["postgres", "-c", "max_connections=400"]`), a README kompozycji opisuje ten limit; dla innych wdrożeń (Helm, instalacje bez kompozycji) trzeba go ustawić samemu. Dochodzą połączenia narzędzi administracyjnych i `superuser_reserved_connections` (domyślnie 3).
+Wartość musi być dodatnią liczbą całkowitą, inaczej węzeł nie startuje. PostgreSQL ma domyślne `max_connections = 100`, więc już jeden węzeł z pulami domyślnymi (200) mógłby go przekroczyć, a trzy węzły dają teoretyczne maksimum 600. Dochodzą połączenia ActiveMQ (`jdbcPersistenceAdapter`), narzędzi administracyjnych i `superuser_reserved_connections` (domyślnie 3).
+
+Kompozycje w `mercury-docker` dopasowują pule i limit (stan z 2026-11-12; pule można nadpisać w `.env` kompozycji):
+
+| kompozycja | `maxTotal` (główna, wspólna, uwierzytelnianie) | na węzeł | razem | `max_connections` |
+|---|---|---|---|---|
+| jeden węzeł | 140, 40, 20 | 200 | 200 | 250 |
+| dwa węzły | 120, 40, 20 | 180 | 360 | 400 |
+| trzy węzły | 85, 25, 15 | 125 | 375 | 400 |
+
+Do 2026-11-06 kompozycje wielowęzłowe nie ustawiały limitu (domyślne 100), a pule były stałe (140, 40, 20). Dla innych wdrożeń (Helm, instalacje bez kompozycji) limit trzeba ustawić samemu.
 
 ## Ile ustawić
 
 - Minimum, które pokrywa realne obciążenie z pomiaru zadania 226: **400** (trzy węzły, 24 równoległe zapisy wyczerpywały 100).
-- Pełny zapas dla trzech węzłów to ok. 600 + rezerwa, ale każde połączenie zajmuje kilka MB pamięci serwera (`work_mem` i pamięć procesu), więc nie ustawiaj więcej, niż potrzeba.
+- Pomiar 3 × 100 z pulami 85/25/15 przy limicie 400 (zadanie 232, 2026-11-12, klaster 3.0.4.23): czas do indeksu 367–417 ms, bez pogorszenia względem pul 140/40/20.
+- Każde połączenie zajmuje kilka MB pamięci serwera (`work_mem` i pamięć procesu), więc nie ustawiaj więcej, niż potrzeba.
 - Zasada: `max_connections` ≥ liczba węzłów × suma `maxTotal` pul **albo** zmniejsz `maxTotal` w `context.xml`, żeby suma pul wszystkich węzłów mieściła się w limicie. Dla większych klastrów rozważ pulę pośrednią (np. PgBouncer).
 
 ## Jak zmienić na działającym klastrze (bez zmiany kompozycji)
@@ -58,6 +69,7 @@ Wartość bliska limitu przy zwykłym ruchu oznacza, że trzeba podnieść `max_
 ## Powiązane
 
 - Zadanie 226 (pomiar zapisu na Linuksie): `tasks/hgdb/226-Pomiar-zapisu-na-Linuksie-Tomcat-Terracotta/TASK.md`.
-- Obserwacja 158 w `docs/obserwacje.md`: wpis w README kompozycji `mercury-docker` i dopasowanie pul.
+- Obserwacje 158 i 163 w `docs/obserwacje.md`: wpis w README kompozycji `mercury-docker` i dopasowanie pul (163: zmienne `POSTGRESQL_POOL_*_MAX_TOTAL`).
+- Dokumentacja użytkowa: `docusaurus-hgdb`, strona `Database_connections`.
 
-Źródło: `mercury-docker/mercury-3.0/docker-init-config/apache-tomcat/conf/context.xml` (pule), pomiar zadania 226 (błąd i obciążenie).
+Źródło: `mercury-docker/mercury-3.0/docker-init-config/apache-tomcat/conf/context.xml.docker-init` i `bin/mercury-server.sh` (pule), kompozycje `mercury-docker/*/docker-compose.yml` (limity), pomiary zadań 226 i 232.
