@@ -131,7 +131,7 @@ docker login nexus.scisoftware.local:5000 -u claude
    B220-Filtry-i-sortowanie-w-eksporcie-widoków
   D222-[GUI]-Panel-monitorowania-sekretarzy
   D226-Pomiar-zapisu-na-Linuksie-Tomcat-Terracotta
-227-Logowanie-w-klastrze-sesje-Tomcat
+>227-Logowanie-w-klastrze-sesje-Tomcat
   D229-Adaptacyjne-przekazywanie-dokumentów-Lucene-w-klastrze
->232-Aktualizacja-PostgreSQL-14
+  D232-Aktualizacja-PostgreSQL-14
   D234-NPE-w-MainController-dane-licencji
