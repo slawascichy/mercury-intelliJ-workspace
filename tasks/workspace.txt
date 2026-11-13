@@ -72,7 +72,7 @@ git push origin
 git push origin ${TAG_VERSION}
 ```
 ```bash
-export BRANCH_VERSION=hgdb-227
+export BRANCH_VERSION=hgdb-237
 git push origin ${BRANCH_VERSION}
 ```
 ```bash
@@ -136,3 +136,4 @@ docker login nexus.scisoftware.local:5000 -u claude
   D232-Aktualizacja-PostgreSQL-14
   D234-NPE-w-MainController-dane-licencji
   D236-Deadlock-przy-rownoczesnym-starcie-wezlow-CMIS
+  D240-Ujednolicenie-wersji-zaleznosci-mercury-cmd-hgdb-client-open

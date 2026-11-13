@@ -52,7 +52,8 @@ ich utworzenia. Przed oparciem się na nich sprawdź w POM-ach, czy stan się ni
 - Spostrzeżenia i propozycje zmian dopisuj do `docs/obserwacje.md` z kolejnym numerem.
   Zrealizowane oznaczaj ✅, zamiast je usuwać. Znacznik ✅ stawiaj na początku **ostatniej kolumny** wiersza
   („Propozycja”), przed jej opisem, a potem data i krótki opis wykonania. Komórki z numerem nie zmieniaj. Nie dodawaj
-  kolumny statusu. Nowy wiersz dopisuj na końcu odpowiedniej tabeli, z tą samą liczbą kolumn co sąsiednie wiersze.
+  kolumny statusu. Obserwację wycofaną (np. wpisaną przez pomyłkę) oznacz ❌ w tym samym miejscu, z datą i powodem wycofania,
+  i też jej nie usuwaj. Nowy wiersz dopisuj na końcu odpowiedniej tabeli, z tą samą liczbą kolumn co sąsiednie wiersze.
 - Po dodaniu pliku w `docs/` dodaj link w `README.md` (tabela repozytoriów i sekcja „Dokumentacja”).
 - Opisuj tylko to, co da się zweryfikować w POM-ach, kodzie lub README. Wnioski
   niepotwierdzone oznaczaj jako przypuszczenie.

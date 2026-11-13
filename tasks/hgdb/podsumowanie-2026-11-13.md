@@ -9,7 +9,7 @@
 - **`mercury-docker`:** przy starcie (`mercury-server.sh`, `initTomcatCluster`) element `Cluster` w `server.xml` i deskryptory kontekstu aplikacji z authenticatorem; zmienne `TOMCAT_CLUSTER_MEMBERS` i `TOMCAT_CLUSTER_PORT`; kompozycje dwu- i trzywęzłowa; start przerywany przy błędnej konfiguracji lub braku klasy (w przeciwnym razie Tomcat uruchomiłby aplikację bez uwierzytelniania).
 - **Kubernetes (`mercury-test`):** chart zaktualizowany do 3.0.4.25 (`helm upgrade`), logowanie do GUI przez LB działa; chart jednowęzłowy, replikacja sesji wyłączona. Wcześniej: klaster `k8s-master` (dostęp, NFS, containerd), chart na PostgreSQL 17 (instrukcja na stronie `Kubernetes_installation`).
 - **Dokumentacja (docusaurus, PR #4 scalony):** nowa strona `Cluster_sessions` (EN i PL), uwagi w `Kubernetes_installation`, 13 brakujących tagów w `tags.yml`.
-- **Obserwacje:** 166 ✅, nowe 167 (klastrowy cache Hibernate w transakcji) i 168 (długi start węzła); w wierszu 165 poprawiony format.
+- **Obserwacje:** 166 ✅, nowa 167 (klastrowy cache Hibernate w transakcji); wpis 168 (długi start węzła) wycofany jako pomyłka; w wierszu 165 poprawiony format.
 - **Wcześniej tego dnia:** obs. 162 zamknięta (migracja na Helm niepotrzebna), 163 ✅ (pule JDBC zmiennymi), 164 ✅ (klucz tłumaczenia), commons-io 2.14.0.
 
 ## Do wiedzy
@@ -17,11 +17,11 @@
 - **Dane predefiniowane:** nie ma reguły „tylko master”. Każdy węzeł ładuje je raz na JVM, a równoległość jest tolerowana przez idempotentność (wyszukiwanie po `username`, zadania 156 i 172); przełącznik `mecrury.loadPredefinedValues.skip` (literówka w nazwie).
 - **Ryzyko:** `ClusterFormAuthenticator` zależy od zachowania `FormAuthenticator` z Tomcata 9.0.123 (`doAuthenticateExtended`, „note” `SESSION_ID`); po zmianie wersji Tomcata powtórzyć test logowania przez LB.
 - **Zasada pracy (pamięć `nowy-kod-w-galezi-zadania`):** nowy kod tylko w gałęzi zadania; wyjątek wyłącznie na wyraźne polecenie autora (236 w gałęzi `hgdb-227`). Zdarzyło mi się napisać klasę na `master` i poprawiłem to (`checkout -b`).
-- **Pomiary:** czas `Server startup` 82–148 s na węzeł, stos `healthy` po 200–245 s; nie rozdzielono wpływu klastra Tomcata od wdrażania `mercury-ws-app` (obs. 168).
+- **Pomiary:** czas `Server startup` 82–148 s na węzeł, stos `healthy` po 200–245 s; bez punktu odniesienia, więc to nie dowód usterki (obs. 168 wycofana).
 - **Sprzątnięte lokalnie:** tagi testowe obrazów 3.0.4.24, dane `D:\mercury-smoke`. Zostaje lokalny obraz pomocniczy `iptables-helper` (Docker) i środowisko testowe `mercury-test` w Kubernetesie (sekret `nexus-registry`).
 - **`mercury-lib`:** commons-io 2.14.0 czeka na wydanie (`minor_version.txt` 3.0.4.25); do tego czasu lib 3.0.4.24 w `mercury-cmd` i `hgdb-client-open`.
 
 ## Niezacommitowane
 
-- workspace: `227-…/TASK.md`, `236-…/TASK.md`, `docs/obserwacje.md` (166 ✅, 167, 168, format 165), `docs/moduly/mercury-docker.md`, `mercury.md`, `architektura.md`, `hgdb-client-open.md`, ten plik, `plan-2026-11-13.md` (oznaczenia), `plan-2026-11-16.md`.
+- workspace: `227-…/TASK.md`, `236-…/TASK.md`, `docs/obserwacje.md` (166 ✅, 167, 168 wycofana, format 165), `docs/moduly/mercury-docker.md`, `mercury.md`, `architektura.md`, `hgdb-client-open.md`, ten plik, `plan-2026-11-13.md` (oznaczenia), `plan-2026-11-16.md`.
 - Repozytoria z kodem są czyste (po rytuale). Do usunięcia przez autora: zdalna gałąź `origin/hgdb-227` w `docusaurus-hgdb`.
