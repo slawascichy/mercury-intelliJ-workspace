@@ -42,8 +42,9 @@ flowchart LR
 ## Stos technologiczny
 
 Spring 5.3.21, Apache CXF 3.0.10, Ehcache 3.6.1, slf4j 1.7.36 + Logback 1.2.13,
-`sccommon` 1.0.8.4-jdk1.7, `ccrto-openapi` 1.2-SNAPSHOT. Wersja serwera, z którą klient
-jest zgodny: `mercury.project.version=3.0.4.1`.
+`sccommon` 1.0.8.4-jdk1.7, `ccrto-openapi` 1.2-SNAPSHOT. Wersje serwera i biblioteki (stan 2026-11-13): `mercury.project.version=3.0.4.24` (`mercury-lib`: `mercury-core`,
+`mercury-entities`, `mercury-srv-api` i pozostałe) oraz `mercury.server.version=3.0.4.25` (serwer, artefakt
+`hgdb-rmi-server-api`); wersjonowane osobno.
 
 ## Budowanie
 

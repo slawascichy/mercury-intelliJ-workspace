@@ -36,6 +36,18 @@ Każdy węzeł ma własne wolumeny `mercury-upload-N` i `mercury-lucene-N` (inde
 Katalogi `activemq` i `poi-server` mają też własne, pomocnicze kompozycje do uruchomienia
 pojedynczej usługi z bazą PostgreSQL.
 
+**Sesje HTTP w klastrze (zadanie 227, obraz od 3.0.4.25).** LB (nginx) rozkłada żądania round-robin, więc logowanie FORM do GUI
+(`mercury-gui-registry`, `mercury-ws-app`) wymaga replikacji sesji między węzłami (Tomcat Cluster). Kompozycje dwu- i trzywęzłowa
+ustawiają w każdym węźle `TOMCAT_CLUSTER_MEMBERS` (nazwy hostów wszystkich węzłów po przecinku, razem z samym węzłem, np.
+`mercury-node1,mercury-node2,mercury-node3`; `HOST_NAME` musi być na liście), a port replikacji to `TOMCAT_CLUSTER_PORT`
+(domyślnie 4000, tylko między węzłami). Przy każdym starcie `bin/mercury-server.sh` (`initTomcatCluster`) sprawdza listę i klasę
+`org.mercury.gui.auth.ClusterFormAuthenticator` w `mercury-gui-core`, wstawia element `Cluster` do `server.xml` (szablon
+`conf/cluster.xml.docker-init`, członkostwo statyczne, `ReplicationValve` bez `.html`) i tworzy deskryptory
+`conf/Catalina/localhost/mercury-gui-registry.xml` oraz `mercury-ws-app.xml` (szablon `conf/context-form-cluster.xml.docker-init`,
+`landingPage` aplikacji). Błąd konfiguracji albo brak klasy przerywa start węzła: bez klasy Tomcat uruchomiłby aplikację bez
+uwierzytelniania. Pusty `TOMCAT_CLUSTER_MEMBERS` (jeden węzeł, chart Helm) wyłącza replikację. Opis dla użytkowników: strona
+`Cluster_sessions` serwisu hgdb.org (EN, PL).
+
 ```mermaid
 flowchart LR
     LB[mercury-lb<br/>Nginx] --> N1[mercury-node1]

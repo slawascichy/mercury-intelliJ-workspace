@@ -49,6 +49,10 @@ flowchart TB
   Lucene, logikę biznesową, usługi CXF (SOAP/REST) i Spring remoting (RMI / HTTP invoker),
   GUI oraz aplikacje WAR uruchamiane w Tomcacie.
 - **hgdb-client-open** to klient Java usług serwera. Obsługuje też wiele instancji (klaster).
+- **Logowanie i sesje w klastrze:** REST nie potrzebuje sesji (token OAuth w bazie i cache współdzielonym, ważny na każdym węźle).
+  Strony z formularzem logowania (GUI) używają sesji HTTP, więc przy LB z round-robin węzły replikują je przez Tomcat Cluster
+  (`DeltaManager`, członkostwo statyczne), z `ClusterFormAuthenticator` w `mercury-gui-core` (zadanie 227). `ip_hash` na LB
+  odrzucony: użytkownicy techniczni łączą się z jednego adresu i obciążaliby jeden węzeł.
 - **mercury-client** i **mercury-cmd** to rozwiązania zbudowane na klientach: integracje
   z IBM BPM i narzędzia administracyjne.
 - **mercury-docker** i **docusaurus-hgdb** nie zawierają kodu Java. Pierwsze definiuje obrazy

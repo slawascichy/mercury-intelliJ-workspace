@@ -1,6 +1,8 @@
 # [227] Logowanie i sesje w klastrze (Tomcat Cluster, sticky session)
 
-Status: **założone 2026-11-05**, po zadaniu 211b / po stabilizacji klastra trzywęzłowego na `devops-box-01`.
+Status: **zrobione 2026-11-13** (założone 2026-11-05, po zadaniu 211b i stabilizacji klastra trzywęzłowego na `devops-box-01`).
+Wdrożone w `mercury` 3.0.4.24 i 3.0.4.25, obraz `ibpm/mercury:mercury-hgdb-3.0.4.25` w Nexusie. Logowanie na kompozycji na
+`devops-box-01` sprawdził autor (2026-11-13): działa. Podzadanie: 236 (deadlock przy równoczesnym starcie węzłów).
 
 ## Po co
 
@@ -122,9 +124,42 @@ Uwaga do wcześniejszych wyników: w próbach z Redis i w pośrednich wersjach a
 
 **Do zrobienia przy wdrożeniu:** klasa w `mercury-gui-core` (jar w classpath Tomcata, zależność `provided` od Tomcat 9.0), `<distributable/>` i `META-INF/context.xml` w aplikacjach, `Cluster` w szablonie `server.xml.docker-init` (lista członków z `HGDB_NODE`/nazw hostów, filtr `ReplicationValve` bez `.html`), test w Kubernetesie (członkostwo: `KubernetesMembershipProvider`/`DNSMembershipProvider`), test regresji na zmianę wersji Tomcata (opieramy się na zachowaniu `FormAuthenticator` z 9.0.123: nazwa metody `doAuthenticateExtended`, note `SESSION_ID`). Nie sprawdzano: wylogowanie, wygasanie sesji, dłuższe obciążenie, `license-registry`.
 
-### Dalej
+## Podsumowanie (2026-11-13)
 
-(decyzja autora o opcji, potem wprowadzenie w `mercury-lb/docker-init-config/conf/{2,3}_mercury.conf` i w chartcie Helm (`sessionAffinity`/ingress); test GUI przy awarii węzła)
+**Decyzja:** replikacja sesji HTTP przez Tomcat Cluster (pomysł autora) z własnym `FormAuthenticator`. LB zostaje na round-robin.
+`ip_hash` odrzucony, bo użytkownicy techniczni łączą się z jednego adresu i cały ruch szedłby na jeden węzeł (pula połączeń
+obciążana tylko na nim). Redis (Redisson) sprawdzony i odrzucony: wynik niestabilny (0/36, 24/36, 12/36 poprawnych stron po
+zalogowaniu), do tego nowy komponent infrastruktury.
+
+**Co wdrożono:**
+
+| Repozytorium | Zmiana |
+| --- | --- |
+| `mercury` 3.0.4.24 | `org.mercury.gui.auth.ClusterFormAuthenticator` w `mercury-gui-core`, `<distributable/>` w `web.xml` aplikacji `mercury-gui-registry` i `mercury-ws-app`, właściwość `tomcat.version` (9.0.123) w parencie, `tomcat-catalina` w `gui-core` i `ws-app` na tej właściwości |
+| `mercury` 3.0.4.25 | poprawki podzadania 236 |
+| `mercury-docker` | `server.xml` z elementem `Cluster` i deskryptory kontekstu generowane przy starcie (`mercury-server.sh`, `initTomcatCluster`), zmienne `TOMCAT_CLUSTER_MEMBERS` i `TOMCAT_CLUSTER_PORT`, kompozycje dwu- i trzywęzłowa, wersje 3.0.4.25 (kompozycje, README, chart) |
+| `mercury-cmd` | `mercury.srv.version` 3.0.4.25 |
+| `hgdb-client-open` | `mercury.server.version` 3.0.4.25 (`mercury.project.version`, czyli `mercury-lib`, zostaje 3.0.4.24) |
+| `docusaurus-hgdb` | strona `Cluster_sessions` (EN, PL), uwagi w `Kubernetes_installation`, 13 tagów w `tags.yml` |
+
+**Testy (lokalnie, trzy węzły, LB round-robin):** logowanie FORM przez LB 6 z 6, strona po zalogowaniu 36 z 36, zmiana
+identyfikatora sesji po logowaniu 6 z 6, atak session fixation zablokowany, awaria dwóch z trzech węzłów bez utraty sesji,
+REST bez zmian. Szczegóły w sekcjach powyżej i w `prototyp/`. Test na kompozycji na `devops-box-01` (2026-11-13): logowanie działa.
+Kubernetes (`mercury-test`): chart jednowęzłowy, replikacja wyłączona, logowanie działa po aktualizacji do 3.0.4.25.
+
+**Nie sprawdzono:** wylogowanie, wygasanie sesji w klastrze, długie obciążenie, `license-registry` (jest `FormAuthenticator`, ale
+bez `<distributable/>`), członkostwo w Kubernetesie (Tomcat 9.0.123 ma `KubernetesMembershipProvider` i
+`DNSMembershipProvider`, chart ma jeden węzeł).
+
+**Ryzyka i uwagi na przyszłość:**
+
+- Authenticator opiera się na zachowaniu `FormAuthenticator` z Tomcata 9.0.123 (`doAuthenticateExtended`, „note” `SESSION_ID`). Po
+  zmianie wersji Tomcata powtórzyć test logowania przez LB (opisane w Javadoc klasy i na stronie dokumentacji).
+- Klasa musi być w `common.loader` Tomcata. Gdy jej brak, Tomcat uruchamia aplikację **bez uwierzytelniania** (stwierdzone
+  w teście); skrypt obrazu przerywa wtedy start.
+- Po zalogowaniu użytkownik trafia na `landingPage` aplikacji, a nie na adres żądany wcześniej (zapisane żądanie nie jest
+  replikowane).
+- `ReplicationValve` bez `.html` w filtrze (chronione strony kończą się na `.html`).
 
 ### Podzadanie 236 (2026-11-13)
 

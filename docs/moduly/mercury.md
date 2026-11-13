@@ -57,7 +57,7 @@ Opis zmian i kolejność wdrożenia: [wydanie 3.0.4.2](../wydanie-3.0.4.2.md).
 | Moduł | Typ | Java (main / test) | Opis |
 |---|---|---|---|
 | `mercury-ws-app` | **war** | 225 / 6 | Główna aplikacja WWW serwera: usługi SOAP, REST i RMI, dokumentacja WADL, specyfikacja OpenAPI i Swagger UI (patrz „OpenAPI i Swagger UI”), bindingi serwera CMIS. |
-| `mercury-gui-core` | jar | 78 / 11 | Baza aplikacji prezentacyjnych: Tomcat Realm łączący użytkowników z RDBMS i LDAP, OAuth 2.0. |
+| `mercury-gui-core` | jar | 78 / 11 | Baza aplikacji prezentacyjnych: Tomcat Realm łączący użytkowników z RDBMS i LDAP, OAuth 2.0; `org.mercury.gui.auth.ClusterFormAuthenticator` (logowanie FORM z replikacją sesji Tomcat Cluster przy LB z round-robin, zadanie 227; wymaga Tomcata 9.0.x, wersja kompilacji w `tomcat.version` rodzica). |
 | `mercury-gui-registry` | **war** | 5 / 0 | GUI rejestru do zarządzania modułami Mercury DB (JSP/JSTL). |
 | `license-registry` | **war** | 1 / 1 | Rejestr licencji. GAV: `io.hgdb:license-registry`. |
 | `ROOT` | **war** | 0 / 0 | Aplikacja ROOT Tomcata. GAV: `io.hgdb:ROOT:3.0.1-SNAPSHOT`, bez rodzica. |
