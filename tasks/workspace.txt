@@ -66,13 +66,13 @@ netsh winsock reset
 
 * Obsługa Git
 ```bash
-export TAG_VERSION="3.0.4.23"
+export TAG_VERSION="3.0.4.24"
 git tag -a ${TAG_VERSION} -m "Wersja ${TAG_VERSION}"
 git push origin
 git push origin ${TAG_VERSION}
 ```
 ```bash
-export BRANCH_VERSION=hgdb-zaleznosci-wersje
+export BRANCH_VERSION=hgdb-227
 git push origin ${BRANCH_VERSION}
 ```
 ```bash
@@ -135,3 +135,4 @@ docker login nexus.scisoftware.local:5000 -u claude
   D229-Adaptacyjne-przekazywanie-dokumentów-Lucene-w-klastrze
   D232-Aktualizacja-PostgreSQL-14
   D234-NPE-w-MainController-dane-licencji
+>236-Deadlock-przy-rownoczesnym-starcie-wezlow-CMIS

@@ -125,3 +125,9 @@ Uwaga do wcześniejszych wyników: w próbach z Redis i w pośrednich wersjach a
 ### Dalej
 
 (decyzja autora o opcji, potem wprowadzenie w `mercury-lb/docker-init-config/conf/{2,3}_mercury.conf` i w chartcie Helm (`sessionAffinity`/ingress); test GUI przy awarii węzła)
+
+### Podzadanie 236 (2026-11-13)
+
+Przy teście obrazu 3.0.4.24 na kompozycji trzywęzłowej wykryto deadlock przy równoczesnym starcie węzłów na świeżej bazie
+(obserwacja 166, niezwiązany z Tomcat Cluster). Poprawka jako podzadanie: `236-Deadlock-przy-rownoczesnym-starcie-wezlow-CMIS`,
+w tej samej gałęzi `hgdb-227`.
