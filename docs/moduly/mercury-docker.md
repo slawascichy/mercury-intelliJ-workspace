@@ -16,7 +16,7 @@ w przestrzeni `ibpm/`. Obrazy robocze trafiają do Nexusa (`nexus.scisoftware.lo
 
 | Katalog | Obraz | Baza | Opis |
 |---|---|---|---|
-| `mercury-3.0` | `ibpm/mercury:mercury-hgdb-3.0.4.22` | CentOS 8 | Serwer Mercury DB (Tomcat z aplikacjami serwera). |
+| `mercury-3.0` | `ibpm/mercury:mercury-hgdb-3.0.4.25` | CentOS 8 | Serwer Mercury DB (Tomcat z aplikacjami serwera). |
 | `mercury-lb` | `ibpm/mercury-lb:mercury-hgdb-3.0` | CentOS 8 | Nginx jako reverse proxy i load balancer węzłów klastra. Zawiera centrum certyfikatów. |
 | `postgresql` | `ibpm/postgres:mercury-hgdb-3.0` | `postgres:17.11` | Baza danych serwera i ActiveMQ. Od wydania 3.0.4.20 PostgreSQL 17 (wcześniej 14.24), wersję ustawia `ARG POSTGRES_VERSION`. Poprzednią wersję zachowuje tag `mercury-hgdb-3.0-pg14`. |
 | `activemq` | `ibpm/activemq:mercury-hgdb-3.0` | – | Broker JMS do komunikacji między węzłami. |
@@ -52,7 +52,7 @@ flowchart LR
 
 ## Helm
 
-`charts/mercury-single-node` (wersja wykresu 0.1.0, `appVersion` 3.0.4.23, Kubernetes ≥ 1.16)
+`charts/mercury-single-node` (wersja wykresu 0.1.0, `appVersion` 3.0.4.25, Kubernetes ≥ 1.16)
 wdraża ten sam zestaw usług co kompozycja jednowęzłowa: ConfigMap, PV/PVC, PostgreSQL,
 OpenLDAP, Ehcache, ActiveMQ, POI Server, węzeł Mercury i load balancer.
 `charts/README.md` opisuje dodanie sekretu do rejestru `docker.io`.
