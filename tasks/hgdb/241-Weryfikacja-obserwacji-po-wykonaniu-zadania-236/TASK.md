@@ -22,3 +22,34 @@ Weryfikacja obserwacji po wykonaniu zadania #236:
 
 - Obs. 167 oraz drobne pozostałości (pkt 2 i 3).
 - Commit w `mercury-docker` (gałąź `hgdb-241`) i w workspace robi autor.
+
+### 2. Obs. 167 (pomiar 2026-11-14, bez zmian w kodzie)
+
+- Środowisko: kompozycja trzywęzłowa na `devops-box-01` (3.0.4.25), zapis `CaseBusinessExtRest/save` (typ `FsmComment`, magazyn `FSMServiceOrder`) w kontenerze `node1` z tokenem OAuth (`GIUSoapUIClient`, `admin`).
+- Zdrowy klaster: 0,12–0,14 s. `node2` wstrzymany (`docker pause`): zapis nie kończy się w 100 s (kod 000). Po `unpause`: 0,14 s.
+- Zrzut wątków: `StrongServerStoreProxy.performWaitingForHashInvalidation` → `ScStorageAccessImpl.putIntoCache` → `TimestampsCacheEnabledImpl.invalidate` → `ActionQueue.afterTransactionCompletion`. Przyczyna: `consistency="strong"` regionu `default-update-timestamps-region`.
+- Skutek uboczny pomiaru: w bazie klastra są 3 nowe sprawy `FsmComment` z testu oraz nowa wersja typu `FsmComment` (typeId 202, było 107), a po niej kolejne zapisy testowe `t167`. Do sprzątnięcia przez autora, jeśli przeszkadzają.
+- Nie sprawdzono: `consistency="eventual"` (wymaga zmiany we wszystkich klientach i ponownego utworzenia magazynu na serwerze Terracotta), węzeł faktycznie padły (zerwane TCP), limity po stronie serwera.
+
+### 2a. Obs. 167: testy awarii klienta Terracotty (2026-11-14, `devops-box-01`)
+
+Cel autora: problem jednego węzła nie może obciążać pozostałych (mogą pracować ciężej, ale nie czekać na niesprawny węzeł).
+
+Osobny serwer Terracotta (obraz `mercury/terracotta:3.6.1`) i dwóch klientów Ehcache (zapisujący, trzymający klucz w heapie), region jak `default-update-timestamps-region` (heap 1000, clustered-dedicated 4 MB). Zapis co 1 s. Kod i skrypt: `/root/t167-wyniki/` na `devops-box-01`.
+
+| Spójność | Dzierżawa | Awaria klienta | Max zapis | Wolne zapisy (>1 s) |
+| :--- | :---: | :--- | ---: | ---: |
+| strong | 150 s (domyślna) | brak | 7 ms | 0 |
+| strong | 150 s | zamrożenie 10 s | 9683 ms | 1 |
+| strong | 150 s | `kill` kontenera | 6 ms | 0 |
+| strong | 150 s | `pause` | 10002 ms | 14 (ok. 140 s łącznie) |
+| strong | 150 s | partycja (`iptables DROP`) | 10002 ms | 14 |
+| eventual | 150 s | brak, `pause`, partycja, `kill` | 3–5 ms | 0 |
+| strong | 20 s | `pause` | 10002 ms | 2 (ok. 20 s) |
+| strong | 20 s | partycja | 10002 ms | 2 |
+
+Prawdziwy pad na kompozycji trzywęzłowej: `docker kill` na `node2`, zapis `CaseBusinessExtRest/save` na `node1`: 0,12–0,16 s (bez zmiany). `node2` uruchomiony ponownie (`docker start`).
+
+Wnioski: (1) pad z zamkniętym połączeniem nie przeszkadza; (2) zamrożona JVM albo partycja bez RST blokuje zapisy na `strong` do wygaśnięcia dzierżawy (domyślnie 150 s, każdy zapis do 10 s); (3) `eventual` całkowicie izoluje, ale nie nadaje się dla wszystkich pamięci; (4) `lease-length` w `tc-config.xml` skraca blokadę do swojej wartości, kosztem tego, że klient z przerwą (GC) dłuższą niż dzierżawa zostanie odcięty i musi się połączyć ponownie.
+Do decyzji autora: wartość `lease-length` dla `ehcache/conf/1`, `conf/2`, `conf/3` oraz które regiony przestawić na `eventual`.
+Pozostałości po teście: obraz `eclipse-temurin:8-jdk` na `devops-box-01`; w bazie klastra nowe sprawy i wersja typu `FsmComment` (zob. sekcja 2).
