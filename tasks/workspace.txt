@@ -121,7 +121,7 @@ docker login nexus.scisoftware.local:5000 -u claude
  B195-Lokalizacja-interfejsu-Swagger-UI
  B198-Tlumaczenie-opisow-WSDL-na-angielski
  B208-Lokalizacja-interfejsu-Swagger-UI
-209-Polecenie-kalibracji-parametrow-indeksu-Lucene
+>209-Polecenie-kalibracji-parametrow-indeksu-Lucene
    D211-Aktualizacja-obrazow-Docker-i-wydanie
    D214-Migracja-logowania-na-Logback
  B215-Nowa-komunikacja-IBM-BPM-HgDB
