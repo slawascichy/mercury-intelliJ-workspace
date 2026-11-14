@@ -68,6 +68,7 @@ flowchart LR
 wdraża ten sam zestaw usług co kompozycja jednowęzłowa: ConfigMap, PV/PVC, PostgreSQL,
 OpenLDAP, Ehcache, ActiveMQ, POI Server, węzeł Mercury i load balancer.
 `charts/README.md` opisuje dodanie sekretu do rejestru `docker.io`.
+Kolejność startu pilnują `initContainers` `wait-for-dependencies` (szablon `_helpers.tpl`) w szablonach 07, 08 i 09, jak `depends_on` w kompozycji. Szablony mają `resources.requests` pamięci z `values.yaml` (`mercuryNode` 4 Gi, JVM `-Xmx4098m`), bez `limits`, żeby scheduler rozkładał pody po workerach (obs. 165).
 Wykres używa wolumenów NFS (sekcja `nfsVolumes`, nazwy PV stałe, więc jedno wydanie na klaster) i startuje od razu na PostgreSQL 17, więc migracja danych go nie dotyczy (obs. 162). Sprawdzony 2026-11-12 na klastrze kubeadm (Kubernetes 1.30, 3 węzły, NFS na masterze), szczegóły i znane ograniczenie (brak kolejności startu, obs. 165) w instrukcji na stronie `Kubernetes_installation` serwisu hgdb.org (EN, PL).
 
 ## PostgreSQL 17 i migracja danych
