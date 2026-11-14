@@ -20,7 +20,7 @@ Weryfikacja obserwacji po wykonaniu zadania #236:
 
 ### Do zrobienia
 
-- Obs. 167 oraz drobne pozostałości (pkt 2 i 3).
+- Drobne pozostałości (pkt 3).
 - Commit w `mercury-docker` (gałąź `hgdb-241`) i w workspace robi autor.
 
 ### 2. Obs. 167 (pomiar 2026-11-14, bez zmian w kodzie)
@@ -53,3 +53,13 @@ Prawdziwy pad na kompozycji trzywęzłowej: `docker kill` na `node2`, zapis `Cas
 Wnioski: (1) pad z zamkniętym połączeniem nie przeszkadza; (2) zamrożona JVM albo partycja bez RST blokuje zapisy na `strong` do wygaśnięcia dzierżawy (domyślnie 150 s, każdy zapis do 10 s); (3) `eventual` całkowicie izoluje, ale nie nadaje się dla wszystkich pamięci; (4) `lease-length` w `tc-config.xml` skraca blokadę do swojej wartości, kosztem tego, że klient z przerwą (GC) dłuższą niż dzierżawa zostanie odcięty i musi się połączyć ponownie.
 Do decyzji autora: wartość `lease-length` dla `ehcache/conf/1`, `conf/2`, `conf/3` oraz które regiony przestawić na `eventual`.
 Pozostałości po teście: obraz `eclipse-temurin:8-jdk` na `devops-box-01`; w bazie klastra nowe sprawy i wersja typu `FsmComment` (zob. sekcja 2).
+
+### 2b. Obs. 167: decyzja i zmiany (2026-11-14, gałąź `hgdb-241` w `mercury`, `mercury-cmd`, `mercury-docker`, docusaurus)
+
+Decyzja autora: `lease-length` 20 s, `default-update-timestamps-region` na `eventual`, opis w docusaurus.
+
+- `mercury-docker/ehcache/conf/{1,2,3}/node*-config.xml`: `connection-leasing` 20 s.
+- `ehcacheDefault.xml` i `ehcacheCommon.xml`: `consistency="eventual"` w `mercury/mercury-server` (IBPM/config, scichy, scichy-test), `mercury-cmd/mercury-install-package/system-config-sample/linux` i `mercury-docker/mercury-3.0/docker-init-config`. Pliki testowe (`src/test/resources`) bez zmian.
+- docusaurus-hgdb: `docs/005_Configuration/Cache_configuration.mdx`, rozdział „Failure of a node and the consistency of regions”.
+- Test powrotu klienta po wygaśnięciu dzierżawy (lease 20 s, pauza klienta 40 s, `devops-box-01`, osobny serwer Terracotta, wyniki w `/root/t167r`, klient `G.java`): klient wraca sam, bez restartu i bez błędów. Pierwszy odczyt po wznowieniu zwraca `null` (chybienie, lokalny heap pusty), kolejne zwracają aktualne wartości, bez nieświeżych wpisów (`strong` i `eventual`). Zapisy drugiego klienta przy `strong` blokowały się 10 s + 5,5 s. Sprawdzono tylko mikroklienta, nie pełną aplikację Mercury.
+- Do sprawdzenia przy wdrożeniu na kompozycji: region zniszczyć na serwerze lub zrestartować Terracottę (zmiana spójności); start klastra z nową dzierżawą.
