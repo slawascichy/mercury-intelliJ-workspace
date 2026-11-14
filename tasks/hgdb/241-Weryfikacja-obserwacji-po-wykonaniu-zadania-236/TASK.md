@@ -20,7 +20,7 @@ Weryfikacja obserwacji po wykonaniu zadania #236:
 
 ### Do zrobienia
 
-- Drobne pozostałości (pkt 3).
+- Pkt 3: wykonane, patrz „3. Drobne pozostałości”.
 - Commit w `mercury-docker` (gałąź `hgdb-241`) i w workspace robi autor.
 
 ### 2. Obs. 167 (pomiar 2026-11-14, bez zmian w kodzie)
@@ -63,3 +63,21 @@ Decyzja autora: `lease-length` 20 s, `default-update-timestamps-region` na `even
 - docusaurus-hgdb: `docs/005_Configuration/Cache_configuration.mdx`, rozdział „Failure of a node and the consistency of regions”.
 - Test powrotu klienta po wygaśnięciu dzierżawy (lease 20 s, pauza klienta 40 s, `devops-box-01`, osobny serwer Terracotta, wyniki w `/root/t167r`, klient `G.java`): klient wraca sam, bez restartu i bez błędów. Pierwszy odczyt po wznowieniu zwraca `null` (chybienie, lokalny heap pusty), kolejne zwracają aktualne wartości, bez nieświeżych wpisów (`strong` i `eventual`). Zapisy drugiego klienta przy `strong` blokowały się 10 s + 5,5 s. Sprawdzono tylko mikroklienta, nie pełną aplikację Mercury.
 - Do sprawdzenia przy wdrożeniu na kompozycji: region zniszczyć na serwerze lub zrestartować Terracottę (zmiana spójności); start klastra z nową dzierżawą.
+
+### 3. Drobne pozostałości (2026-11-14)
+
+**Smoke jednowęzłowy po `max_connections=250` (k8s `mercury-test`, chart `mercury-single-node`, `helm upgrade --set postgres.maxConnections=250`, rewizja 5, zimny start):**
+- `show max_connections` = 250. Pody `Running`, 0 restartów. `mercury-node1` i `mercury` po rolloucie gotowe.
+- `rest/openapi.json` bez tokenu: 200 (węzeł 8080 i HTTPS na balanserze). `rest/token` metodą GET: 405 (punkt istnieje). HTTP na balanserze (port 80) zwraca 404, HTTPS 200.
+- Logi `mercury-node1`, `ehcache-node1`, `activemq` bez błędów krytycznych. `postgres-db`: tylko 2 wpisy „the database system is starting up” z sond podczas restartu.
+- Połączenia w `pg_stat_activity` po starcie: 8 (z 250).
+- Wartość w chart `values.yaml` pozostaje 200 (kompozycja jednowęzłowa ma 250). Release na k8s ma teraz 250 (zmiana tylko w klastrze testowym).
+
+**`checkManagePrivileges` i `markGenerationFailed` (kompozycja trzywęzłowa na `devops-box-01`, PostgreSQL 17.11, REST z tokenem, `node1`):**
+- admin (`mrc-sysadmin`, `mrc-user`): obie operacje 200, bez błędu. W logu `node1` brak `ERROR`, `SQLException`, `PSQLException`, `FATAL`. `markGenerationFailed` wołane na nieistniejącym widoku (bez błędu SQL).
+- użytkownik tymczasowy `tester` (tylko rola `mrc-useradmin`, usunięty po teście, w `mercury-ldap` został sam `admin`): przy `userRoles` podanym w kontekście `checkManagePrivileges` zwraca SC001 (brak uprawnień). To samo dla admina z rolą `mrc-sysadmin` w kontekście (rola nie ma uprawnień do typów).
+- **Otwarte:** gdy kontekst nie zawiera `userRoles`, `tester` (bez uprawnień do typów) dostaje 200, czyli kontrola nie odmawia. Nie rozstrzygnięto, czy serwer wtedy uzupełnia role z realmu (i wynik wynika z nich), czy kontrola przechodzi dla pustych ról. `markGenerationFailed` testowano tylko bez `userRoles` w kontekście (200 dla obu użytkowników), więc odmowy dla niego nie sprawdzono.
+
+## Zamknięcie (2026-11-14)
+
+Zadanie zamknięte z notatką. Nie rozstrzygnięto, dlaczego `checkManagePrivileges` nie odmawia użytkownikowi bez uprawnień do typów, gdy kontekst żądania nie zawiera `userRoles` (patrz „Otwarte” w pkt 3); decyzja autora: bez osobnej obserwacji i bez nowego zadania, tylko ta notatka. Zostaje poza zadaniem: release `mercury` na k8s `mercury-test` ma `postgres.maxConnections=250` (chart w repozytorium: 200); sprawy próbne i wersja typu `FsmComment` (typeId 202) w bazie klastra oraz obraz `eclipse-temurin:8-jdk` z `/root/t167r` na `devops-box-01` zostają bez zmian (decyzja autora).

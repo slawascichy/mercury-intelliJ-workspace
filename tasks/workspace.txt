@@ -72,7 +72,7 @@ git push origin
 git push origin ${TAG_VERSION}
 ```
 ```bash
-export BRANCH_VERSION=hgdb-237
+export BRANCH_VERSION=hgdb-241
 git push origin ${BRANCH_VERSION}
 ```
 ```bash
@@ -94,46 +94,47 @@ docker login nexus.scisoftware.local:5000 -u claude
 
 ## Strumień:
 
-  D016-Widoki
-  D039-[Lucene]-Optymalizacja-dostępu-do-IndexReader-a
-  D049-[CMIS]-Implementacja-API-CMIS
-  D058-Logger-dynamiczne-zmiana-poziomów-logowania
-  D062-Problem-dodawanie-klucza-głównego-po-utworzniu-typu-bez-pola
-  D082-[ActiveMQ]-Dynamiczne-budowanie-odbiorców
-  D109-CaseBusiness_changeModel-duplicate-key-value-violates-unique-constraint-igo_da_typecode_case_uk
-  D110-CaseLobProperty-More-than-one-row-with-the-given-identifier-was-found
-  D115-Usługa-updateCasesParamsByParams-nie-można-zaktualizować-parametru-do-null
-  D113-Stworzenie-mechanizmu-do-przeglądu-wykonywanych-zapytań-Lucene
-  D114-Obsługa-indeksowania-przez-dedykowanych-sekretarz-indeksu
-  D116-Usługa-updateCasesParamsByParams-nie-działa-prawidłowo
-  D118-Poprawienie-mechanizmów-obsługi-pamięci-podręcznych
-  D119-[Lucene]-Problem-wydajności-systemu-długie-zapytania-Lucene
-  D121-Sortowanie-po-wybranych-parametrach-kończy-się-błędem
-  D133-Swagger-implementacja
-  D156-Błąd-podczas-inicjalizacji-danych-predefiniowanych
-  D169-Zmiana-typu-identyfikatora-sprawy-na-String
-  D171-Optymalizacja-optymalizatora-kosztowego
-  D180-Problem-z-niektórymi-metodami-w-usłudze-CaseIndexerFieldsManagerAction
-  D190-Dokumentacja-metadane-typow
+   D016-Widoki
+   D039-[Lucene]-Optymalizacja-dostępu-do-IndexReader-a
+   D049-[CMIS]-Implementacja-API-CMIS
+   D058-Logger-dynamiczne-zmiana-poziomów-logowania
+   D062-Problem-dodawanie-klucza-głównego-po-utworzniu-typu-bez-pola
+   D082-[ActiveMQ]-Dynamiczne-budowanie-odbiorców
+   D109-CaseBusiness_changeModel-duplicate-key-value-violates-unique-constraint-igo_da_typecode_case_uk
+   D110-CaseLobProperty-More-than-one-row-with-the-given-identifier-was-found
+   D115-Usługa-updateCasesParamsByParams-nie-można-zaktualizować-parametru-do-null
+   D113-Stworzenie-mechanizmu-do-przeglądu-wykonywanych-zapytań-Lucene
+   D114-Obsługa-indeksowania-przez-dedykowanych-sekretarz-indeksu
+   D116-Usługa-updateCasesParamsByParams-nie-działa-prawidłowo
+   D118-Poprawienie-mechanizmów-obsługi-pamięci-podręcznych
+   D119-[Lucene]-Problem-wydajności-systemu-długie-zapytania-Lucene
+   D121-Sortowanie-po-wybranych-parametrach-kończy-się-błędem
+   D133-Swagger-implementacja
+   D156-Błąd-podczas-inicjalizacji-danych-predefiniowanych
+   D169-Zmiana-typu-identyfikatora-sprawy-na-String
+   D171-Optymalizacja-optymalizatora-kosztowego
+   D180-Problem-z-niektórymi-metodami-w-usłudze-CaseIndexerFieldsManagerAction
+   D190-Dokumentacja-metadane-typow
 191-Rewizja-wersji-migracja-Java17
-  D192-Lokalizacja-opisow-specyfikacji-i-tekstow-stalych
-   B193-Analiza-typu-porownanie-wektorowe
-   B195-Lokalizacja-interfejsu-Swagger-UI
-   B198-Tlumaczenie-opisow-WSDL-na-angielski
-   B208-Lokalizacja-interfejsu-Swagger-UI
+   D192-Lokalizacja-opisow-specyfikacji-i-tekstow-stalych
+ B193-Analiza-typu-porownanie-wektorowe
+ B195-Lokalizacja-interfejsu-Swagger-UI
+ B198-Tlumaczenie-opisow-WSDL-na-angielski
+ B208-Lokalizacja-interfejsu-Swagger-UI
 209-Polecenie-kalibracji-parametrow-indeksu-Lucene
-  D211-Aktualizacja-obrazow-Docker-i-wydanie
-  D214-Migracja-logowania-na-Logback
-   B215-Nowa-komunikacja-IBM-BPM-HgDB
-  D217-Reprezentowanie-użytkowników-w-kontekście
-   B218-Czyściciel-starych-wersji-spraw
+   D211-Aktualizacja-obrazow-Docker-i-wydanie
+   D214-Migracja-logowania-na-Logback
+ B215-Nowa-komunikacja-IBM-BPM-HgDB
+   D217-Reprezentowanie-użytkowników-w-kontekście
+ B218-Czyściciel-starych-wersji-spraw
 219-Wydajność-generowania-plików-Excel
-   B220-Filtry-i-sortowanie-w-eksporcie-widoków
-  D222-[GUI]-Panel-monitorowania-sekretarzy
-  D226-Pomiar-zapisu-na-Linuksie-Tomcat-Terracotta
-  D227-Logowanie-w-klastrze-sesje-Tomcat
-  D229-Adaptacyjne-przekazywanie-dokumentów-Lucene-w-klastrze
-  D232-Aktualizacja-PostgreSQL-14
-  D234-NPE-w-MainController-dane-licencji
-  D236-Deadlock-przy-rownoczesnym-starcie-wezlow-CMIS
-  D240-Ujednolicenie-wersji-zaleznosci-mercury-cmd-hgdb-client-open
+ B220-Filtry-i-sortowanie-w-eksporcie-widoków
+   D222-[GUI]-Panel-monitorowania-sekretarzy
+   D226-Pomiar-zapisu-na-Linuksie-Tomcat-Terracotta
+   D227-Logowanie-w-klastrze-sesje-Tomcat
+   D229-Adaptacyjne-przekazywanie-dokumentów-Lucene-w-klastrze
+   D232-Aktualizacja-PostgreSQL-14
+   D234-NPE-w-MainController-dane-licencji
+   D236-Deadlock-przy-rownoczesnym-starcie-wezlow-CMIS
+   D240-Ujednolicenie-wersji-zaleznosci-mercury-cmd-hgdb-client-open
+   D241-Weryfikacja-obserwacji-po-wykonaniu-zadania-236
