@@ -97,7 +97,7 @@ hgdb:
    D016-Widoki
    D039-[Lucene]-Optymalizacja-dostępu-do-IndexReader-a
    D049-[CMIS]-Implementacja-API-CMIS
-+056-Problem-z-aktualizacją-typu-podczas-zmniejszenia-liczby-parametrów
+056-Problem-z-aktualizacją-typu-podczas-zmniejszenia-liczby-parametrów
    D058-Logger-dynamiczne-zmiana-poziomów-logowania
    D062-Problem-dodawanie-klucza-głównego-po-utworzniu-typu-bez-pola
    D082-[ActiveMQ]-Dynamiczne-budowanie-odbiorców
@@ -122,7 +122,7 @@ hgdb:
  B195-Lokalizacja-interfejsu-Swagger-UI
  B198-Tlumaczenie-opisow-WSDL-na-angielski
  B208-Lokalizacja-interfejsu-Swagger-UI
->209-Polecenie-kalibracji-parametrow-indeksu-Lucene
+   D209-Polecenie-kalibracji-parametrow-indeksu-Lucene
    D211-Aktualizacja-obrazow-Docker-i-wydanie
    D214-Migracja-logowania-na-Logback
  B215-Nowa-komunikacja-IBM-BPM-HgDB
@@ -141,4 +141,4 @@ hgdb:
    D241-Weryfikacja-obserwacji-po-wykonaniu-zadania-236
 
 hgdb-utils:
-+011-Przerobić-mechanizmy-LC-tak-aby-wykorzystać-picocli
+011-Przerobić-mechanizmy-LC-tak-aby-wykorzystać-picocli
