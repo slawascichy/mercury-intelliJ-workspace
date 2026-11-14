@@ -21,7 +21,7 @@ Kod leży w sąsiednich repozytoriach. Ścieżki są względne do tego katalogu
 | mercury | `../mercury` | Serwer: DAO, Lucene, logika, WS, aplikacje WAR | `docs/moduly/mercury.md` |
 | hgdb-client-open | `../hgdb-client-open` | Publiczny klient Java (CXF, multi-instancja) | `docs/moduly/hgdb-client-open.md` |
 | mercury-client | `../mercury-client` | Biblioteki dla IBM BPM | `docs/moduly/mercury-client.md` |
-| mercury-cmd | `../mercury-cmd` | Narzędzia CLI, transfer, pakiet instalacyjny | `docs/moduly/mercury-cmd.md` |
+| mercury-cmd | `../mercury-cmd` | Narzędzia CLI, transfer, pakiet instalacyjny (na GitHubie repozytorium nazywa się `hgdb-utils`, `mercury-cmd` to nazwa historyczna) | `docs/moduly/mercury-cmd.md` |
 | mercury-docker | `../mercury-docker` | Obrazy Docker, kompozycje, Helm | `docs/moduly/mercury-docker.md` |
 | docusaurus-hgdb | `../scisoftware-webpage/docusaurus-hgdb` | Serwis hgdb.org (submoduł git) | `docs/moduly/docusaurus-hgdb.md` |
 

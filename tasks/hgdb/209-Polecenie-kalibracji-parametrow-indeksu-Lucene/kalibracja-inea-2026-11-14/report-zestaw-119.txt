@@ -1,0 +1,75 @@
+Lucene query optimizer calibration
+Queries measured: 38, elapsed: 44.0 s
+Status: {OK=20, NO_SUBQUERY=11, MULTI_SUBQUERY=7}
+  MULTI_SUBQUERY: M3 adres+Lead (oczek. 136) (2 subqueries)
+  MULTI_SUBQUERY: M3 AND (oczek. ?) (2 subqueries)
+  MULTI_SUBQUERY: M3 OR (oczek. 4) (2 subqueries)
+  MULTI_SUBQUERY: M3 NOT IN (oczek. 3) (2 subqueries)
+  MULTI_SUBQUERY: M3 AND -area (oczek. 3) (2 subqueries)
+  MULTI_SUBQUERY: M3 CHILD OR detailsUnavailability (oczek. 4) (2 subqueries)
+  MULTI_SUBQUERY: M3 PARENT adres<-SlmLead (oczek. 25) (2 subqueries)
+Criterion: regret <= 1.25 or difference <= 100 ms; target 90% of queries; noise below 100 ms.
+Regret = (time of the chosen plan + probe time) / time of the best fixed plan.
+
+Probe limit 1000000:
+     ratio satisfied  relaxed   total [ms]    best [ms]    median       max
+      0.05     9/20    15/20         12381         3306      5.02     31.64
+       0.1    11/20    16/20         10861         3306      4.59     10.00
+      0.25    13/20    16/20         10329         3306      2.07      9.93
+       0.5    15/20    17/20          8602         3306      1.09      8.70
+         1    18/20    18/20          6200         3306      1.05      4.35
+         2    19/20    19/20          4902         3306      1.05      4.35
+         4    19/20    19/20          4902         3306      1.05      4.35
+         8    19/20    19/20          4902         3306      1.05      4.35
+        16    19/20    19/20          4902         3306      1.05      4.35
+        32    19/20    19/20          4902         3306      1.05      4.35
+        64    19/20    19/20          4902         3306      1.05      4.35
+       128    19/20    19/20          4902         3306      1.05      4.35
+       256    20/20    20/20          3543         3306      1.05      2.75
+       512    20/20    20/20          3543         3306      1.05      2.75
+      1024    20/20    20/20          3543         3306      1.05      2.75
+
+Probe limit 3000000:
+     ratio satisfied  relaxed   total [ms]    best [ms]    median       max
+      0.05     9/20    15/20         12254         3306      5.02     31.39
+       0.1    11/20    16/20         10734         3306      4.57     10.00
+      0.25    13/20    16/20         10202         3306      1.16      9.93
+       0.5    15/20    17/20          8475         3306      1.09      8.73
+         1    18/20    18/20          6073         3306      1.05      4.32
+         2    19/20    19/20          4775         3306      1.05      4.32
+         4    19/20    19/20          4775         3306      1.05      4.32
+         8    19/20    19/20          4775         3306      1.05      4.32
+        16    19/20    19/20          4775         3306      1.05      4.32
+        32    19/20    19/20          4775         3306      1.05      4.32
+        64    19/20    19/20          4775         3306      1.05      4.32
+       128    19/20    19/20          4775         3306      1.05      4.32
+       256    20/20    20/20          3416         3306      1.05      1.39
+       512    20/20    20/20          3416         3306      1.05      1.39
+      1024    20/20    20/20          3416         3306      1.05      1.39
+
+Probe limit 10000000:
+     ratio satisfied  relaxed   total [ms]    best [ms]    median       max
+      0.05     9/20    15/20         12260         3306      5.02     31.39
+       0.1    11/20    16/20         10740         3306      4.57     10.05
+      0.25    13/20    16/20         10208         3306      1.14      9.93
+       0.5    15/20    17/20          8481         3306      1.10      8.70
+         1    18/20    18/20          6079         3306      1.05      4.32
+         2    19/20    19/20          4781         3306      1.05      4.32
+         4    19/20    19/20          4781         3306      1.05      4.32
+         8    19/20    19/20          4781         3306      1.05      4.32
+        16    19/20    19/20          4781         3306      1.05      4.32
+        32    19/20    19/20          4781         3306      1.05      4.32
+        64    19/20    19/20          4781         3306      1.05      4.32
+       128    19/20    19/20          4781         3306      1.05      4.32
+       256    20/20    20/20          3422         3306      1.04      1.36
+       512    20/20    20/20          3422         3306      1.04      1.36
+      1024    20/20    20/20          3422         3306      1.04      1.36
+
+Recommendation: childFirstRatio=512, probeLimit=10000000 (20 of 20 queries meet the criterion, max regret 1.36).
+WARNING: The best ratios reach the edge of the tested range (0.05 to 1024.0); the optimum may lie outside. Widen the range (--ratios) to confirm it.
+WARNING: The recommended probe limit is the largest tested; a larger limit may be better.
+WARNING: Only 4 queries are above the noise threshold (100 ms): the result is weak. Use more queries or a larger index.
+
+# Lucene query optimizer calibration (task 209); verify before use
+lucene.query.cost.childFirstRatio=512
+lucene.query.cost.probeLimit=10000000

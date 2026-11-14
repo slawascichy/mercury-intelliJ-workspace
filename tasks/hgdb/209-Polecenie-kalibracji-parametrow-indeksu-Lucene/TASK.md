@@ -179,6 +179,28 @@ Decyzje autora (2026-11-14): polecenie działa w procesie na hoście węzła, za
 - Budowanie lokalne: moduły `mercury-lucene-indexes-api`, `mercury-lucene-indexes` i `mercury-srv` zainstalowane jako `3.0.4-SNAPSHOT` (`mvn -o install -pl … -Dmaven.test.skip=true`), `mercury-srv-cmd` kompiluje się z `-Dmercury.srv.version=3.0.4-SNAPSHOT`. Wersje w POM-ach `mercury-cmd` zostają na wydanych (3.0.4.25); zmiana na nowe wydanie `mercury` należy do rytuału wydania (autor).
 - **Nie sprawdzono:** uruchomienia polecenia na prawdziwym kontekście (Spring, baza, indeks węzła) przez `mercury-cmd.sh`; to zadanie etapu E (potrzebne środowisko z pakietem instalacyjnym, bazą z typami i indeksem). Zależność: pełny pomiar na indeksie INEA 3.0 wymaga też bazy z jego typami (mapper bierze pola z bazy), więc na INEA planuję pomiar przez wykonawcę testowego (`FakeCaseMapper`) jak w 119.
 
+### Etap E: walidacja na indeksie INEA 3.0 (2026-11-14, `mercury`, gałąź `hgdb-209`, bez commita)
+
+Pomiar: kopia indeksu `F:\mercury-indexes\20190705_Case_3.0` (22 028 880 dokumentów, tylko odczyt), test `LuceneCalibrationPerfTest` (wykonawca `FakeCaseMapper`, jak w 119), zapytania z generatora (40, `maxChildHits` 300 000) i z zestawu 119 (`LuceneLegacyIndexQueryTest`, test `testCalibrateLegacySet`). Wyniki zbiorcze: `kalibracja-inea-2026-11-14/` (`report-generator.txt`, `report-zestaw-119.txt`). Pliki z zapytaniami i pomiarami per zapytanie **nie są w repozytorium**: generator bierze wartości z indeksu i zapytania zawierają dane klientów (nazwiska, loginy, adresy), więc pliki zapytań z generatora i z monitora trzeba traktować jak dane osobowe.
+
+Uruchomienie (wszystkie flagi są potrzebne; bez `-Dmercury.config.file` plan używa innych nazw pól systemowych i zwraca 0 trafień oraz `NullPointerException`):
+`mvn -o test -pl mercury-lucene-indexes -Dtest=LuceneCalibrationPerfTest -Dperf.query=true -Dperf.typeCodeLower=true -Dperf.cal.legacy=true -Dperf.maxResults=1000000 -Dperf.cal.generate=40 -Dperf.cal.runs=2 -Dperf.cal.out=<katalog> -DadditionalArgLine=" -Dmercury.lucene.config.file=/properties/scichy/test-lucene-inea-maxhits1m.properties -Dmercury.config.file=/properties/scichy/test-mercury3.properties -Dsclogger.config.file=/properties/scichy/sclogger.properties -Xmx6g"` (spacja przed pierwszym `-D` chroni ścieżki w Git Bash; surefire tej wersji nie obsługuje `Klasa#metoda1+metoda2`).
+
+Wyniki:
+1. **Mechanizm działa od początku do końca:** 40 z 40 zapytań ze statusem `OK` (ten sam wynik w obu planach), czas pomiaru 8 minut (484 s i 435 s w dwóch przebiegach), żadnej awarii.
+2. **Powtarzalność:** dwa niezależne przebiegi na tym samym indeksie dały to samo optimum i tę samą kolejność ocen. Liczba spełnionych zapytań dla progów: 0,5: 24/40; 2: 29/40; 8: 32/40; 32: 35/40; 64: 37/40; 128: 38/40; 256: 40/40 (żal maks. 1,15-1,17); 512 i więcej: 36/40.
+3. **Wynik dla indeksu INEA w obecnym stanie silnika:** plan „dziecko najpierw” wygrywa w 36 z 40 zapytań; korzeń najpierw wygrywa dopiero przy `nChild/nRoot` rzędu 300 i więcej (dziecko: ok. 0,001 do 0,005 ms na trafienie, korzeń: czas rośnie z liczbą dzieci w łączeniu zbiorczym i ma stały narzut ok. 2 s). Optimum progu to ok. **256**, a domyślne **2,0** daje 29/40, żal do 7,9 i łączny czas 52-56 s wobec 21 s przy 256.
+4. **Zestaw z 119** (20 użytecznych zapytań z 38; 11 bez podzapytania, 7 z dwoma podzapytaniami): próg 2: 19/20, 256 i więcej: 20/20, łączny czas 4,9 s wobec 3,5 s; tylko 4 zapytania ponad szumem 100 ms, więc wynik jest słaby, ale kierunek ten sam. Kalibracja z 119 (2,0) była optymalna dla silnika z tamtej chwili; od tamtej pory koszty planów się przesunęły (zgodnie z ostrzeżeniem z 119: „każda zmiana silnika przesuwa optimum progu”).
+5. **Limit sondy `probeLimit`:** największa liczność w obu próbkach to ok. 550 tys., poniżej najmniejszego badanego limitu (1 mln), więc na tych danych limit nie ma wpływu na wynik; narzędzie po poprawce nie rekomenduje wtedy żadnej wartości i zostawia obecną. Pomiar limitu wymaga indeksu lub próbki z licznościami powyżej limitu (zapytania z milionami trafień dziecka są dziś wykluczone limitem `maxChildHits`).
+
+**Decyzja autora (2026-11-14): nie zmieniamy `lucene.query.cost.childFirstRatio` (zostaje 2,0).** Poniższe zastrzeżenia zostają jako uzasadnienie. Pytanie wyjściowe: czy zmieniać domyślne `lucene.query.cost.childFirstRatio` (dziś 2,0). Moje zastrzeżenia: (a) próbka z generatora jest tendencyjna (duże dzieci, małe korzenie; odcięte dzieci powyżej 300 tys.), (b) to jeden indeks (INEA), (c) nie mierzono zakresów dat ani innych sortowań niż po `createDate`, (d) skok między 128 (38/40) a 256 (40/40) i spadek przy 512 (36/40) pokazują, że optimum jest ostre i zależy od kilku zapytań o skrajnych stosunkach. Rekomendacja: nie zmieniać domyślnej wartości na podstawie jednego indeksu; powtórzyć kalibrację na indeksie z innych środowisk (po wydaniu narzędzia `-lc`) i na zestawie prawdziwych zapytań z monitora (etap F).
+
+Poprawki narzędzia wynikłe z walidacji: tryb `PROBE` (plan tylko przygotowany, liczności zbierane przed wykonaniem planów stałych, bez zbędnych wykonań w trybie kosztowym); opcja `maxChildHits` w generatorze (plan „dziecko najpierw” z milionami dzieci trwałby kilkanaście minut); domyślny zakres progów 0,05 do 1024 co dwukrotność i ostrzeżenie, gdy najlepsze progi sięgają krawędzi zakresu; limit sondy nierekomendowany, gdy żadna liczność go nie osiąga; tolerancja 0,05 dla maksimum żalu (różnice czasu sondy rzędu kilku ms to szum); test diagnostyczny `testExplainFirstQueries` (plany po wykonaniu z decyzją i czasami kroków, wykorzystany do znalezienia przyczyny zer).
+
+Odkrycie przy okazji (zapisane jako obserwacja 169 w `docs/obserwacje.md`, kodu nie ruszano): przy limicie `lucene.query.maxHits` mniejszym niż liczność korzenia plan „korzeń najpierw” obcina **zbiór korzeni**, zanim zastosuje filtr dzieci, więc zwraca mniej wyników niż plan „dziecko najpierw” (np. 1034 wobec 2832 przy 550 981 korzeniach i `maxHits` 200 000; wynik oznaczony `truncated`). Ta sama obserwacja z 119 („dowód: po podniesieniu maxHits do 1 000 000 wyniki równe”); kalibrację trzeba robić z `maxHits` powyżej liczności korzeni (`test-lucene-inea-maxhits1m.properties`).
+
+Ograniczenia: trzeci przebieg kontrolny został zatrzymany przez system (brak pamięci, doszedł do 37 z 40 zapytań) i nie jest używany; raporty zbiorcze w katalogu pochodzą z drugiego przebiegu i zawierają rekomendację sprzed poprawki limitu sondy (10 mln), którą należy czytać jako „limit nie sprawdzony”. Nie uruchamiano polecenia `-lc` przez `mercury-cmd.sh` (kontekst Spring, baza, indeks węzła).
+
 ### Etap F: rozszerzenie monitora z 113 (zakres dodany przez autora 2026-11-14, do zaprojektowania i wykonania)
 
 Zlecenie autora: oprócz pokazywania planów zapytań monitor ma mieć przycisk **„Zapisz próbkę do kalibracji”**, który na podstawie danych monitora generuje plik do pobrania w formacie zapytań kalibracji (ten sam, który czyta `QueryFileParser` i który produkuje generator: `nazwa<TAB>zapytanie`, UTF-8, `#` komentarz).
@@ -196,6 +218,33 @@ Propozycja projektu:
 6. **Dane osobowe i prywatność:** eksport robi użytkownik z uprawnieniem do strony monitora (jak reszta strony); plik trafia tylko do niego; w dokumentacji ostrzeżenie. Brak maskowania literałów (kalibracja wymaga prawdziwych wartości).
 
 Do rozstrzygnięcia: kolejność wobec etapu D (rekomendacja: najpierw D, bo eksport z monitora zasila `LC`, ale format i zapis w `QueryFileParser` robimy już teraz); sposób zwracania pliku (punkt 5).
+
+### Etap F: wykonanie (2026-11-14, `mercury`, `mercury-cmd`, docusaurus, gałąź `hgdb-209`, bez commita)
+
+Zakres z projektu powyżej, z decyzjami: pomysł autora (monitor pokazuje plany) i przycisk „Zapisz próbkę do kalibracji”.
+- `LuceneQueryInfo`: pola `plan` i `hasPlan`, `copyWithoutPlan()`. `LuceneQueryMonitor`: `Tracker.setPlanSupplier` (tekst planu powstaje po zakończeniu zapytania i tylko dla wolnego, przycinany do `mercury.lucene.query.monitor.planMaxChars`, domyślnie 20 000, `0` wyłącza), `findFinished(id)`. `QueryExplainPlan.execute` zgłasza plan trackerowi bieżącego zapytania (`this::toString`).
+- `LuceneQueriesState` (odczyt stanu) zwraca listy bez treści planów (flaga `hasPlan`), bo strona odświeża je co kilka sekund; plan pobiera operacja `plan` po identyfikatorze.
+- `SampleExporter` (`mercury-lucene-indexes`, pakiet `calibration`): z zakończonych zapytań monitora wybiera nadające się do ponownego wykonania (zakończone bez błędu; rodzaje `searchIndex`, `searchIndexRows`, `groupByQuery` bez dopisanej klauzuli grupowania; bez uciętych, bez duplikatów; domyślnie tylko z podzapytaniem `pole.atrybut:`), nazwy wierszy bez danych użytkownika, nagłówek z ostrzeżeniem o danych osobowych; zapis tym samym `QueryFileParser.format`.
+- `mercury-ws-app`: `LuceneQueriesCalibration` (logika), `LuceneQueriesPanelController`: operacje `plan` i `calibrationSample` (tylko `mrc-sysadmin`, jak reszta strony), modele w `LuceneQueriesRestModel`. **Nie dodano ich do `LuceneQueriesExtRest`** (API OAuth), więc bez zmian w OpenAPI, bez kluczy tłumaczeń i bez wydania `mercury-lib`; można je tam dołożyć później.
+- Strona `lucene-queries.html`: przycisk „Zapisz próbkę do kalibracji” (z potwierdzeniem o danych osobowych i opcją „tylko zapytania z podzapytaniem”, pobranie pliku przez `Blob`), kolumna „Plan” z przyciskiem rozwijającym plan pod wierszem (otwarte plany przeżywają automatyczne odświeżenie), teksty PL i EN.
+- Testy: `LuceneQueryMonitorPlanTest` (6), `SampleExporterTest` (4), `QueryExplainPlanDecisionTest.testMonitorGetsThePlanOfASlowQuery` (prawdziwy plan wykonanego zapytania trafia do monitora z `DECISION` i `ACTUAL`), `LuceneQueriesCalibrationTest` (4, `mercury-ws-app`) i istniejący `LuceneQueriesStateTest`. W ostatnich przebiegach: `mercury-lucene-indexes-api` 20 z 20, `mercury-lucene-indexes` 32 z 32 (wybrane klasy), `mercury-ws-app` 8 z 8 (wybrane klasy).
+- Nie sprawdzono w przeglądarce: strony `lucene-queries.html` (przycisk próbki, plany) nie uruchamiałem na działającym serwerze; kod JavaScript tylko przeczytany i dopasowany do istniejących wzorców strony.
+- Uwaga: test `LuceneQueryMonitorPlanTest` używa progu 250 ms (próg 20 ms bywał przekraczany przy rozruchu JVM i szybkie zapytanie budowało plan).
+
+### Dokumentacja (2026-11-14, gałąź `hgdb-209` w docusaurus-hgdb)
+
+- Nowa strona `docs/005_Configuration/Lucene_optimizer_calibration.mdx` i jej odpowiednik PL (`i18n/pl/…`): jak optymalizator wybiera plan, polecenie `-lc` (opcje, bezpieczeństwo), źródła zapytań, co robi pomiar, wyniki, interpretacja (w tym wymóg `maxHits` powyżej liczności korzenia i ostrożny przykład z INEA: wartość domyślna nie została zmieniona).
+- `Lucene_queries_monitor.mdx` (EN i PL): plany wolnych zapytań, przycisk próbki, parametr `planMaxChars`; odsyłacz w `003_Index_Lucene/index.mdx` (EN i PL).
+- Uzupełnienie z zadania 241: polska wersja `Cache_configuration.mdx` nie miała rozdziału o awarii węzła i dzierżawie (dodano „Awaria węzła i spójność regionów” i opis `eventual` w tabeli regionów). Poprzednio zmieniono tylko wersję angielską.
+- `mercury-cmd/README.md`: sekcja o poleceniu `-lc`; `docs/moduly/mercury-cmd.md`: wiersz `LC`.
+- Sprawdzone: wszystkie zmienione pliki `.mdx` kompilują się (`@mdx-js/mdx`); strony nie budowano (`npm run build`).
+
+### Pozostaje przed zamknięciem zadania 209
+
+1. Commity, PR-y i merge (autor): `mercury` (gałąź `hgdb-209`), `mercury-cmd` (`hgdb-209`), docusaurus-hgdb (`hgdb-209`) i workspace; uwaga na zmiany w plikach generowanych `openapi*.json` i `ehcache-*-ext-3.5.xsd` w `mercury` (skutek `mvn install`, nie część zadania; przywrócić `git checkout`).
+2. Wydanie `mercury` z nowym kodem i podniesienie wersji `mercury.srv.version` w `mercury-cmd` (rytuał wydania, autor); do tego czasu `mercury-srv-cmd` buduje się z `-Dmercury.srv.version=3.0.4-SNAPSHOT`.
+3. Próba polecenia `-lc` na prawdziwym środowisku przez `mercury-cmd.sh` (kontekst Spring, baza, indeks węzła) oraz strony monitora w przeglądarce; nie wykonywano.
+4. Decyzje podjęte: parametru `lucene.query.cost.childFirstRatio` nie zmieniamy; obserwacja 169 (obcinanie zbioru korzeni przy `maxHits`) zapisana, bez zmian w kodzie.
 
 ### Dalej (stan po etapie D)
 

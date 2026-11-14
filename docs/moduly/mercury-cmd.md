@@ -34,6 +34,7 @@ Projekt korzysta z wydanych wersji pozostałych repozytoriów, a nie z bieżący
 | `VL` | `GenerateLuceneAction` (walidacja) | Walidacja encji o podanej nazwie. |
 | `RPD` | `ReloadPredefinedParamDefinitionsAction` | Przeładowanie predefiniowanych definicji parametrów. |
 | `JDBCTEST` | `JdbcConnectionAction` | Test połączenia z bazą SQL. |
+| `LC` | `LuceneCalibrationAction` | Kalibracja `lucene.query.cost.childFirstRatio` i `probeLimit` na indeksie węzła (zadanie 209): zapytania z pliku i/lub z generatora, tylko odczyt indeksu, raport i fragment `lucene.properties` bez zmiany konfiguracji. |
 | `HELP` | `HelpAction` | Pomoc. |
 
 ### Zawartość pakietu instalacyjnego

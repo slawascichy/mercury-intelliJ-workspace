@@ -72,7 +72,7 @@ git push origin
 git push origin ${TAG_VERSION}
 ```
 ```bash
-export BRANCH_VERSION=hgdb-241
+export BRANCH_VERSION=hgdb-209
 git push origin ${BRANCH_VERSION}
 ```
 ```bash
@@ -93,10 +93,11 @@ docker login nexus.scisoftware.local:5000 -u claude
 
 
 ## Strumień:
-
+hgdb:
    D016-Widoki
    D039-[Lucene]-Optymalizacja-dostępu-do-IndexReader-a
    D049-[CMIS]-Implementacja-API-CMIS
++056-Problem-z-aktualizacją-typu-podczas-zmniejszenia-liczby-parametrów
    D058-Logger-dynamiczne-zmiana-poziomów-logowania
    D062-Problem-dodawanie-klucza-głównego-po-utworzniu-typu-bez-pola
    D082-[ActiveMQ]-Dynamiczne-budowanie-odbiorców
@@ -138,3 +139,6 @@ docker login nexus.scisoftware.local:5000 -u claude
    D236-Deadlock-przy-rownoczesnym-starcie-wezlow-CMIS
    D240-Ujednolicenie-wersji-zaleznosci-mercury-cmd-hgdb-client-open
    D241-Weryfikacja-obserwacji-po-wykonaniu-zadania-236
+
+hgdb-utils:
++011-Przerobić-mechanizmy-LC-tak-aby-wykorzystać-picocli
