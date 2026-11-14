@@ -10,7 +10,7 @@
 
 - Strony `loggers`, `secretaries`, `lucene-queries` przepisane na JSP: język z aplikacji (pl/en), nagłówek jak strona główna, nazwa węzła, lista węzłów z monitora węzłów, `n=<węzeł>` + ciasteczko `hgdb_node` w nginx. Szczegóły: `245-…/TASK.md`.
 - Kompilacja `mercury-ws-app` i 9 testów jednostkowych przechodzą. **Nie sprawdzone na działającym serwerze** (render JSP, wygląd, klaster za LB).
-- Niezacommitowane w `mercury` i `mercury-docker` (gałęzie `hgdb-245`).
+- Zacommitowane przez autora w gałęziach `hgdb-245` (`mercury`, `mercury-docker`); PR i merge jeszcze nie.
 
 ## Do wiedzy
 
