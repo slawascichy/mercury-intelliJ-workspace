@@ -32,3 +32,22 @@ Niezweryfikowane / do zrobienia:
 - Tłumaczenia de/es/fr/ko nie istnieją; strony pokazują angielskie (fallback). Do przepuszczenia przez translator autora (`localization-project`).
 - Obraz `mercury-lb` nie jest przebudowany; do ustalenia, czy chart Helm używa tej samej konfiguracji nginx.
 - Przełącznik języka na stronie głównej nie jest częścią tego etapu.
+
+## Postęp (2026-11-16): uwagi autora po pierwszym oglądzie
+
+- **Strony wysyłania plików** (`pages/files/*` – 5 stron, `pages/lobs/*` – 2 strony): ten sam nagłówek co strony admina (logo, wersja, Strona główna, użytkownik i wylogowanie, węzeł i jego wybór, język). Zamiast zmieniać kontrolery, `UploadPagesInterceptor` (mapowanie `/files/**` i `/lobs/**` w `moduleDb-2.0/3.0-servlet.xml`) dokłada do modelu język, nazwę i listę węzłów; działa też po POST. Tytuł i nagłówek z istniejących kluczy `<strona>.title` i `<strona>.header`. `adminBar.jsp`: adres bazowy z `basePath`, linki do stron admina tylko na stronach admina (`adminNav`). Skrypt komunikatów strony POI wybierany po `${lang}` (wcześniej po cookie).
+- **Plan zapytania:** w historii zapytań zamiast tekstu planu pod wierszem jest link „Zobacz plan”, który otwiera okno dialogowe (zapytanie, rodzaj, użytkownik, czas, plan; Kopiuj, Zamknij, Esc, kliknięcie tła). Plan nadal pobierany na żądanie.
+- Testy: `AdminMessagesTest` (8), `AdminPagesControllerTest` (2), `UploadPagesInterceptorTest` (1).
+- Poprawione przy okazji: POST `uploadDictionaryMultipleFile` zwracał widok `uploadSystemMultipleFile` (`SystemFileUpload`), teraz wraca na stronę słowników.
+
+## Lokalna kompozycja testowa 3-węzłowa (2026-11-16)
+
+- Katalog `…\scratchpad\c245` (kopia `docker-compose.yml` i `mercury-hgdb.env` z `mercury-three-node-cluster`), projekt `mercury245`, dane w `D:\mercury-245` (świeże, bez danych z `D:\mercury`). Obrazy lokalne: `ibpm/mercury:mercury-hgdb-3.0.4.27-local` (nakładka z WAR-em na obrazie 3.0.4.26) i `ibpm/mercury-lb:mercury-hgdb-3.0-245`. Nic nie wypchnięto do Nexusa.
+- CMIS Basic wymaga `CMIS_OAUTH_CLIENT_SECRET`; w `mercury-hgdb.env` z repozytorium jest pusty (celowo), więc bez wpisu w lokalnej kopii env serwer zwraca 401 (`mercury-server.sh` pomija wtedy włączenie Basic). Po uzupełnieniu: Basic `admin:admin` 200, bez uwierzytelnienia 401.
+- Plany zapytań na świeżej bazie: próg wolnego zapytania ustawiony na 0 ms (`mercury.lucene.query.monitor.slowMillis=0` dopisane do `docker-init-config/config/mercury.properties` w kontenerach; znika po odtworzeniu kontenerów). Plan powstaje tylko dla zapytań z `AND` (optymalizator), np. `a* AND b*`; stan monitora jest per węzeł.
+
+## Etap B (2026-11-16): tłumaczenia i poprawka kodowania
+
+- **Kodowanie:** pliki JSP zaczynające się od `include` były czytane w domyślnym kodowaniu (w modalu planu `·` jako `Â·`). Na początku 10 JSP-ów (3 admin + 7 stron wysyłania plików) jest teraz `<%@ page ... pageEncoding="UTF-8"%>`.
+- **Tłumaczenia:** 138 kluczy `admin.*` (pl → en pisał Claude) przetłumaczono translatorem `localization-project` (Gemini) na `de es fr ko`; `validate`: 0 błędów (ostrzeżenia to skróty i terminy techniczne identyczne ze źródłem: `Plan`, `Max`, `p50`, `Thread`). Wpisane do `WebAppMsg_{de,es,fr,ko}.properties` w formacie `\uXXXX`. Wynik nie przeszedł przeglądu natywnego (tylko `validate`); do przeglądu przez autora.
+- **Testy:** `AdminMessagesTest` sprawdza, że wszystkie języki mają ten sam zestaw kluczy `admin.*` i że de/es/fr/ko nie dostają już angielskiego zapasowego (12 testów razem z pozostałymi).
