@@ -69,3 +69,32 @@ Dla porównania (z wiedzy, niezmierzone na tym środowisku; do zweryfikowania w 
 - Obserwacje 114 (nadmiarowa kolumna w eksporcie spraw), 115 (nieodświeżany stub RMI po restarcie POI), 116 (kolejka raportów i zawieszone `PROCESSING`).
 - Zadanie 119: wzorzec metodyki (pomiar bazowy, analiza, decyzje, pomiar końcowy).
 - Kod: `mercury-srv` (`ExportGenerator`, `PoiServerWriter`, `PoiServerLoader`, `ReportSecretarySupport`), `mercury-ws-app` (`ReportExportStatusRest`, `CaseViewExtRest`), `D:\workspace\git\poi-toolkit` (`ExcelFileWriter`, `ExcelFileWriterTransactionManager`, `WriteHandler`).
+
+## Decyzje autora (2026-11-17)
+
+1. **Cel:** 200 000 wierszy × 6 kolumn poniżej minuty (zatwierdzone jako cel robocza).
+2. **Serwer Iron POI:** zachować API (szablony `tfn`, style kolumn, zapis stronami w transakcji, odczyt `load`), ale POI może wymagać modernizacji, jeśli okaże się wąskim gardłem.
+3. **CSV:** dodać argument wyboru formatu wyniku (xlsx albo csv), domyślnie xlsx; wymaga zmian po stronie POI.
+4. **Zakres:** odczyt i zapis (import, `ExcelFileReader`, `load` także w analizie).
+5. **Środowisko pomiarowe:** maszyna lokalna; można korzystać z Kubernetesa (`mercury-test`), po aktualizacji przez autora także z kompozycji na `devops-box-01`.
+
+Gałęzie `hgdb-219` w `mercury` i `poi-toolkit` (od `master` po wydaniu 3.0.4.28).
+
+## Etap 2: dolna granica po stronie serwera POI (2026-11-17)
+
+Test `WriterBenchmarkTest` (`poi-toolkit/src/test/java/org/iron/poi/excel/`, gałąź `hgdb-219`, włączany `-Dbench.rows=<N>`; parametry `bench.cols`, `bench.pageSize`, `bench.types`) zapisuje syntetyczne strony (1000 wierszy) przez prawdziwy `ExcelFileWriter` (`load` stron, potem `commit`), bez bazy, RMI i konwersji wartości z Mercury. Uruchomienie: `mvn -o test -Dtest=WriterBenchmarkTest -Dbench.rows=200000` w `poi-toolkit`. Maszyna lokalna autora, Java 8.
+
+| Dane | Generowanie stron | `writer.load` (200 stron) | `commit` (zapis pliku) | Razem | Plik | Sterta po |
+|---|---|---|---|---|---|---|
+| 200 000 × 6, same teksty | 171 ms | 9 ms | 4 284 ms | 5,1 s | 6,2 MB | 641 MB |
+| 200 000 × 6, typy `STRING,INTEGER,BIGDECIMAL,DATE,STRING,STRING` | 655 ms | 3 ms | 5 229 ms | 6,5 s | 7,6 MB | 271 MB |
+| 20 000 × 6, teksty (rozgrzewka) | 27 ms | 1 ms | 1 568 ms | 2,2 s | 0,6 MB | 72 MB |
+
+**Wniosek:** sam zapis xlsx w serwerze POI (cały wolumen docelowy) trwa ok. 5–6 s (ponad 38 000 wierszy/s), czyli ok. 180 razy szybciej niż zmierzone eksporty (ok. 215 wierszy/s; 200 000 wierszy w 15,5 min). Hipoteza H1 (zapis pliku w POI jest kosztowny) **nie potwierdza się** dla rdzenia zapisu: czas jest gdzie indziej (H2 konwersja wartości, H3 przesył RMI, H4 odczyt stron z `OFFSET`, H5 brak nakładania faz, a po stronie POI jeszcze warstwa RMI/serializacji i konfiguracja serwera). Pamięć: zapis trzyma wszystkie wiersze w pamięci do `commit` (dla tekstu ok. 640 MB przy 200 000 × 6), co jest ryzykiem dla większych wolumenów (limit arkusza 1 048 576 wierszy).
+Dla porównania z technikami strumieniowymi (SXSSF) nie było potrzeby, bo rdzeń zapisu już mieści się w celu (poniżej minuty z dużym zapasem).
+
+## Etap 1: instrumentacja czasów faz (2026-11-17, gałąź `hgdb-219` w `mercury`)
+
+`ExportGenerator.generateViewReport` (eksport widoku) mierzy teraz sumaryczne czasy faz i zapisuje jedną linię `INFO` po zakończeniu eksportu: `-->generateViewReport[<wątek>]: widok '<nazwa>': stron: N, wierszy: M, razem: T ms (odczyt: … ms, konwersja: … ms, zapis stron do POI: … ms, zapis pliku (commit): … ms)`. Klasa pomocnicza `PhaseTimes` (koszt pomiaru: cztery wywołania `System.nanoTime()` na stronę). Eksport spraw (ścieżka Lucene) jeszcze nieoznaczony.
+
+**Do zrobienia (potrzebuje działającego środowiska):** eksport widoku o ok. 200 000 wierszy (np. `Vw016Slm` z zadania 016) na serwerze z działającym serwerem Iron POI i odczyt tej linii z logu; potem rozbicie warstw (RMI, serializacja strony), profil JFR dla `mercury` i serwera POI oraz `EXPLAIN ANALYZE` kolejnych stron widoku (H4).

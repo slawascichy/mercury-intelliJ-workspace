@@ -66,13 +66,13 @@ netsh winsock reset
 
 * Obsługa Git
 ```bash
-export TAG_VERSION="3.0.4.27"
+export TAG_VERSION="3.0.4.28"
 git tag -a ${TAG_VERSION} -m "Wersja ${TAG_VERSION}"
 git push origin
 git push origin ${TAG_VERSION}
 ```
 ```bash
-export BRANCH_VERSION=hgdb-245
+export BRANCH_VERSION=hgdb-056
 git push origin ${BRANCH_VERSION}
 ```
 ```bash
@@ -97,7 +97,7 @@ hgdb:
    D016-Widoki
    D039-[Lucene]-Optymalizacja-dostępu-do-IndexReader-a
    D049-[CMIS]-Implementacja-API-CMIS
->056-Problem-z-aktualizacją-typu-podczas-zmniejszenia-liczby-parametrów
+   D056-Problem-z-aktualizacją-typu-podczas-zmniejszenia-liczby-parametrów
    D058-Logger-dynamiczne-zmiana-poziomów-logowania
    D062-Problem-dodawanie-klucza-głównego-po-utworzniu-typu-bez-pola
    D082-[ActiveMQ]-Dynamiczne-budowanie-odbiorców
@@ -128,7 +128,7 @@ hgdb:
  B215-Nowa-komunikacja-IBM-BPM-HgDB
    D217-Reprezentowanie-użytkowników-w-kontekście
  B218-Czyściciel-starych-wersji-spraw
-219-Wydajność-generowania-plików-Excel
+>219-Wydajność-generowania-plików-Excel
  B220-Filtry-i-sortowanie-w-eksporcie-widoków
    D222-[GUI]-Panel-monitorowania-sekretarzy
    D226-Pomiar-zapisu-na-Linuksie-Tomcat-Terracotta
