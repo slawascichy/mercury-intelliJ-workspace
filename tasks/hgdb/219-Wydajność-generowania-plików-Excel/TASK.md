@@ -98,3 +98,17 @@ Dla porównania z technikami strumieniowymi (SXSSF) nie było potrzeby, bo rdze�
 `ExportGenerator.generateViewReport` (eksport widoku) mierzy teraz sumaryczne czasy faz i zapisuje jedną linię `INFO` po zakończeniu eksportu: `-->generateViewReport[<wątek>]: widok '<nazwa>': stron: N, wierszy: M, razem: T ms (odczyt: … ms, konwersja: … ms, zapis stron do POI: … ms, zapis pliku (commit): … ms)`. Klasa pomocnicza `PhaseTimes` (koszt pomiaru: cztery wywołania `System.nanoTime()` na stronę). Eksport spraw (ścieżka Lucene) jeszcze nieoznaczony.
 
 **Do zrobienia (potrzebuje działającego środowiska):** eksport widoku o ok. 200 000 wierszy (np. `Vw016Slm` z zadania 016) na serwerze z działającym serwerem Iron POI i odczyt tej linii z logu; potem rozbicie warstw (RMI, serializacja strony), profil JFR dla `mercury` i serwera POI oraz `EXPLAIN ANALYZE` kolejnych stron widoku (H4).
+
+## Pamięć na Kubernetesie `mercury-test` (2026-11-17)
+
+**Problem:** ładowanie danych do pomiaru (typ `Bench219`) zabiło `mercury-node1` (`OOMKilled`, kod 137) przy ok. 65 000 z 200 000 spraw. Węzły robocze miały 6,4 GB, a chart miał tylko `requests` (bez `limits`); JVM Mercury `-Xmx4098m` plus PostgreSQL i ehcache (Terracotta `-Xmx2049m` + 1024 MB poza stertą) wyczerpały pamięć węzła.
+
+**Pomiar zużycia** (cgroup, po załadowaniu 67 000 spraw): `mercury-node1` 3,8 GiB, ehcache 0,65, ActiveMQ 0,55, PostgreSQL 0,43, serwer POI 0,14, LDAP 0,03, balanser 0,03 GiB. Serwer POI nie ma `-Xmx` w obrazie (JVM ze sterty 25% pamięci), PostgreSQL ma `shared_buffers` 128 MB.
+
+**Zmiana (`mercury-docker`, gałąź `hgdb-219`, chart `mercury-single-node`, niezacommitowane):**
+- `values.yaml`: `requests` i `limits` dla wszystkich kontenerów (Mercury 5Gi/6Gi, ehcache 1536Mi/3Gi, PostgreSQL 1Gi/1536Mi, ActiveMQ 768Mi/1536Mi, POI 768Mi/2Gi, LDAP, balanser); założenie: dwa węzły po 8 GB.
+- `javaOptions.poiServer: "-XX:MaxRAMPercentage=65.0"` (zmienna `JAVA_TOOL_OPTIONS` serwera POI; z limitem 2Gi sterta ok. 1,3 GiB; w Javie 8 wartość procentowa wymaga części dziesiętnej: `65` powodował błąd „Improperly specified VM option”).
+- `affinity.mercuryNode`: miękka (preferowana) anty-afiniczność węzła Mercury względem PostgreSQL i ehcache. Efekt: `mercury-node1` i balanser na `k8s-worker1`, pozostałe na `k8s-worker2`.
+- `charts/README.md`: sekcja „Memory configuration”.
+- `helm upgrade` na `mercury-test`: rewizje 8 i 9; 7 z 7 podów gotowe, wszystkie bez restartów. Stare `requests` (z 2026-11-14) zastąpione. `helm lint` zgłasza błąd `Chart.yaml` (apiVersion v1 z polem `type`), istniejący wcześniej i niezwiązany z tą zmianą.
+- Węzły robocze po zwiększeniu RAM do 8 GB: 7,1 GiB do przydziału (wcześniej 6,2 GiB).
