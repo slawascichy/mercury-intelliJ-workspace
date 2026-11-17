@@ -104,3 +104,15 @@ Flagi zapisu klient przesyła jako parametry żądania w kontekście (`pro.ibpm.
 - Dokumentacja (`Cluster_sessions`, EN i PL): po zalogowaniu użytkownik wraca na żądany adres; strona startowa tylko bez zapisanego adresu.
 - **Sprawdzone na kompozycji 3-węzłowej (jar i skrypt w obrazie nakładkowym):** round-robin bez `n`: 8 z 8 poprawnie (`/admin/lucene-queries`), `GET` node1 → logowanie node2 poprawnie, adres z parametrami (`/files/uploadSystemFile?l=de`) zachowany, wejście wprost na stronę logowania: `/`; po zalogowaniu `/admin/loggers` zwraca 200.
 - **Nie ma testu jednostkowego** (klasa zależy od obiektów Tomcata `Request` i `Session`); wymagane ponowne wydanie `mercury` (jar w `common.loader`) i obrazu `mercury-docker`.
+
+## CMIS z tokenem Bearer zwracał 401 (2026-11-17)
+
+**Przyczyna:** tylko wiązanie przeglądarkowe (`/browser/*`); AtomPub (`/atom11`) z tokenem Bearer działał (200). Serwlet `cmisbrowser` używał `TokenCallContextHandler` z OpenCMIS, który wymaga nazwy użytkownika z nagłówka Basic albo tokenu strony (`?token=`), więc odrzucał żądanie z `Authorization: Bearer` ("No authentication!") zanim zadziałał `HttpCmisAuthenticator`. Nie była to konfiguracja OAuth (wzorce ścieżek nie wpływają na `checkToken`) ani nieważny token.
+
+**Poprawka (`mercury-ws-app`):** `org.mercury.cmis.server.BearerTokenCallContextHandler` (rozszerza `TokenCallContextHandler`): dla nagłówka `Bearer` zwraca pustą mapę i zostawia weryfikację tokenu `HttpCmisAuthenticator` (jak w REST), pozostałe żądania (Basic, token strony, brak uwierzytelnienia) obsługuje jak dotąd. `web.xml`: parametr `callContextHandler` serwletu `cmisbrowser` wskazuje nową klasę. Test jednostkowy `BearerTokenCallContextHandlerTest` (3: Bearer przepuszczony także z małej litery, Basic daje użytkownika, brak uwierzytelnienia nadal odrzucony).
+
+**Sprawdzone na kompozycji 3-węzłowej:** `browser` z Bearer 200 (wcześniej 401), z Basic 200, bez uwierzytelnienia 401, ze złym tokenem 401, `atom11` z Bearer 200, `/browser` (informacje o repozytorium) z Bearer 200. Komentarz w `mercury-server.sh` („token Bearer działa zawsze”) jest teraz zgodny z zachowaniem.
+
+## Stan zadania 056 (2026-11-17)
+
+Zrobione: flaga `valueIsNullIfFieldNotExisisInRequest` w serwerze (pozycja nieustawiona) z testami jednostkowym i scenariuszowym, `SaveRequestFlags` w kliencie, dokumentacja Context, obserwacje 171 i 170 (✅), CMIS Bearer w wiązaniu przeglądarkowym. Niezacommitowane na koniec dnia: w `mercury` tylko `BearerTokenCallContextHandler` z testem i `web.xml` (reszta zacommitowana przez autora). Do wydania: `mercury` (jar `mercury-gui-core` w `common.loader` i WAR), potem `mercury-docker`, a `hgdb-client-open` z nowym numerem.
