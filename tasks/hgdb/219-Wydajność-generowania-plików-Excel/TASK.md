@@ -112,3 +112,99 @@ Dla porównania z technikami strumieniowymi (SXSSF) nie było potrzeby, bo rdze�
 - `charts/README.md`: sekcja „Memory configuration”.
 - `helm upgrade` na `mercury-test`: rewizje 8 i 9; 7 z 7 podów gotowe, wszystkie bez restartów. Stare `requests` (z 2026-11-14) zastąpione. `helm lint` zgłasza błąd `Chart.yaml` (apiVersion v1 z polem `type`), istniejący wcześniej i niezwiązany z tą zmianą.
 - Węzły robocze po zwiększeniu RAM do 8 GB: 7,1 GiB do przydziału (wcześniej 6,2 GiB).
+
+## Etap 0/1: pomiar eksportu widoku na `mercury-test` (2026-11-18)
+
+Środowisko: Kubernetes `mercury-test` (węzły robocze 8 GB, chart z limitami pamięci), `mercury` 3.0.4.28, widok `T_Bench219` (typ `Bench219`, 200 007 spraw, 6 pól: cztery tekstowe, `Decimal`, `Integer`), strony po 1000, użytkownik `admin`. Eksport zlecany `ReportExportStatusRest/prepareReportRequest` (`viewName`, `ps`), czas liczony od zlecenia do `COMPLETED` (`export219.py`, odpytywanie co 5 s).
+
+**Najpierw błędy środowiska, które uniemożliwiały eksport na Kubernetesie** (obserwacja 172): usługa `poi-server-node1` miała tylko port 10090, a serwer POI używa RMI na 10099, 10100 i 10101 (zrzut wątków: `ExportSecretary` stoi w `socketConnect` przy `RegistryImpl_Stub.lookup`); po dodaniu portów stub RMI wskazywał `localhost`, bo skrypt startowy ma `HOST_NAME=localhost` na sztywno. Poprawione w chartcie i skrypcie (gałąź `hgdb-219` w `mercury-docker`), na `mercury-test` zastosowane tymczasowo (ConfigMap + zmienna `HOST_NAME`).
+
+**Wynik bazowy (wersja 3.0.4.28 bez instrumentacji):** eksport 200 007 wierszy × 6 kolumn: **60,7 s** (`COMPLETED`), czyli ok. 3 300 wierszy/s. Postęp co 5 s: 12, 24, 36, 46, 56, 66, 74, 82 … 100% (zwalnia pod koniec: ok. 12% na 5 s na początku, ok. 8% na końcu). Dla porównania zmierzony 29.10 na dev eksport 200 000 wierszy widoku nad dwoma typami z dekodowaniem trwał ok. 15,5 min (inne dane i środowisko, więc nieporównywalne wprost).
+
+**Rozbicie czasu odczytu z bazy** (`psql`, `\timing` i `EXPLAIN ANALYZE`, widok `T_Bench219`): `readViewData` wykonuje dla **każdej** strony `SELECT COUNT(*) FROM <widok>` (164 ms) oraz `SELECT … ORDER BY 1 LIMIT 1000 OFFSET (n-1)*1000` (strona 1: 0,9 ms, `OFFSET 100 000`: 81 ms, `OFFSET 199 000`: 156 ms). Dla 200 stron: zliczanie ok. 33 s, rosnący `OFFSET` ok. 16 s, razem **ok. 48 s z 60,7 s (ok. 80%)**. Pozostałe ok. 13 s to konwersja stron, zapis stron do POI przez RMI i `commit`. Potwierdza H4 (koszt `OFFSET`) i odkrywa nową przyczynę: zliczanie przy każdej stronie (obserwacje 173 i 174).
+
+**Hipotezy po pomiarach:** H1 (zapis pliku w POI): odrzucona (5–6 s dla całego wolumenu); H4 (`OFFSET`): potwierdzona; nowa: zbędne `COUNT(*)` na każdej stronie; H2 (konwersja) i H3 (RMI): razem co najwyżej ok. 13 s, do rozbicia instrumentacją; H5 (brak nakładania faz): drugorzędna, bo odczyt jest 80% czasu.
+
+**Kandydaci na poprawki (do akceptacji):** (1) zliczanie tylko przy pierwszej stronie, (2) stronicowanie po kluczu (`id`) w eksporcie, (3) dopiero potem potok odczyt–konwersja–zapis, (4) argument formatu `csv` w POI, (5) odświeżanie klienta RMI przy błędzie połączenia i krótszy czas oczekiwania na połączenie (obserwacja 115: po odtworzeniu poda POI Mercury trzymał nieważne połączenie). Oczekiwany efekt (1)+(2): odczyt z ok. 48 s do ułamka sekundy na strony, a eksport z ok. 61 s do ok. 13 s (do potwierdzenia pomiarem).
+
+## Odświeżanie klienta RMI serwera POI (2026-11-18, obserwacja 115 ✅)
+
+`mercury-core-server`, pakiet `org.mercury.rmi.clients`: nowy `PoiRmiInvoker` (wspólny dla `PoiServerLoaderClient` i `PoiServerWriterClient`); `RmiClientServices` ma limit czasu połączenia z rejestrem (własna `RMIClientSocketFactory`) oraz klasyfikację błędów.
+- Po utracie połączenia (`NoSuchObjectException`, `ConnectException`, `ConnectIOException`, także jako przyczyna) klient porzuca stub, czeka (opóźnienie rośnie: 1, 2, 3 s), wyszukuje usługę od nowa i ponawia wywołanie, domyślnie 3 razy. Ponawiane są tylko błędy, przy których wywołanie na pewno nie wykonało się na serwerze; zerwanie w trakcie wywołania jest zgłaszane bez ponawiania.
+- Konfiguracja (`mercury.properties`): `mercury.poi.rmi.connectTimeoutMs` (5000, 0 wyłącza), `mercury.poi.rmi.retries` (3, 0 wyłącza), `mercury.poi.rmi.retryDelayMs` (1000).
+- Usunięto sprawdzenie `echo` przed każdym wywołaniem (podwajało liczbę wywołań RMI: ok. 400 dodatkowych na eksport 200 stron).
+- Ograniczenie: transakcja zapisu pliku żyje w pamięci serwera POI; po jego restarcie w trakcie eksportu nie da się jej dokończyć, więc taki eksport kończy się błędem (odświeżenie pomaga następnym eksportom i rozpoczęciu nowej transakcji).
+- Testy: `PoiRmiInvokerTest` (8) przechodzi; na `mercury-test` po wymianie poda POI eksport zakończył się powodzeniem bez restartu Mercury (log: `NoSuchObjectException: no such object in table`, ponowienie po 1 s). Jar został tam wdrożony tymczasowo przez ConfigMap z `subPath` (klasa jest we wspólnym `lib` Tomcata).
+
+## Stronicowanie widoków: zliczanie i klucz (analiza, 2026-11-18, do decyzji autora)
+
+**1. Czy zliczanie ma ukrytą funkcję korekcji?** Nie. Przejrzane: `CaseViewDefinitionDAO.readViewData` (zapytanie `SELECT COUNT(*)` przy każdej stronie), `CaseViewDefinitionLogic` (z liczby wierszy wylicza informacje o stronach: bieżąca, pierwsza, ostatnia, poprzednia, następna, wiersze 500–509) i `ExportGenerator.generateViewReport`. Eksport używa liczby tylko do (a) sprawdzenia, czy widok nie jest pusty, (b) wyliczenia numeru ostatniej strony **raz, przy pierwszej stronie** (pętla `pageNumber <= lastPageNumber`) i (c) postępu. Kolejne zliczenia na stronach 2…N są **wyrzucane**: nikt ich nie porównuje z pierwszym. Skutek zmiany danych w trakcie eksportu przy `OFFSET`: dodane wiersze nigdy nie wejdą do pliku (ostatnia strona jest ustalona), a usunięte lub dodane przed bieżącą pozycją przesuwają strony (duplikaty albo pominięcia). Zliczanie na każdej stronie niczemu więc nie służy w eksporcie, ale dla **podglądu** (GUI, REST) liczba wierszy i numer ostatniej strony są częścią kontraktu „PagedResult” (tak samo jak przy wynikach Lucene).
+
+**Co gdy informacja o liczbie „zniknie” (strona pobierana osobnym żądaniem, może trafić na inny węzeł)?** Serwer jest bezstanowy: nic o liczbie nie jest trzymane między żądaniami, każde żądanie niesie wszystko, czego potrzebuje. Zliczanie powinno być więc **parametrem żądania, a nie stanem**:
+- domyślnie jak dziś (`EXACT`: liczba i informacje o stronach w każdej odpowiedzi), więc podgląd i klienci się nie zmieniają;
+- opcjonalnie bez zliczania (`NONE`): odpowiedź nie ma liczby ani numeru ostatniej strony, ale ma **`hasNext`** (odczyt `rozmiar + 1` wierszy), więc klient nawiguje „dalej/wstecz” z dowolnego węzła; kto potrzebuje ostatniej strony albo sumy, prosi o `EXACT` jednym żądaniem (nie przy każdej stronie);
+- dla bardzo dużych widoków możliwe zliczanie szacunkowe albo z krótkotrwałą pamięcią podręczną (klucz: widok, filtry, ograniczenia użytkownika; zadanie osobne, bo trzeba zdecydować o nieaktualności liczby).
+Eksport nie powinien zależeć od liczby: pętla kończy się, gdy strona jest krótsza niż rozmiar (`hasNext = false`); liczba z pierwszej strony służy tylko do postępu (ograniczonego do 100%).
+
+**2. Klucz, `ORDER BY 1` i JDBC.**
+- `ORDER BY 1` to **pierwsza kolumna widoku**: dla widoków typów (`T_<kod>`) i widoku `Vw016Slm` jest to `m_id`, czyli identyfikator sprawy (`character varying`, np. `Bench219.123456`, unikalny, z indeksem klucza głównego `igo_da_cases_pkey`, plan używa `Index Scan`). Sortowanie tekstowe (kolejność leksykograficzna, `Bench219.10` przed `Bench219.9`) nie przeszkadza stronicowaniu: liczy się porządek **całkowity i taki sam** w `ORDER BY` i w warunku `>`, a oba używają kolacji bazy. Słabość: zależność od „pierwszej kolumny”; dla widoku zarejestrowanego ręcznie pierwsza kolumna może nie być unikalnym kluczem, więc w definicji widoku trzeba wskazać **kolumnę klucza** (domyślnie `M_ID`).
+- Widok generowany zawiera `SELECT DISTINCT` (plan: węzeł `Unique` i `Incremental Sort` po wszystkich kolumnach); warunek na `m_id` jest mimo to wpychany do skanu (`Index Cond: id > $1`, odczyt ok. 1 025 wierszy), więc stronicowanie po kluczu działa także na takim widoku. `DISTINCT` jest osobnym kosztem (zliczanie 164 ms), do rozważenia w obserwacji.
+- Dziś DAO używa JPA (`setFirstResult` i `setMaxResults`), czyli `LIMIT/OFFSET`, a **nie** mechanizmu pobierania JDBC (`fetchSize`, kursor). Strumieniowanie w PostgreSQL wymaga: transakcji (autocommit wyłączony), wyniku „tylko do przodu” i `fetchSize > 0` (w Hibernate `ScrollableResults` z `ScrollMode.FORWARD_ONLY` i `setFetchSize`).
+
+**Pomiar trzech sposobów** (`psql`, widok `T_Bench219`, 200 007 wierszy, strony po 1000):
+
+| Sposób | Strona na początku | Strona na głębokości 100 000 | Strona na głębokości 199 000 | Cały eksport (200 stron) |
+|---|---|---|---|---|
+| `LIMIT/OFFSET` + `COUNT(*)` na stronę (dziś) | 0,9 ms + 164 ms | 81 ms + 164 ms | 156 ms + 164 ms | ok. 49 s (33 s zliczanie + 16 s `OFFSET`) |
+| po kluczu (`WHERE m_id > :ostatni ORDER BY m_id LIMIT n`) | ok. 1 ms | ok. 1–2 ms (odczyt ok. 1 025 wierszy) | ok. 1–2 ms | ok. 0,3 s |
+| kursor po stronie serwera (jedno zapytanie, `fetch 1000`) | 1,7 ms | 1,5 ms (po pominięciu 99 000 w 78 ms) | 1,5 ms | ok. 0,5 s |
+
+**Rekomendacja:** w eksporcie **stronicowanie po kluczu**: krótkie, niezależne transakcje (jedna na stronę), brak długiej transakcji i jednego połączenia przez całe minuty (pule 85 połączeń na węzeł), możliwość wznowienia od ostatniego klucza po błędzie, stały koszt strony, stabilność względem zmian danych (nowe wiersze o większym kluczu trafiają do pliku, usunięte nie przesuwają stron). Kursor JDBC jest równie szybki i daje spójną migawkę, ale trzyma połączenie i transakcję przez cały czas eksportu (konwersja i zapis do POI trwają, więc to minuty) i nie da się go wznowić; zostaje opcją, gdyby stronicowanie po kluczu okazało się niewystarczające. Dla podglądu z numerem strony `OFFSET` zostaje (dostęp losowy), a dla dużych widoków można dodać stronicowanie po kluczu („strona po tokenie”).
+
+**Zakres zmiany i wydanie:** DTO `ViewQuery` i `ViewDataPage` są w `mercury-lib`, więc rozszerzenie publicznego API (`countMode`, klucz „po”, `hasNext`) wymaga **wydania `mercury-lib`**, tłumaczeń dokumentacji OpenAPI i dokumentacji. Wariant bez wydania biblioteki: w pierwszym kroku wewnętrzna metoda serwera (bez REST/SOAP) dla eksportu, w drugim publiczne API.
+
+## Kursor po stronie serwera w prezentacji danych (analiza, 2026-11-18, do decyzji autora)
+
+**Zasięg zmiany.** Stronicowanie przez `LIMIT/OFFSET` w JPA (`setFirstResult`) występuje w kodzie **tylko** w `CaseViewDefinitionDAO.readViewData`. Z niego korzystają: eksport widoku (`ExportGenerator`) oraz podgląd widoku (REST `CaseViewExtRest`, SOAP `CaseViewDefinitionAction`, przez `CaseViewDefinitionLogic.readViewData`, razem z filtrem uprawnień i maskowaniem). Wyszukiwanie spraw (Lucene → lista identyfikatorów → pobranie encji po identyfikatorach, `IdsPagedQuerySupport`/`MQuery`) używa innego mechanizmu i **nie jest dotknięte**. Zmiana wewnętrzna tylko dla eksportu nie wpływa na podgląd; zmiana `readViewData` (nowe parametry z zachowaniem domyślnych wartości) obejmuje też podgląd, ale tylko widoki.
+
+**Pomiary dodatkowe** (`psql`, `T_Bench219`, 200 007 wierszy):
+
+| Mechanizm | Koszt |
+|---|---|
+| lista wszystkich kluczy (`SELECT m_id … ORDER BY 1`) | 161 ms (jednorazowo) |
+| pobranie 1000 wierszy po kluczach (`m_id = ANY(:klucze)`) | 3,5 ms, niezależnie od głębokości (dostęp losowy) |
+| kursor `WITH HOLD`: `DECLARE` + `COMMIT` (materializacja całego wyniku) | 206 ms; potem `FETCH 1000` poza transakcją 0,7–0,8 ms, pominięcie 150 000 wierszy 6 ms |
+| kursor `SCROLL WITH HOLD` (także wstecz) | materializacja 283 ms; `FETCH BACKWARD 1000` 2,2 ms |
+
+**Kursor w przeglądaniu danych: ryzyka.** Kursor łączy się z jedną sesją bazy, a Mercury ma pule połączeń (do 85 na węzeł) i wiele węzłów, więc kursor między żądaniami wymaga stanu: przypięcia połączenia (sesji) do użytkownika i węzła. Zwykły kursor trzyma otwartą transakcję (`idle in transaction`: blokuje czyszczenie wersji wierszy, zajmuje połączenie z puli, ginie przy awarii węzła albo przeładowaniu). `WITH HOLD` nie trzyma transakcji, ale materializuje cały wynik (tu ok. 20 MB plików tymczasowych dla 200 000 wierszy), nadal jest związany z sesją, i trzeba go zamykać (porzucone strony, limity czasu, wyciek zasobów). Dla przeglądania danych (dowolne żądanie, dowolny węzeł) to sprzeczne z bezstanowością usług REST.
+
+**Wzorzec zgodny z resztą Mercury: migawka kluczy i pobranie po kluczach** (tak działa wyszukiwanie spraw): pierwsze żądanie wykonuje zapytanie raz, zapisuje **uporządkowaną listę kluczy** (do limitu, np. 10 000–50 000) w pamięci podręcznej klastra (region współdzielony, krótki TTL) pod tokenem i zwraca stronę oraz token; kolejne strony: wycinek listy kluczy → `m_id = ANY(...)` (3,5 ms). Daje to dostęp losowy do dowolnej strony, stałą liczbę wierszy (znana od razu), spójną kolejność, brak transakcji i brak sesji, działa z dowolnego węzła (pamięć podręczna klastra), a kosztem jest pamięć listy kluczy (ok. 20 B na klucz) i nieaktualność migawki (do TTL). Wygasły token: ponowne wykonanie zapytania (jak dziś, bez błędu).
+
+**Propozycja warstw prezentacji danych** (do wyboru przez autora):
+1. Eksport (jedna pętla w jednym wątku, bez stanu między żądaniami): stronicowanie po kluczu albo kursor JDBC; kursor jest tu bezpieczny, bo cały cykl życia mieści się w jednym wątku (rekomendowane po kluczu: wznowienie i brak długiej transakcji).
+2. Podgląd z dowolną stroną: migawka kluczy z tokenem w pamięci podręcznej (jak wyszukiwanie spraw), liczba z migawki zamiast `COUNT(*)` przy każdej stronie.
+3. Przeglądanie „dalej”: stronicowanie po kluczu bez zliczania (`hasNext`).
+4. Kursor `WITH HOLD` w przeglądaniu: odradzane (stan, sesja, materializacja).
+
+## Warstwa 1: eksport widoku po kluczu (2026-11-18) ✅
+
+**Wynik pomiaru** (`mercury-test`, widok `T_Bench219`, 200 007 spraw: 200 006 wierszy widoku, strony po 1000, użytkownik `admin`):
+
+| Wersja | Czas eksportu | Odczyt z bazy | Konwersja | Zapis stron do POI (RMI) | Zapis pliku (`commit`) |
+|---|---|---|---|---|---|
+| 3.0.4.28 (`OFFSET` + `COUNT(*)` na stronę) | 60,7 s | ok. 48 s (z pomiaru w bazie) | razem ok. 13 s | | |
+| po zmianie (po kluczu, bez zliczania) | **10,2 s** | **2,2 s** | 0,9 s | 2,3 s | 4,0 s |
+
+Czas zadania (cel: 200 000 × 6 poniżej minuty) osiągnięty z zapasem (ok. 6 razy szybciej). Linia z czasami faz pochodzi z instrumentacji `ExportGenerator` (`stron: 201, wierszy: 200006, razem: 9346 ms (odczyt: 2154 ms, konwersja: 924 ms, zapis stron do POI: 2277 ms, zapis pliku (commit): 3967 ms)`). Po zmianie największy udział ma zapis pliku w POI (ok. 40%), potem odczyt i zapis stron przez RMI (po ok. 23%).
+
+**Poprawność pliku** (pobrany `xlsx`, 19,2 MB): 200 007 wierszy w arkuszu (nagłówek + 200 006 wierszy danych), identyfikatory `M_ID` unikalne i w kolejności klucza (leksykograficznie rosnąco).
+
+**Zmiany w kodzie** (`mercury`, gałąź `hgdb-219`, bez zmiany DTO w `mercury-lib`, więc bez wydania biblioteki):
+- `ICaseViewDefinitionDAO` / `CaseViewDefinitionDAO`: nowy wariant `readViewData(..., boolean withCount)`; dotychczasowa metoda deleguje z `withCount = true`.
+- `ViewKeyColumn` (`mercury-srv`): kolumna klucza widoku (`M_ID`, a gdy jej nie ma, pierwsza kolumna jak dotąd w `ORDER BY 1`).
+- `ICaseViewDefinitionLogicInternal.readViewDataAfterKey(context, viewName, afterKey, pageSize)` (nowy interfejs wewnętrzny, bo `ICaseViewDefinitionLogic` jest w `mercury-lib`), implementowany przez `CaseViewDefinitionLogic`: filtr `klucz > afterKey`, sortowanie po kluczu, odczyt `pageSize + 1` wierszy (nadmiarowy wiersz tylko wskazuje dalsze), bez zliczania; uprawnienia, ograniczenie do typów i maskowanie bez zmian (wspólna ścieżka `doReadViewData`).
+- `ExportGenerator.generateViewReport`: pierwsza strona z liczbą (postęp, zakres), kolejne po kluczu; serwer POI wymaga, by każda strona niosła te same informacje o pierwszej i ostatniej stronie, liczbie wierszy i kolejne numery, więc strony po kluczu dostają numery po kolei i informacje z pierwszej strony (`describeKeysetPage`); zakres eksportu wyznacza liczba z początku (wiersze dodane później poza zakresem nie wchodzą do pliku, zapis do logu), pętla kończy się na braku dalszych wierszy; postęp ograniczony do 100%.
+- Testy: `ViewKeyColumnTest` (4). Brak testu scenariuszowego odczytu na bazie (widok powstaje asynchronicznie przez JMS); funkcjonalnie sprawdzone pomiarem na `mercury-test`.
+- **Nie zmienione:** podgląd widoku (REST `CaseViewExtRest`, SOAP) nadal czyta przez `OFFSET` z `COUNT(*)`; wyszukiwanie spraw (Lucene).
+
+**Tymczasowe nakładki na `mercury-test`** (bez publikowania obrazu; do usunięcia po wydaniu): (1) ConfigMap `poi-start-patch` z poprawionym `startServer.sh` serwera POI i zmienna `HOST_NAME` w deploymencie POI, (2) ConfigMap `core-server-jar` z `mercury-core-server-3.0.4.28.jar` zamontowany w `mercury-node1`, (3) jary `mercury-srv`, `mercury-dao` i `mercury-dao-api` na wolumenie NFS (`/opt/mercury-3.0/upload/override`) kopiowane do `lib` przy starcie kontenera przez nadpisane `command` deploymentu `mercury-node1`. Usunięcie: nowy obraz `mercury` i `poi-server` z wydania, potem `kubectl delete configmap poi-start-patch core-server-jar`, usunięcie `command` i woluminów nakładek (`kubectl patch` albo świeże `helm uninstall/install`).
