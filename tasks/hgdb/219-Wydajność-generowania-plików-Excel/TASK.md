@@ -208,3 +208,57 @@ Czas zadania (cel: 200 000 × 6 poniżej minuty) osiągnięty z zapasem (ok. 6 r
 - **Nie zmienione:** podgląd widoku (REST `CaseViewExtRest`, SOAP) nadal czyta przez `OFFSET` z `COUNT(*)`; wyszukiwanie spraw (Lucene).
 
 **Tymczasowe nakładki na `mercury-test`** (bez publikowania obrazu; do usunięcia po wydaniu): (1) ConfigMap `poi-start-patch` z poprawionym `startServer.sh` serwera POI i zmienna `HOST_NAME` w deploymencie POI, (2) ConfigMap `core-server-jar` z `mercury-core-server-3.0.4.28.jar` zamontowany w `mercury-node1`, (3) jary `mercury-srv`, `mercury-dao` i `mercury-dao-api` na wolumenie NFS (`/opt/mercury-3.0/upload/override`) kopiowane do `lib` przy starcie kontenera przez nadpisane `command` deploymentu `mercury-node1`. Usunięcie: nowy obraz `mercury` i `poi-server` z wydania, potem `kubectl delete configmap poi-start-patch core-server-jar`, usunięcie `command` i woluminów nakładek (`kubectl patch` albo świeże `helm uninstall/install`).
+
+### Eksport spraw (Lucene): wynik (2026-11-18)
+
+Baza: 200 007 spraw `Bench219`, strony po 1000. Wcześniej ok. 18 min i brak pliku (eksport spraw nigdy nie kończył się plikiem przy tej liczbie danych).
+
+| Zmiana | Skutek |
+|---|---|
+| `ExportGenerator`: `EntityManager.detach` encji każdej strony po konwersji | zniknął narost czasu strony z jej numerem (próbkowanie wątków: `DefaultAutoFlushEventListener.dirtyCheck` po rosnącym kontekście trwałości); 51% po 111 s zamiast 54% po 587 s |
+| `MPoiServerSupport.createHeader`: `caseId` i `previousVersionId` jako `STRING` (były `LONG`) | koniec błędu `NumberFormatException: "Bench219.62114"` przy zapisie pliku (id spraw są tekstowe od zadania 016) |
+| limit pamięci `poi-server-node1` 2Gi → 4Gi (live na `mercury-test` i w `values.yaml` + `charts/README.md`) | przy 2Gi POI był zabijany (`OOMKilled`) przy ok. 50% eksportu: serwer trzyma strony całego eksportu w pamięci do `commit` |
+
+Wynik: **COMPLETED po 354 s** (cel < 60 s niespełniony). Plik nie sprawdzony. Nie zmierzony rozkład czasu faz na ścieżce spraw. Nie sprawdzony eksport na limicie 2Gi po zmianie typów.
+
+Dalsze kroki: instrumentacja `PhaseTimes` na ścieżce spraw (odczyt Lucene, `convertCollectionByStream`, zapis RMI, `commit`), pula `ForkJoinPool` tworzona przy każdej stronie, wynik `commit` POI.
+
+### Eksport spraw: pomiar faz i czyszczenie kontekstu (2026-11-18, po południu)
+
+`ExportGenerator.generateReport` loguje teraz `PhaseTimes` (jak widoki). Pomiary `mercury-test`, 200 006 wierszy:
+
+| Wariant | Razem | Odczyt (Lucene + baza) | Konwersja | Zapis stron do POI | Zapis pliku (`commit`) |
+|---|---|---|---|---|---|
+| tylko `detach` encji spraw, strony po 1000 | 345 s | 329 s | 2,8 s | 9,4 s | 3,9 s |
+| `flush` + `clear` kontekstu po każdej stronie, strony po 1000 | **80 s** | 60 s | 3,3 s | 11,7 s | 5,2 s |
+| to samo, strony po 10 000 | 92 s | 82 s | 3,2 s | 3,0 s | 4,0 s |
+
+Wnioski:
+- `detach` samych spraw nie wystarcza: w kontekście zostawały encje powiązane i kolekcje, a Hibernate przed każdym zapytaniem (auto-flush) sprawdzał je wszystkie. `flush` + `clear` po stronie (`releasePage()`) daje 4-krotne przyspieszenie.
+- Większa strona nie pomaga: odczyt rośnie z liczbą wierszy (ok. 0,3 ms/wiersz), a nie ze stronami.
+- Próbki wątków po poprawce: czas odczytu dzieli się na (a) wykonanie zapytania Lucene i scalanie pełnego zbioru wyników przy każdej stronie (`QueryResultUtil.merge`, `ResultRows.putAll`, `QueryResultSupport.prepareResultSetByCollection`: koszt rośnie z wielkością zbioru, nie strony), (b) ładowanie encji `Case` z bazy (`SearchProviderUtils.loadFromDatabase`, `TwoPhaseLoad`) i auto-flush wewnątrz strony.
+- Cel (< 60 s dla 200 000 × 6) niespełniony: 80 s. Kolejne kroki: (1) wykonywać zapytanie Lucene raz i czytać kolejne strony ze zbioru, (2) pominąć ładowanie całego `Case` (z kolekcjami) na rzecz odczytu potrzebnych pól, (3) potok odczyt–konwersja–zapis (zapis RMI ok. 12 s i `commit` ok. 5 s można nakładać na odczyt), (4) `ForkJoinPool` per strona.
+- Plik wynikowy eksportu spraw nadal niesprawdzony (liczba wierszy, kolejność).
+
+### Eksport spraw: pamięć podręczna Lucene i pokrycie pól indeksem (2026-11-18, wieczór)
+
+- Klucz pamięci podręcznej wyniku Lucene (`QueryResultsManager.getQueryId`) zawierał numer i rozmiar strony, więc każda strona eksportu zapisywała własną pełną kopię wyniku i nie trafiała w cache. Usunięty numer i rozmiar strony (zostaje limit trafień). **Pomiar bez zmiany:** odczyt 60,4 s (przed 60,3 s), razem 76-81 s. Zmiana ogranicza zaśmiecanie cache'u (201 kopii 200 tys. wierszy), ale nie skraca eksportu.
+- Powód: także trafienie w cache kosztuje O(liczba trafień) na stronę: `executeQuery` przepisuje wynik (`ResultRows.putAll`), a `QueryResultSupport.initResulSet` buduje listę wszystkich 200 tys. wpisów (`transformRow2ResultSet`) przy każdym żądaniu strony. Próbkowanie (14 zrzutów wątków w trakcie eksportu): Lucene (przepisanie wyniku + budowa listy) 8, ładowanie `Case` z bazy 4 (w tym 2 z auto-flush), zapis RMI 2.
+- Wniosek: koszt Lucene wynika z tego, że każda strona buduje wynik od nowa. `QueryExplainPlan.execute` zapamiętuje wynik (`this.result`), a `QueryResultSupport.initResulSet` listę (`this.resultSet`) w instancji, więc ponowne użycie jednej instancji dla kolejnych stron kosztowałoby raz. Propozycja: metoda `CaseSearcher` wykonująca plan raz i oddająca kolejne strony wywołaniu zwrotnemu (czytnik indeksu otwarty na czas całego eksportu); `ExportGenerator` czyta strony przez nią.
+- Pokrycie pól eksportu indeksem (`Case.java`, adnotacja `@LuceneSeracherField`, `CaseMapper`): w indeksie (stored) są `id`, `bpmProcessId`, `inventoryCode`, `status`, `previousVersionId`, `priceValue`, `priceValueCode`, `priceExchangeDate`, `createDate`, `lastModifyDate`, `endDate`, `dueDate`, `createdBy`, `lastModifiedBy`, `createdByRoleName`, `lastModifiedByRoleName`; typ i grupa przez mappery. **Bez adnotacji (nie w indeksie):** `modifyComment`, `storeCount`, `store` (storeId). Parametry typu: indeksowane przez `AttributeParser` (hasła pomijane, `SUBCASE` i `COMPLEX` osobno), forma zapisu wartości (surowa czy prezentacja kliencka) i flaga `stored` nie sprawdzone. Eksport z samego indeksu jest więc możliwy tylko dla eksportu bez pól `modifyComment`/`storeCount`/`storeId` (flaga pomijania nagłówka lub typy bez tych kolumn) i bez parametrów `PASSWORD`/`SUBCASE`/`COMPLEX`, po potwierdzeniu formatu wartości.
+
+### Eksport spraw: kursor stron Lucene (2026-11-18, wieczór) - cel osiągnięty
+
+Zmiana (`mercury-srv`, gałąź `hgdb-219`): `ICaseSearcher.openPageCursor` / `CaseSearcher` (wspólny `executeQuery` z `doSearchIndex`) i `ICaseLogicInternal.openSearchCursor` zwracają `ICasePageCursor`: zapytanie Lucene wykonuje się raz, kolejne strony (`page(n)`) są czytane z zapamiętanego wyniku (plan `QueryExplainPlan.result` i lista `QueryResultSupport.resultSet` w jednej instancji); kursor trzyma otwarty czytnik indeksu (try-with-resources w `ExportGenerator.generateReport`). Wykonanie lokalne (indeks węzła, na którym działa eksport).
+
+| Wariant (200 006 wierszy, strony po 1000) | Razem | Odczyt | Konwersja | Zapis stron do POI | `commit` |
+|---|---|---|---|---|---|
+| `flush` + `clear` po stronie | 80 s | 60 s | 3,3 s | 11,7 s | 5,2 s |
+| + klucz cache bez numeru strony | 76 s | 60 s | 3,4 s | 7,4 s | 5,1 s |
+| + kursor stron (zapytanie raz) | **28,3 s** (30,6 s od zlecenia) | 12,0 s | 2,7 s | 9,8 s | 3,7 s |
+
+Cel zadania (200 000 × 6 poniżej 1 minuty) osiągnięty dla eksportu spraw (wcześniej ok. 18 min bez pliku) i widoków (10,2 s). Plik wynikowy sprawdzony: 200 007 wierszy w arkuszu (nagłówek + 200 006), 200 006 unikalnych `mrc_caseId`, wartości nagłówka i parametrów poprawne (m.in. `caseId` jako tekst).
+
+Zmiany niezatwierdzone w `mercury`: `ExportGenerator`, `MPoiServerSupport`, `QueryResultsManager`, `CaseSearcher`, `ICaseSearcher`, `ICasePageCursor`, `ICaseLogicInternal`, `CaseLogic`. Brak testu jednostkowego kursora (wymaga indeksu Lucene i bazy); sprawdzone pomiarem na `mercury-test`.
+
+Dalsze (opcjonalne): eksport z samego indeksu dla typów bez pól spoza indeksu, potok odczyt-konwersja-zapis, argument formatu `csv`, ścieżka odczytu (import, `load`), warstwy 2 i 3 podglądu widoków.
