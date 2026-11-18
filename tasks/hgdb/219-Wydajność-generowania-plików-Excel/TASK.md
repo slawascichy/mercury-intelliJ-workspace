@@ -262,3 +262,19 @@ Cel zadania (200 000 × 6 poniżej 1 minuty) osiągnięty dla eksportu spraw (wc
 Zmiany niezatwierdzone w `mercury`: `ExportGenerator`, `MPoiServerSupport`, `QueryResultsManager`, `CaseSearcher`, `ICaseSearcher`, `ICasePageCursor`, `ICaseLogicInternal`, `CaseLogic`. Brak testu jednostkowego kursora (wymaga indeksu Lucene i bazy); sprawdzone pomiarem na `mercury-test`.
 
 Dalsze (opcjonalne): eksport z samego indeksu dla typów bez pól spoza indeksu, potok odczyt-konwersja-zapis, argument formatu `csv`, ścieżka odczytu (import, `load`), warstwy 2 i 3 podglądu widoków.
+
+### Argument formatu pliku: `csv` (2026-11-18, wieczór)
+
+Decyzje: domyślnie `xlsx`; `csv` to UTF-8 z BOM (Excel poprawnie czyta polskie znaki), separator pól `;` (zmienny parametrem), końce wierszy `
+`, wartości z separatorem, cudzysłowem lub końcem wiersza w cudzysłowie (RFC 4180), jeden wiersz nagłówka, bez limitu arkusza. Wartości zapisywane tak, jak przychodzą w wierszach (bez zamiany typów), wartości zaczynające się od `=`, `+`, `-`, `@` nie są zmieniane (arkusz może je potraktować jako formuły; zostawione świadomie, żeby nie zmieniać danych).
+
+Zmiany:
+- `poi-toolkit` (wersja **4.1.0.3**, `minor_version.txt`; 4.1.0.2 była wydana): `FileFormat` (`XLSX`, `CSV`), parametry zapisu `fmt` i `csvsep` (`ServerAppConstants.WriteParams.FMT`, `CSVSEP`), `ExcelFileWriter` (rozszerzenie pliku wg formatu, `saveCsv`), test `CsvWriterTest` (4 testy: parsowanie formatu, dwie strony ze znakami specjalnymi, własny separator, domyślny xlsx).
+- `mercury`: `poi-toolkit.version` 4.1.0.3 w `pom.xml`; REST `ReportExportStatusRest.prepareReportRequest`: pola `format` (`xlsx`/`csv`, nieznany format daje błąd w odpowiedzi) i `csvSeparator` (jeden znak), rozszerzenie pliku wg formatu; `ReportExportStatusLogicHelper` przenosi `fmt` i `csvsep` do PARAMS raportu (bez tego generator ich nie widział); `ExportGenerator` przekazuje je do serwera POI. W OpenAPI (`openapi-docs_*.properties`) `PrepareReportRequest` nie jest opisany, więc nie ma kluczy do uzupełnienia.
+- Poprawka błędu: w eksporcie spraw ostatnia kolumna `dlc` była o 1 za duża (`dfc + headerSize`, w widokach `dfc + headerSize - 1`), co w CSV dawało pustą kolumnę na końcu każdego wiersza (w xlsx pusta kolumna z nazwą litery w nagłówku).
+
+Pomiar `mercury-test` (200 006 spraw, 27 kolumn, strony po 1000): CSV 25-30 s, plik 40 MB (xlsx 19 MB, 30 s); sprawdzony: 200 007 wierszy (nagłówek + dane), po 27 pól w każdym, 200 006 unikalnych `mrc_caseId`. Eksport widoku w CSV 15 s.
+
+Pamięć serwera POI: kolejne eksporty 200 000 spraw przy `-XX:MaxRAMPercentage=65.0` i limicie 4Gi kończyły się `OOMKilled` (heap 2,6 GiB + pamięć poza stertą cache'u i JVM przekraczały limit kontenera). Przy `50.0` trzy eksporty z rzędu przeszły bez restartu; zmienione w `values.yaml` i `charts/README.md` (`mercury-docker`) i na żywo na `mercury-test`. Obserwacja 177: serwer trzyma wszystkie strony eksportu w pamięci do `commit` (dla CSV wystarczyłby zapis strony na dysk przy `load`).
+
+Nakładki na `mercury-test` (tymczasowe, do usunięcia po wydaniu): jar `poi-toolkit-4.1.0.3` w `mercury-node1` (usuwanie 4.1.0.2 z `lib`) i w poziomie POI, `mercury-ws-app.war` z NFS `upload/override/mercury-ws-app.war.new` kopiowany przy starcie (webapp jest rozpakowywany z WAR przy każdym starcie, więc same klasy podmienić się nie dają), zmienna `JAVA_TOOL_OPTIONS` na wdrożeniu POI. Do zrobienia przy wydaniu: nowy pakiet i obraz `poi-server` z `poi-toolkit-4.1.0.3` (`mercury-docker/poi-server`: zip, `Dockerfile`, `startServer.sh`, `conf/node*.properties`, `mercury.properties`; dziś wskazują 4.1.0.2) oraz wydanie `mercury`.
