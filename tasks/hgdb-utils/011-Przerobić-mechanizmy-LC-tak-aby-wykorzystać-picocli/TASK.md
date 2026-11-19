@@ -10,6 +10,7 @@ Bardzo fajny pakiet:
 		    <version>4.7.7</version>
 		</dependency>
 ```
-Warto przerobić mechanizmy linii komend, usprawnić "help'a".
 
-Dodatkowo przydałyby się wersje językowe dla tego narzędzia.
+- Warto przerobić mechanizmy linii komend, usprawnić "help'a".
+- Dodatkowo przydałyby się wersje językowe dla tego narzędzia.
+- Dodać narzędzie do przeprowadzenia backup i restore indeksu lucene

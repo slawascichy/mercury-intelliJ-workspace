@@ -349,3 +349,59 @@ R: `ImportGenerator` zbiera zmiany do bufora indeksu w kolekcji z kontekstu (`AG
 **Zamknięcie transakcji importu (2026-11-19):** `CaseTransactionManager.closeLocalTransaction` zdejmuje podtransakcję z wpisów globalnych równolegle (8 wątków, od 1000 spraw; małe transakcje sekwencyjnie), semantyka bez zmian. Pełny import 200 006 wierszy (xlsx): **338 s** (było 380 s). Oś czasu: wstawianie do 229 s, rejestracja zmian 3 s, **zbiorczy zapis do bufora indeksu (`optimalization` + `insertList`, 200 000 wpisów hurtowych) ok. 88 s** (do 320 s, moment zniknięcia postępu), zamknięcie transakcji i `commit` ok. 18 s (do 338 s). Wcześniejszy ogon 158 s dzielił się więc na ok. 88 s zapisu do bufora i ok. 70 s zamknięcia (podział wyprowadzony z osi czasu, bez osobnego pomiaru przed zmianą). Następny kandydat: zapis do bufora hurtowego (88 s, ok. 0,44 ms na wpis), np. w pakietach równolegle albo przez wsadowe wstawianie JDBC.
 
 **Zapis do bufora hurtowego (2026-11-19):** zrzuty wątku w fazie po rejestracji zmian: `MDictDAOSupport.insertList` → `flushAnalyze` → `flush` Hibernate z dirty-checkiem wszystkich wstawionych dotąd wpisów (kontekst trwałości rośnie, koszt kwadratowy; ten sam mechanizm co w eksporcie spraw). `LucCaseSaveBufferLogic.insertList` wstawia teraz wpisy hurtowe pakietami po 2000 z `flushAndClear` po każdym (listy do 2000 bez zmian; wpisy bufora są tylko do zapisu). Pełny import csv 200 006 wierszy: **258 s** (poprzedni pomiar tej samej wielkości w csv: 326 s; xlsx: 380 s, potem 338 s). Oś czasu: 100% wstawiania w 220 s, zapis do bufora i koniec pętli ok. 22 s (było ok. 88 s), zamknięcie transakcji i `commit` ok. 16 s. Ogon po wstawianiu: 38 s (było 109-158 s). Stan końcowy importu 200 000 spraw: czytanie pliku ok. 10-25 s, wstawianie ok. 200 s (ok. 1000 wierszy/s), ogon 38 s.
+
+### Dane testowe odtworzone i obudzenie sekretarza indeksu po imporcie (2026-11-19)
+
+**Dane `Bench219` odtworzone** na `mercury-test`: SQL (z `session_replication_role = replica`) usunął 1,63 mln spraw `Bench219`, ich korzenie, 220 tys. grup, bufory indeksu (`igo_luc_*`) i wpisy ostatnio modyfikowanych; katalog indeksu `lucene/index/Case` wyczyszczony przy starcie poda (znacznik `.cleaned219`, nowy pusty indeks), potem import csv 200 006 wierszy (234 s). Zbiór: **200 006 spraw + 12 000 z testów budzenia = 212 006 spraw `Bench219`** i jedna `CmisFolder`; indeks Lucene zawiera je wszystkie. Odtworzenie importem (4 min) zamiast `saveList` (ok. 32 min).
+
+**`saveList` (ładowanie `load219.py`, paczki po 1000): 103 spraw/s**, tyle samo co przed zmianami (105-131 spraw/s): zmiana rejestru transakcji nie przyspiesza tej ścieżki, a liczba rzeczywistych spraw na wywołanie bywa wielokrotnie większa (podrzędne sprawy w polach). Do optymalizacji po warstwach 2 i 3 (profil SQL, dane referencyjne raz na wywołanie, transakcja na paczkę, zbiorczy zapis do bufora).
+
+**Regresja kroku R: sekretarz indeksu nie był budzony po imporcie** (bufor hurtowy 200 006 wpisów i `working=false` do ręcznego `wakeUpCaseIndexSecretary`). Przyczyna: zamknięcie transakcji zewnętrznej (`CaseTransactionManager.commitTransaction` → `CaseTransactionPostCommitFactory.invokePostCommitActions`) budziło sekretarza od razu, jeszcze przed zatwierdzeniem transakcji bazy; po kroku R wpisy bufora są w tej transakcji (wcześniej każdy wpis zatwierdzał osobny wątek), więc sekretarz nie widział wpisów i kończył pracę, a obudzenie po zatwierdzeniu trafiało na jego jeszcze „pracujący” wątek i ginęło. Poprawka: `invokePostCommitActions` budzi sekretarza indeksu przez `LucCaseSaveBufferLogicHelper.wakeupSecretaryWhenCommitted` (po zatwierdzeniu transakcji bazy, bez transakcji od razu); to samo wyścigowe obudzenie przed zatwierdzeniem dotyczyło wszystkich przepływów z transakcją zewnętrzną (`save`, `saveList`), więc poprawka obejmuje i je. Weryfikacja na `mercury-test` (pusty bufor, bezczynny sekretarz, import 3000 wierszy): sekretarz sam startuje, bufor 3000 → 0 w ok. 20 s.
+
+## Warstwy 2 i 3: podgląd widoku (projekt, 2026-11-19, do decyzji autora)
+
+**Stan kodu.** Podgląd (`CaseViewExtRest.readViewExcelData`, SOAP `CaseViewDefinitionAction.readViewData`) woła `ICaseViewDefinitionLogic.readViewData(context, ViewQuery)` → `CaseViewDefinitionLogic.doReadViewData(keyset=false)` → `CaseViewDefinitionDAO.readViewData(withCount=true)`: `SELECT COUNT(*)` + `LIMIT/OFFSET` na każdą stronę. Wewnętrzna ścieżka po kluczu (`readViewDataAfterKey`, warstwa 1) już istnieje i zwraca `hasMoreResultRows`. `ViewQuery` (pola: `viewName`, `pageNumber`, `pageSize`, `filters`, `sorting`) i `ViewDataPage` są w `mercury-lib`, więc **nowe pola w publicznym DTO wymagają wydania `mercury-lib`**.
+
+**Warstwa 3: przeglądanie „dalej” po kluczu (bez stanu).**
+- `ViewQuery.afterKey` (opcjonalny) + `ViewQuery.countMode` (`EXACT` domyślnie, `NONE`). Przy `afterKey` lub `NONE` logika używa istniejącej ścieżki po kluczu (`m_id > :klucz ORDER BY klucz LIMIT n+1`), bez `COUNT`.
+- `ViewDataPage.nextKey` = klucz ostatniego wiersza strony (klient przekazuje go w następnym żądaniu), `hasMoreResultRows` = `hasNext`. Sortowanie niestandardowe (`sorting`) przy `afterKey` jest niedozwolone (klucz = porządek), filtry dozwolone.
+- Wstecz: tylko przez `afterKey` poprzedniej strony po stronie klienta (klient trzyma stos kluczy) albo warstwę 2.
+- Bez zmiany zachowania dla dzisiejszych klientów (pola opcjonalne, domyślnie jak dziś).
+
+**Warstwa 2: podgląd z dowolną stroną z migawki kluczy.**
+- Pierwsze żądanie (`countMode=EXACT`, bez tokenu) wykonuje zapytanie o **klucze** (`SELECT klucz … ORDER BY` z filtrami, sortowaniem i ograniczeniem typów użytkownika), do limitu (`mercury.view.snapshot.maxKeys`, domyślnie 50 000), i zapisuje uporządkowaną listę w pamięci podręcznej klastra (współdzielony region jak `QueryResultsManager`, krótki TTL, `mercury.view.snapshot.ttl`) pod losowym tokenem; zwraca `ViewDataPage.snapshotToken`, `resultSize` (z migawki, nie z osobnego `COUNT`), informacje o stronach.
+- Kolejne strony: `ViewQuery.snapshotToken` + `pageNumber` → wycinek listy kluczy → `WHERE klucz IN/= ANY(:klucze)` z zachowaniem kolejności (3,5 ms niezależnie od głębokości); wiersze są **świeże** (migawka dotyczy tylko zbioru i kolejności kluczy).
+- Token wygasły albo nieznany: ponowne wykonanie zapytania i nowy token (bez błędu). Token wiązany z użytkownikiem i definicją widoku (nie da się użyć cudzej migawki; uprawnienia i maskowanie liczone przy każdym odczycie wiersza, jak dziś).
+- Wynik większy niż limit: migawka obcięta, `resultSize` oznaczone jako przybliżone (`truncated`); dalej działa warstwa 3.
+- Koszt pamięci: ok. 20 B/klucz → 1 MB na 50 000 kluczy na migawkę.
+
+**Bez kursorów `WITH HOLD`** (stan, sesja, materializacja; patrz analiza wyżej).
+
+**Wykonanie.**
+1. `mercury-lib`: pola w `ViewQuery` (`afterKey`, `countMode`, `snapshotToken`) i `ViewDataPage` (`nextKey`, `snapshotToken`, `truncated`) + wydanie biblioteki, tłumaczenia OpenAPI (`openapi-doc-report.txt`, `openapi-docs_*.properties`), dokumentacja.
+2. `mercury-srv`: `CaseViewDefinitionLogic` (rozgałęzienie po parametrach), menedżer migawek (`ViewSnapshotManager` na `ObjectWithCacheSupport`, jak `QueryResultsManager`), DAO: `readViewKeys` i `readViewRowsByKeys`.
+3. Pomiar na `mercury-test` (`t_bench219`, 212 006 wierszy): strona 1, środek, koniec; dziś vs warstwa 2 vs 3; wielu równoległych użytkowników (pamięć).
+
+**Decyzje do zatwierdzenia:** (a) zakres wydania `mercury-lib` (bez niego warstw w publicznym API nie ma; wariant tymczasowy to tylko wewnętrzna metoda), (b) limit migawki 50 000 i TTL (propozycja 5 min), (c) nazwy pól, (d) czy kolumna klucza ma być w definicji widoku (domyślnie `M_ID`, jak w warstwie 1).
+
+**Decyzje autora (2026-11-19):** wydanie `mercury-lib` na wezwanie po zaimplementowaniu i pomiarach (do tego czasu lokalna instalacja); limit migawki 50 000 i TTL 5 min zatwierdzone; kolumna klucza pozostaje `M_ID` (prefiks `M_` oznacza pola nagłówka widoku, `CaseViewQueryBuilder.HEADER_FIELD_PREFFIX`), nazw kolumn nie zmieniamy; nazwy pól DTO do ustalenia (prefiks wzorem pól nagłówka?).
+
+## Warstwy 2 i 3: wynik (2026-11-19) ✅
+
+**Wdrożone (lokalnie, `mercury-lib` na gałęzi `hgdb-219a`, jar `mercury-core` wgrany do `.m2` jako 3.0.4.24, wydanie na wezwanie):**
+- `ViewQuery`: `afterKey`, `countMode` (`ViewCountMode` `EXACT`/`NONE`), `snapshotToken`, `useSnapshot` (migawka jest **opt-in**, bo klient niewiedzący o tokenie tworzyłby migawkę przy każdej stronie, czyli kosztowałby więcej niż dziś). `ViewDataPage`: `nextKey`, `snapshotToken`, `hasNext` (JSON nie niesie `hasMoreResultRows`, bo pole ma `@JsonIgnore`); `truncated` z klasy bazowej `PagingInfoTransportable`.
+- `mercury-dao(-api)`: `readViewKeys` (filtry, sortowanie z kluczem na końcu, limit), `readViewRowsByKeys` (`IN` po 500 kluczy, kolejność jak w migawce, brakujące pomijane); warunek `WHERE` wydzielony do `buildWhere`.
+- `mercury-srv`: `ViewKeySnapshot`, `ViewSnapshotCache` (region współdzielony, jak `QueryResultsManager`), `CaseViewDefinitionLogic.readFromSnapshot`; token wiązany z użytkownikiem i skrótem zapytania (widok, filtry, sortowanie, zakres typów), TTL `mercury.view.snapshot.ttl` (300 s), limit `mercury.view.snapshot.maxKeys` (50 000); `afterKey`/`NONE` używa ścieżki po kluczu z warstwy 1 (sortowanie niestandardowe odrzucane). Test `ViewKeySnapshotTest`.
+
+**Pomiar** (`mercury-test`, `T_Bench219`, 212 006 wierszy, strona 1000, REST `CaseViewDefinitionRest/readViewData`, czas całego żądania z JSON-em 320 KB):
+
+| Sposób | Strona 1 | Strona 100 | Strona 200 |
+|---|---|---|---|
+| `OFFSET` + `COUNT` (dotąd) | 330–480 ms | 400–440 ms | 540–570 ms |
+| migawka (50 000 kluczy): utworzenie | 155 ms | | |
+| migawka: strona z tokenu | 60–90 ms | 30–50 ms (poza migawką: pusta) | |
+| po kluczu (`afterKey`, `NONE`) | 53–104 ms | 69 ms | 96 ms |
+
+Cała ścieżka po kluczu: 213 stron, 212 006 wierszy unikalnych, 17,6 s. Zgodność kluczy strony z migawki i z `OFFSET`: tak. Token błędny albo obcy: nowa migawka bez błędu. Przy 212 006 wierszach limit 50 000 obcina migawkę (`truncated`); strony za limitem są puste, dalej idzie się po kluczu (`hasNext`, `nextKey`).
+
+**Do rozstrzygnięcia:** limit migawki dla dużych widoków (pamięć klastra vs wygoda), tłumaczenia OpenAPI (opisy pól DTO powstają z javadoc przy generowaniu; opis `readViewExcelData.param.query` w `openapi-docs_*.properties` wymienia pola `ViewQuery`, a podgląd Excel nie zwraca tokenu ani `nextKey`), obserwacja 184 (konflikt nazw kolumn w generatorze widoków).
