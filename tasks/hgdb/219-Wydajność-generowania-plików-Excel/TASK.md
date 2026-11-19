@@ -322,3 +322,14 @@ Import jest jedną transakcją dla całego pliku, więc obiekt rośnie z każdym
 - **B (transakcja na stronę i wstawianie wsadowe):** `importCase` jest wywoływany równolegle w `ForkJoinPool`, a każde wywołanie to osobna transakcja (4,7 `commit` na wiersz łącznie z rejestracją). Wariant: jedna transakcja na stronę (wątek przetwarza paczkę wierszy) i `hibernate.jdbc.batch_size` dla wstawień spraw i korzeni. Największy zysk (usuwa `BEGIN`/`COMMIT` i zbija `insert` w paczki), ale największa zmiana: wspólny kontekst trwałości dla paczki wymaga `flush`/`clear` po stronie (jak w eksporcie) i uwagi na identyfikatory generowane przez sekwencję tabelaryczną `IGO_SEQ_PK` (pobranie zakresu raz na paczkę).
 
 **Kolejność:** R (mała zmiana, 60% czasu), potem A, na końcu B.
+
+**Wyniki kroków R i A (import csv 20 000 wierszy, `mercury-test`, strony po 1000):**
+
+| Wersja | Razem | Faza importu | Faza rejestracji zmian |
+|---|---|---|---|
+| stary `mercury-dao` | 167 s | ok. 86 s | ok. 80 s |
+| nowy rejestr transakcji (`CaseTransactionManager`) | 147-202 s | ok. 96-100 s | ok. 50 s |
+| + R (zbiorczy zapis do bufora indeksu) | 108 s | ok. 106 s | kilka s |
+| + A (`ImportReferenceCache`: grupa i powiązanie magazyn-typ raz na import) | **72 s** | ok. 55 s | kilka s |
+
+R: `ImportGenerator` zbiera zmiany do bufora indeksu w kolekcji z kontekstu (`AGREGATE_BUFFER_DATA_PROP`) i zapisuje je po pętli przez `optimalization` + `insertList` (bufor hurtowy dla importu zachowany). Bufor hurtowy po imporcie jest przetwarzany przez sekretarza indeksu (ok. 190 dokumentów/s). A: `ImportReferenceCache` w kontekście importu (`CONTEXT_PROP`), używany w `CaseLogic.simpleInsert` tylko gdy jest w kontekście. Do zmierzenia po kroku B: pełny import 200 000 wierszy.
