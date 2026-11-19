@@ -2,7 +2,7 @@
 
 https://github.com/slawascichy/hgdb/issues/219
 
-**Status (2026-10-29):** zadanie analizy założone po teście eksportu widoków (zadanie 016, etap 3). Nic nie zmieniono w kodzie. Poniżej cel, dotychczasowe pomiary, hipotezy, plan analizy i decyzje do podjęcia. Metodyka wzorowana na zadaniu 119 (optymalizacja zapytań Lucene): najpierw powtarzalny pomiar bazowy, potem rozbicie czasu na warstwy, dopiero potem zmiany.
+**Status (2026-11-19): zadanie zamknięte.** Cel (200 000 × 6 poniżej minuty, odczyt i zapis, format csv) osiągnięty; wydania: `mercury-lib` 3.0.4.25, `poi-toolkit` 4.1.0.4, `mercury` 3.0.4.30, `hgdb-client-open` 3.1.4.25, `mercury-cmd` 3.1.4.7. Podsumowanie na końcu pliku („Zamknięcie zadania”). Wcześniejsze statusy poniżej zostają jako historia. Zadanie założone 2026-10-29 jako analiza po teście eksportu widoków (zadanie 016, etap 3).
 
 ## Cel (autor)
 
@@ -454,3 +454,25 @@ Wynik: odczyty `IGO_DA_TYPEPARAMETERS` (skany sekwencyjne) 10 759 na 4 kwartały
 **saveList, krok 4: pomiar `SubType` i pomijanie odczytu usuniętych spraw (2026-11-19).** Pomiar odczytu definicji podtypu (`findByTypeAndFieldName`, 451 zapytań na 454 sprawy w logu bazy): w 49 próbkach wątków zapisu (zrzuty co sekundę, indeks, wstawianie i transformacja) **0 próbek** w `SubTypeDAO`/`SubTypeLogic` (przerwy w logu bazy, które sugerowały 24% czasu, obejmują też pracę aplikacji po zapytaniu), a w `CaseBusiness` te wywołania występują tylko przy zmianie typu sprawy podrzędnej. Pamięci podręcznej dla `SubType` nie dodano. Odczyt pozycji kluczy w `findByPKProperty` i `findByProperty`: ok. 0,2 ms na zapytanie, ok. 2% czasu sesji bazy.
 
 Sprawdzanie usuniętych spraw (`CaseDAO.beforeInsert` → `IGO_DA_REMOVED_CASES`) nie pomijało odczytu, bo identyfikatory spraw nadaje już analiza zapisu (`CaseBusinessSupport`, krok identyfikacji sprawy), a nie `beforeInsert`. Nowa klasa `FreshCaseIds` (mercury-dao): analiza zapisu rejestruje identyfikator nadany z sekwencji, `beforeInsert` zużywa wpis i pomija odczyt usuniętych spraw (wpisy nieużyte wygasają po 10 minutach). Wynik: odczytów `IGO_DA_REMOVED_CASES` na 454 sprawy 454 → 0; czas zapisu kwartału 10,4–11,7 s (ok. 3% mniej). Testy: `FreshCaseIdsTest`, `SrvTest` (wszystkie włączone scenariusze OK, w tym `caseBusinessSaveListScenario`, `subTypePositionScenario`, `datasetScenario`), `WsServerTest` 5/5.
+
+## Zamknięcie zadania (2026-11-19) ✅
+
+**Wyniki** (`mercury-test`, Kubernetes, typ `Bench219` 200 006 spraw płaskich 6 pól; zapis list: typ `Quarter`→`Month`→`Invoice`→`InvoicePosition`):
+
+| Operacja | Na początku | Na końcu |
+|---|---|---|
+| eksport widoku 200 000 × 6 | 60,7 s | **10,2 s** (strony po kluczu) |
+| eksport spraw xlsx | ok. 18 min, bez pliku | **22–37 s** (kursor stron Lucene, 30,6 s dla 200 000) |
+| eksport spraw csv | nie było | **21–25 s** |
+| import 200 006 wierszy | ponad 1 h, bez końca | xlsx **380 s**, csv **258 s** |
+| podgląd widoku, strona z głębi 200 000 wierszy | 540–570 ms (`COUNT` + `OFFSET`) | po kluczu 70–100 ms, z migawki 30–50 ms |
+| zapis listy (`saveList`, kwartał 2704 spraw z podsprawami) | 22,5 s (120 spraw/s po stronie klienta) | **10,4–11,6 s** (ok. 250 spraw/s u klienta, ok. 380 spraw/s na serwerze) |
+
+**Zmiany:** eksport po kluczu i kursor stron Lucene; format csv (`fmt`, `csvsep`); strumieniowe czytniki xlsx i csv w POI; import: rejestr transakcji bez kwadratowego kosztu (lokalne zbiory spraw, blokady paskowe), pamięć danych referencyjnych, agregacja bufora indeksu i zapis hurtowy, paczki po 100 wierszy z plikiem `_errors.csv` dla wycofanej paczki; naprawa budzenia sekretarza indeksu po zatwierdzeniu; naprawa monitoringu sekretarzy (obserwacja 178); podgląd widoków z odczytem po kluczu i migawką kluczy (warstwy 2 i 3; DTO w `mercury-lib` 3.0.4.25, tłumaczenia OpenAPI w 6 językach); `saveList`: zbiorcze „ostatnie zmiany” zamiast JMS na sprawę, tryb `COMMIT` w wątkach zapisu, identyfikacja typu z menedżerów typów, definicje typu w indeksowaniu raz na wersję listy atrybutów, pominięcie zbędnych odczytów (`FreshCaseIds`, korzeń pierwszej wersji, stary wpis wartości unikalnych); chart: limity pamięci, `imagePullPolicy` dla ruchomego znacznika.
+
+**Weryfikacja końcowa 2026-11-19** (po aktualizacji klastra do `mercury` 3.0.4.30 i `poi-server` 4.1.0.4): podgląd (migawka i po kluczu: 221 stron, 220 006 unikalnych wierszy w 18,1 s), eksport widoku xlsx 15,2 s, zapis listy kwartału, import csv 3000 wierszy (po `chmod 644` pliku wgranego przez REST, obserwacja 180). Testy: `WsServerTest` 5/5 (w tym `testMERC_0168_Scenarios`), `SrvTest` ze scenariuszami `caseBusinessSaveListScenario`, `subTypePositionScenario`, `datasetScenario`.
+
+**Do wiedzy po wydaniu:**
+- **Pakiet instalacyjny `mercury` 3.0.4.30 zawiera `lib/poi-toolkit-4.1.0.3.jar`** (i przykładową konfigurację serwera POI), a serwer POI w obrazie ma 4.1.0.4: pakiet bierze `lib` z ręcznie utrzymywanego `mercury/mercury-server/apache-tomcat/mercury/lib` (tam jest 4.1.0.3). Test dymny przechodzi (RMI zgodne), ale klient i serwer powinny mieć tę samą wersję: podmienić jar w `mercury-server/.../lib`, przebudować pakiet i obraz.
+- Obserwacje 185–192 (generator sekwencji, rejestr transakcji, limit nginx 413, pamięć typów, restarty kontenera POI), z czego 188–191 wykonane.
+- Dane `Bench219` (220 007 spraw) i zestaw `Quarter`/`Month`/`Invoice` (ok. 8000 spraw) zostają na `mercury-test` do analityki zapytań grupujących (zgoda autora).
