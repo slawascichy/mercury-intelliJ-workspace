@@ -25,7 +25,7 @@ Projekt korzysta z wydanych wersji pozostałych repozytoriów, a nie z bieżący
 
 ### Polecenia `mercury-srv-cmd`
 
-Polecenia to podpolecenia picocli (`mercury-cmd <polecenie> [opcje]`, pomoc `--help`, język pomocy `--lang` albo `user.language`: pl i en,
+Polecenia to podpolecenia picocli (`mercury-cmd <polecenie> [opcje]`, pomoc `--help`, język pomocy: opcja `--lang`, potem zmienne `LC_ALL`/`LC_MESSAGES`/`LANG`, potem JVM; en, pl, de, es, fr, ko,
 pakiet zasobów `org/mercury/cmd/CmdMessages*.properties`). Dawne flagi (`-ep`, `-gl`, ...) zastąpiły podpolecenia bez myślnika.
 
 | Polecenie (alias) | Akcja | Opis |
@@ -39,7 +39,9 @@ pakiet zasobów `org/mercury/cmd/CmdMessages*.properties`). Dawne flagi (`-ep`, 
 | `jdbc-test` (`jdbctest`) | `JdbcConnectionAction` | Test połączenia z bazą SQL. |
 | `lucene-calibration` (`lc`) | `LuceneCalibrationAction` | Kalibracja `lucene.query.cost.childFirstRatio` i `probeLimit` na indeksie węzła (zadanie 209): zapytania z pliku i/lub z generatora, tylko odczyt indeksu, raport i fragment `lucene.properties` bez zmiany konfiguracji. |
 
-Skrypty wywołujące narzędzie (`mercury-server.sh` w `mercury-docker`) używają `ep` i `gl`; komunikaty `Operation finished ...` i `Please press 'Ctrl+C' ...` są niezmienne, bo skrypty filtrują nimi wynik. `mercury-transfer` ma osobny, jeszcze nieprzerobiony interfejs.
+Polecenia `index-backup` (`ib`), `index-restore` (`ir`, opcja `--backup-id`) i `index-backups` (`ibs`) są pośrednikiem do usługi REST `LuceneIndexBackupExtRest` serwera (token OAuth, zakres `mrc-sysadmin`, opcje `--user`, `--passwd`, `--node`, `--url`; `client_id` i `client_secret` z `commandLine.properties`: `mercury.cmd.rest.*`). Kopię i odtwarzanie wykonuje serwer; szczegóły w `README.md` modułu.
+
+Skrypty wywołujące narzędzie (`mercury-server.sh` w `mercury-docker`) używają `ep` i `gl`; komunikaty `Operation finished ...` i `Please press 'Ctrl+C' ...` są niezmienne, bo skrypty filtrują nimi wynik. `mercury-transfer` ma osobny program `org.mercury.transfer.cmd.TransferCmd` (picocli, opcje `-t`, `-s`, `-q`, `--config`, `--lang`; pakiet zasobów `org/mercury/transfer/cmd/TransferMessages*.properties` w sześciu językach).
 
 ### Zawartość pakietu instalacyjnego
 
