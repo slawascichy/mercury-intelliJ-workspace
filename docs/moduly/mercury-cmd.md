@@ -18,24 +18,28 @@ Projekt korzysta z wydanych wersji pozostałych repozytoriów, a nie z bieżący
 
 | Moduł | Typ | Pliki Java (main / test) | Główne pakiety | Opis |
 |---|---|---|---|---|
-| `mercury-srv-cmd` | jar | 18 / 0 | `pro.ibpm.mercury.cmd`, `org.mercury.cmd.config` | Polecenia CLI serwera (`CommandLine`). Działa lokalnie, na bibliotekach serwera (`command-local-context.xml`), albo zdalnie, przez klienta (`command-remote-context.xml`). |
+| `mercury-srv-cmd` | jar | 28 / 1 | `org.mercury.cmd`, `org.mercury.cmd.commands`, `pro.ibpm.mercury.cmd`, `org.mercury.cmd.config` | Polecenia CLI serwera (`org.mercury.cmd.MercuryCmd`, picocli 4.7.7; zadanie hgdb-utils 11, etap 1). Działa lokalnie, na bibliotekach serwera (`command-local-context.xml`), albo zdalnie, przez klienta (`command-remote-context.xml`). |
 | `mercury-transfer` | jar | 5 / 3 | `org.mercury.transfer.cmd` | Kopiuje dane wybranego typu między dwiema instancjami Mercury DB, wielowątkowo (`TransferThread`). |
 | `mercury-benchmark` | jar | 1 / 6 | `org.mercury.benchmark` | Testy wydajności. Właściwy kod jest w testach (`BenchmarkTest`, `SequenceTest`, wątki wyszukiwania Lucene). `App.java` to szablon „Hello world”. |
 | `mercury-install-package` | pom | – | – | Buduje pakiet instalacyjny serwera (`maven-antrun-plugin`, `build-installation.xml`). |
 
 ### Polecenia `mercury-srv-cmd`
 
-| Kod | Akcja | Opis |
+Polecenia to podpolecenia picocli (`mercury-cmd <polecenie> [opcje]`, pomoc `--help`, język pomocy `--lang` albo `user.language`: pl i en,
+pakiet zasobów `org/mercury/cmd/CmdMessages*.properties`). Dawne flagi (`-ep`, `-gl`, ...) zastąpiły podpolecenia bez myślnika.
+
+| Polecenie (alias) | Akcja | Opis |
 |---|---|---|
-| `EP` | `EncodePasswordAction` | Kodowanie hasła do plików konfiguracyjnych. |
-| `TS` | `TypesSynchronization` | Synchronizacja typów dokumentów z repozytorium. |
-| `GL` | `GenerateLuceneAction` | Generowanie indeksu Lucene dla encji (opcjonalnie liczba wątków). |
-| `RIC` | `ReindexCaseAction` | Ponowne indeksowanie spraw w zakresie numerów SCN. |
-| `VL` | `GenerateLuceneAction` (walidacja) | Walidacja encji o podanej nazwie. |
-| `RPD` | `ReloadPredefinedParamDefinitionsAction` | Przeładowanie predefiniowanych definicji parametrów. |
-| `JDBCTEST` | `JdbcConnectionAction` | Test połączenia z bazą SQL. |
-| `LC` | `LuceneCalibrationAction` | Kalibracja `lucene.query.cost.childFirstRatio` i `probeLimit` na indeksie węzła (zadanie 209): zapytania z pliku i/lub z generatora, tylko odczyt indeksu, raport i fragment `lucene.properties` bez zmiany konfiguracji. |
-| `HELP` | `HelpAction` | Pomoc. |
+| `encode-password` (`ep`) | `EncodePasswordAction` | Kodowanie hasła do plików konfiguracyjnych. |
+| `sync-types` (`ts`) | `TypesSynchronization` | Synchronizacja typów dokumentów z repozytorium (wymaga integracji CMIS). |
+| `generate-lucene` (`gl`) | `GenerateLuceneAction` | Generowanie indeksu Lucene dla encji `Case` albo `GroupCase`, opcja `--threads`. |
+| `reindex-cases` (`ric`) | `ReindexCaseAction` | Ponowne indeksowanie spraw w zakresie numerów SCN. |
+| `validate-entities` (`vl`) | `GenerateLuceneAction` (walidacja) | Walidacja encji o podanej nazwie, opcja `--threads`. |
+| `reload-predefined` (`rpd`) | `ReloadPredefinedParamDefinitionsAction` | Przeładowanie predefiniowanych definicji parametrów. |
+| `jdbc-test` (`jdbctest`) | `JdbcConnectionAction` | Test połączenia z bazą SQL. |
+| `lucene-calibration` (`lc`) | `LuceneCalibrationAction` | Kalibracja `lucene.query.cost.childFirstRatio` i `probeLimit` na indeksie węzła (zadanie 209): zapytania z pliku i/lub z generatora, tylko odczyt indeksu, raport i fragment `lucene.properties` bez zmiany konfiguracji. |
+
+Skrypty wywołujące narzędzie (`mercury-server.sh` w `mercury-docker`) używają `ep` i `gl`; komunikaty `Operation finished ...` i `Please press 'Ctrl+C' ...` są niezmienne, bo skrypty filtrują nimi wynik. `mercury-transfer` ma osobny, jeszcze nieprzerobiony interfejs.
 
 ### Zawartość pakietu instalacyjnego
 
