@@ -54,7 +54,8 @@ Skrypty wywołujące narzędzie (`mercury-server.sh` w `mercury-docker`) używaj
 | `bin/` | Apache Tomcat 8.5.14 i instalatory JDK 8 (u112 Windows, u131 Linux) |
 | `releases/` | Zbudowane pakiety, np. `mercury-install-package-3.0.3.2.11.POSTGRESQL.20221006.zip` |
 | `system-config-sample/linux` | Przykładowa konfiguracja systemu |
-| `libExt/` | `fscontext`, `providerutil` (JNDI w systemie plików) |
+| `libExt/` (źródło w module) | `fscontext`, `providerutil` (JNDI w systemie plików) |
+| `libExt/` (dokładane przy budowaniu pakietu) | `mercury-srv-cmd`, `mercury-transfer`, `hgdb-ws-client-cxf`, `hgdb-multi-client` oraz `picocli` (zależność Maven modułu pakietu, wersja `picocli.version`; bez niej `mercury-cmd` i `mercury-transfer` się nie uruchomią, sprawdza to cel `verify`) |
 
 ## Zależności wewnętrzne
 
