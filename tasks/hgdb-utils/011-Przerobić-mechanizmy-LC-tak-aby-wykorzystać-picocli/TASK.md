@@ -72,3 +72,21 @@ Zmiany w `mercury-cmd`: polecenia `index-backup` (`ib`), `index-restore` (`ir`),
 - Filtr 503 na prawdziwym restore: `mercury-cmd index-restore --node node1` na Tomcacie przy równoległym `curl` co ok. 150 ms: ścieżka kliencka `/mercury-ws-app/browser` odpowiadała 503 przez około 1,5 s (5 z 24 zapytań, log: `Węzeł w konserwacji (index-restore)` i `Koniec konserwacji węzła`), a `/rest/token` odpowiadał 200 przez cały czas (24 z 24).
 
 **Nie sprawdzone:** nginx (`mercury-lb`) z prawdziwymi węzłami Mercury (składnia i zachowanie sprawdzone tylko na atrapach backendów, nowy obraz nie jest zbudowany); klaster z trzema węzłami; dwa węzły z wariantem `single.node` (wtedy nie ma następcy i przekazanie roli kończy się ostrzeżeniem po 22,5 s, backup idzie bez przekazania); restore z dużym indeksem i realną liczbą paczek JMS (w testach okno było rzędu sekund, odrzucono 4 paczki); `mercury-cmd` z fazą B (kopia na MASTER-ze zlecona testem przez REST, nie CLI).
+
+## Podsumowanie zadania (2026-11-20)
+
+**Cele zadania i ich realizacja:**
+- *Przerobić linię komend na picocli, usprawnić help:* zrobione (`mercury-cmd` i `mercury-transfer`, podpolecenia z aliasami, `--help`, `--version`, kody wyjścia 0, 1, 2; bez zgodności ze starymi flagami).
+- *Wersje językowe:* zrobione (en, pl, de, es, fr, ko; język z `--lang`, potem `LC_ALL`, `LC_MESSAGES`, `LANG`, JVM; de, es, fr, ko przez `localizer.py`; test zgodności kluczy).
+- *Narzędzie do backupu i restore indeksu Lucene:* zrobione jako pośrednik do usługi REST serwera (`index-backup`, `index-restore`, `index-backups`), z uwierzytelnianiem OAuth, wyborem węzła w klastrze, kopią i odtwarzaniem po stronie serwera.
+- *Czy JMS jest zawieszony w trakcie backupu i restore:* sekretarz stoi (blokada rejestru), paczki JMS są odbierane i odrzucane, a indeks wyrównuje się z archiwum (bufor archiwalny jest źródłem prawdy); sprawdzone na klastrze (restore odrzucił 4 realne paczki, wszystkie zmiany z czasu operacji są w indeksie).
+- *Czy po backupie i restore aktualizacja indeksu nie wysyła ponownie JMS do innych węzłów:* nie wysyła. Paczki JMS i wybudzenia wysyła wyłącznie `LucCaseSaveBufferBusiness.processNextPackage` (ścieżka sekretarza), a `ArchCaseIndexerBusiness.reIndexCases` woła tylko `updateIndex`. Stwierdzone odczytem kodu, bez obserwacji brokera.
+
+**Poza zakresem pierwotnego zadania, dodane w trakcie:** przekazanie roli MASTER przed kopią i odtwarzaniem, cisza heartbeatu i znacznik konserwacji z odpowiedzią `503` (filtr `NodeMaintenanceFilter`, konfiguracja `mercury-lb`), przegląd roli MASTER (`reviewMasterRole`), poprawka błędnej kolejności w dawnym restore, wyrównanie `consistency` w kopiach `ehcacheDefault.xml`, test klastrowy `LuceneBackupClusterScenario` (fazy A, B, C). Obserwacje: 195 (świeży węzeł może zdetronizować MASTER-a), 196 (wykonana), 197 (przegląd roli).
+
+**Dokumentacja użytkowa:** rozdział `008_Command_line_tools` w serwisie hgdb.org (`docusaurus-hgdb`, gałąź `hgdb-utils-011`): `index.mdx` (przegląd), `001_Mercury_cmd.mdx` (funkcja, uruchamianie, język, konfiguracja `commandLine.properties`, polecenia), `002_Lucene_index_backup.mdx` (kopia zapasowa i odtwarzanie indeksu Lucene: polecenia i opcje, konfiguracja klienta, logowanie, wybór węzła, działanie serwera na jednym węźle i w klastrze, właściwości) i `003_Mercury_transfer.mdx` (opcje, działanie, konfiguracja `transfer.properties`), każdy po angielsku (`docs/`) i po polsku (`i18n/pl/...`, z etykietą kategorii w `current.json`). Tag `mercury-cmd` w `tags.yml`. Poprawiona składnia polecenia `lc` w artykule o kalibracji optymalizatora (dawne `-lc`).
+
+**Do wykonania przez autora:** commity i PR w `mercury-cmd`, `mercury`, `mercury-docker`, `docusaurus-hgdb` i tym repozytorium; wydanie `mercury-cmd`; budowa obrazu `mercury-lb` z nową konfiguracją (przy istniejącym wolumenie `nginx-conf` konfiguracja się nie odświeży, zob. README `mercury-lb`).
+
+**Nie zweryfikowane:** nginx z prawdziwymi węzłami Mercury, klaster trzywęzłowy, dwa węzły z wariantem `single.node`, restore dużego indeksu, `mercury-cmd` z kopią na MASTER-ze w klastrze dwuwęzłowym (fazę B zlecił test przez REST).
+
