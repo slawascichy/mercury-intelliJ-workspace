@@ -66,13 +66,13 @@ netsh winsock reset
 
 * Obsługa Git
 ```bash
-export TAG_VERSION="3.0.4.31"
+export TAG_VERSION="3.0.4.32"
 git tag -a ${TAG_VERSION} -m "Wersja ${TAG_VERSION}"
 git push origin
 git push origin ${TAG_VERSION}
 ```
 ```bash
-export BRANCH_VERSION=release-3.0.4.31
+export BRANCH_VERSION=hgdb-utils-011b
 git push origin ${BRANCH_VERSION}
 ```
 ```bash
@@ -142,4 +142,4 @@ hgdb:
    D245-Błędy-stron-statycznych-html
 
 hgdb-utils:
->011-Przerobić-mechanizmy-LC-tak-aby-wykorzystać-picocli
+   D011-Przerobić-mechanizmy-LC-tak-aby-wykorzystać-picocli
