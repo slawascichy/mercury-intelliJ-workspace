@@ -5,7 +5,7 @@
 - **`mercury` 3.0.4.33** (PR #253, tag), **`mercury-cmd` 3.1.4.10**, **`mercury-docker` 3.0.4.33** (PR #14, tag, merge po zbudowaniu pakietu i obrazów). Wydania robi autor.
 - **Pakiet i obraz** (przygotowałem i wysłałem do Nexusa): `mercury-install-package-3.0.4.33.POSTGRESQL.20261121.zip` (repozytorium raw `mercury-docker-packages`, 136 821 263 B, zgodny z lokalnym; weryfikacja Ant przeszła, w `libExt` jest `picocli-4.7.7.jar`, `Implementation-Version` 3.0.4.33) i obraz `ibpm/mercury:mercury-hgdb-3.0.4.33` (digest `sha256:4a5a12d2…`). `mercury-lb` i obrazy pomocnicze bez zmian.
 - **Klaster `mercury-cluster`:** `helm upgrade` (rewizja 7) na obraz bez nakładek jarów; trzy węzły ONLINE, role `node1` MASTER, `node2` i `node3` SLAVE, API przez LB zwraca `"version":"3.0.4.33"`. Dla `node2`, który robił restore przed poprawką, zapisałem ręcznie `lucene-index-selected.properties` (`lucene.base.indexDir2`), inaczej po wymianie poda wróciłby do pustego `index`.
-- **Dokumentacja w `docusaurus-hgdb`** (gałąź `hgdb-211d`, bez commitu, 6 plików, budowanie en i pl bez ostrzeżeń): artykuł `Kubernetes_installation` (wymagania klastra, dwa wykresy, klaster trzech węzłów, notka o `kubeadm token create --print-join-command`, skrypt `containerd-nexus.sh`, nowa kolejność startu, utrzymanie) i `Lucene_index_backup` (trwały wybór katalogu, znacznik SCN, ścieżki bezwzględne, ostrzeżenie o instalacjach sprzed 3.0.4.33), linki w `index.mdx` rozdziału 005.
+- **Dokumentacja w `docusaurus-hgdb`** (PR #10 `hgdb-211d` zmergowany, 6 plików, budowanie en i pl bez ostrzeżeń): artykuł `Kubernetes_installation` (wymagania klastra, dwa wykresy, klaster trzech węzłów, notka o `kubeadm token create --print-join-command`, skrypt `containerd-nexus.sh`, nowa kolejność startu, utrzymanie) i `Lucene_index_backup` (trwały wybór katalogu, znacznik SCN, ścieżki bezwzględne, ostrzeżenie o instalacjach sprzed 3.0.4.33), linki w `index.mdx` rozdziału 005.
 
 ## Zadanie 211c (chart klastra i poprawki kopii zapasowej)
 
@@ -34,4 +34,4 @@
 
 - `mercury-cluster` (Kubernetes): 3.0.4.33, wszystkie pody `Running`, role jak wyżej; `mercury-test` wyłączony (deploymenty skalowane do 0, dane na NFS, ostatnio 3.0.4.31). Nakładki jarów usunięte razem ze starymi podami; wpisy OAuth w `commandLine.properties` (do `mercury-cmd` w podach) też, trzeba je wpisać ponownie przy kolejnym teście kopii.
 - Nexus: pakiet i obraz 3.0.4.33.
-- Lokalnie: `mercury-docker` na `main` (PR #14), `mercury` na `master` (PR #253), `docusaurus-hgdb` na gałęzi `hgdb-211d` z 6 niezacommitowanymi plikami; workspace ma 1 niewypchnięty commit i niezacommitowane `README.md`, `docs/moduly/mercury-docker.md`, podsumowanie i plan.
+- Lokalnie: `mercury-docker` na `main` (PR #14), `mercury` na `master` (PR #253), `docusaurus-hgdb` na `main` (PR #10, zsynchronizowany); workspace ma 1 niewypchnięty commit i niezacommitowane `README.md`, `docs/moduly/mercury-docker.md`, podsumowanie i plan.
