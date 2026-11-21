@@ -64,12 +64,28 @@ flowchart LR
 
 ## Helm
 
-`charts/mercury-single-node` (wersja wykresu 0.1.0, `appVersion` 3.0.4.25, Kubernetes ≥ 1.16)
-wdraża ten sam zestaw usług co kompozycja jednowęzłowa: ConfigMap, PV/PVC, PostgreSQL,
-OpenLDAP, Ehcache, ActiveMQ, POI Server, węzeł Mercury i load balancer.
-`charts/README.md` opisuje dodanie sekretu do rejestru `docker.io`.
-Kolejność startu pilnują `initContainers` `wait-for-dependencies` (szablon `_helpers.tpl`) w szablonach 07, 08 i 09, jak `depends_on` w kompozycji. Szablony mają `resources.requests` pamięci z `values.yaml` (`mercuryNode` 4 Gi, JVM `-Xmx4098m`), bez `limits`, żeby scheduler rozkładał pody po workerach (obs. 165).
-Wykres używa wolumenów NFS (sekcja `nfsVolumes`, nazwy PV stałe, więc jedno wydanie na klaster) i startuje od razu na PostgreSQL 17, więc migracja danych go nie dotyczy (obs. 162). Sprawdzony 2026-11-12 na klastrze kubeadm (Kubernetes 1.30, 3 węzły, NFS na masterze), szczegóły i znane ograniczenie (brak kolejności startu, obs. 165) w instrukcji na stronie `Kubernetes_installation` serwisu hgdb.org (EN, PL).
+Są dwa wykresy (wersja wykresów 0.1.0, `appVersion` 3.0.4.33, Kubernetes ≥ 1.16):
+
+| Wykres | Co wdraża | Wolumeny NFS |
+|---|---|---|
+| `charts/mercury-single-node` | to samo co kompozycja jednowęzłowa: ConfigMap, PV/PVC, PostgreSQL, OpenLDAP, Ehcache, ActiveMQ, POI Server, węzeł Mercury i load balancer | PV `mercurysinglenode-*` |
+| `charts/mercury-three-node-cluster` | to samo co kompozycja trzywęzłowa: `mercury-node1` (MASTER), `mercury-node2` i `mercury-node3` (SLAVE), dla każdego własny `ehcache-nodeN`, `poi-server-nodeN` i wolumeny `poi-server-N`, `mercury-upload-N`, `mercury-lucene-N` (ścieżka NFS z wartości plus `-N`); wspólne: PostgreSQL (`max_connections` 400), ActiveMQ, OpenLDAP, load balancer | PV `mercurythreenode-*` |
+
+`charts/README.md` opisuje dodanie sekretu do rejestru `docker.io` oraz wykres trzywęzłowy.
+Kolejność startu pilnują `initContainers` `wait-for-dependencies` (szablon `_helpers.tpl`), jak `depends_on` w kompozycji. W wykresie trzywęzłowym węzły 2 i 3 czekają dodatkowo na odpowiedź HTTP węzła 1 (`/mercury-ws-app/rest/openapi.json`, samo otwarcie portu nie wystarcza, bo Tomcat otwiera 8080 przy inicjalizacji), żeby MASTER wystartował pierwszy, a load balancer czeka na trzy węzły. Usługi węzłów publikują port 4000 (replikacja sesji Tomcat Cluster; bez niego GUI po zmianie węzła prosi o ponowne logowanie).
+Szablony mają `resources.requests` i `limits` pamięci z `values.yaml` (węzeł Mercury 5 Gi / 6 Gi, Terracotta 1536 Mi / 3 Gi, PostgreSQL 1 Gi / 2 Gi, ActiveMQ 768 Mi / 1536 Mi, POI 768 Mi / 5 Gi, JVM Mercury `-Xmx4098m`) oraz miękką anty-afiniczność (`affinity`), żeby pody rozkładały się po workerach (obs. 165).
+Wykresy używają wolumenów NFS (sekcja `nfsVolumes`, nazwy PV stałe, więc jedno wydanie każdego wykresu na klaster; PV obu wykresów się nie zderzają) i startują od razu na PostgreSQL 17, więc migracja danych ich nie dotyczy (obs. 162).
+
+**Wymagania klastra Kubernetes** (decyzja autora, 2026-11-21; jedna kompozycja naraz, obie razem się nie mieszczą):
+
+| | `mercury-single-node` | `mercury-three-node-cluster` |
+|---|---|---|
+| Master | 4 GB RAM | 4 GB RAM |
+| Workery | 2 × 8 GB RAM (na mniejszych problem z serwerem POI) | co najmniej 4 × 8 GB RAM |
+| Dysk workera | 64 GB (128 GB nie trzeba) | 64 GB |
+| Dysk mastera | system i dodatkowy dysk co najmniej 256 GB na NFS | tak samo |
+
+Klaster autora (2026-11-21, Kubernetes 1.30, containerd 2.2): master 4 vCPU / 3,4 GiB, `k8s-worker1` i `k8s-worker2` po 4 vCPU / 7,2 GiB, `k8s-worker3` 4 vCPU / 7,2 GiB, `k8s-worker4-ai` 16 vCPU / 15 GiB; NFS na masterze (`/srv/nfs/kubedata`, dysk 196 GB; dysk systemowy 62 GB). Wykres jednowęzłowy sprawdzono 2026-11-12, trzywęzłowy 2026-11-21 (3.0.4.33, kopia i odtwarzanie indeksu pod obciążeniem, restart serwera). Instrukcja dla użytkowników (wymagania, kroki instalacji, `containerd-nexus.sh` dla rejestru po HTTP, `kubeadm token create --print-join-command`, klaster trzech węzłów) jest na stronie `Kubernetes_installation` serwisu hgdb.org (EN, PL).
 
 ## PostgreSQL 17 i migracja danych
 

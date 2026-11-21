@@ -121,7 +121,7 @@ Maven (📦). Pełne opisy są w plikach `docs/moduly/`.
 
 - Obrazy: `mercury-3.0` (serwer), `mercury-lb` (Nginx), `postgresql`, `activemq`, `ehcache`, `openldap`, `poi-server`.
 - Kompozycje: `mercury-single-node`, `mercury-two-node-cluster`, `mercury-three-node-cluster`.
-- Helm: `charts/mercury-single-node`.
+- Helm: `charts/mercury-single-node` (jeden węzeł) i `charts/mercury-three-node-cluster` (klaster trzech węzłów).
 
 ### docusaurus-hgdb – serwis hgdb.org
 
