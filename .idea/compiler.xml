@@ -64,6 +64,7 @@
         <module name="mercury-ws-dto-api" />
         <module name="mercury-benchmark" />
         <module name="sccommon-cache" />
+        <module name="mercury-gui-auth" />
       </profile>
     </annotationProcessing>
   </component>
@@ -80,6 +81,7 @@
       <module name="mercury-dao" options="-parameters" />
       <module name="mercury-dao-api" options="-parameters" />
       <module name="mercury-entities-ids" options="-parameters" />
+      <module name="mercury-gui-auth" options="-parameters" />
       <module name="mercury-gui-core" options="-parameters" />
       <module name="mercury-gui-registry" options="-parameters" />
       <module name="mercury-lucene-indexes" options="-parameters" />

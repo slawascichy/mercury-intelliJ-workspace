@@ -36,7 +36,7 @@ Test na `mercury-cluster` (node2 i node3 z valve, node1 był OFFLINE), przez LB 
 
 0. ✅ Spike SSO (wyżej).
 1. ✅ (2026-11-22, kod i testy; wdrożenie z nowym obrazem i `helm upgrade`) Trwała konfiguracja SSO w `mercury-docker` (`server.xml.docker-init`, kompozycje i charty) oraz usługa REST odświeżająca konfigurację OAuth na wszystkich węzłach (z OpenAPI, tłumaczeniami i testem).
-2. Szkielet `mercury-gui-auth` (moduł, WAR, `web.xml` z FORM i rolami, układ jak `pages/admin`), link w `ROOT/index.jsp`, w `mercury-gui-registry` i w `adminBar.jsp`; pakiet instalacyjny i obraz; sprawdzić nginx LB.
+2. ✅ (2026-11-22, kod i test na klastrze; wdrożenie z obrazem) Szkielet `mercury-gui-auth` (moduł, WAR, `web.xml` z FORM i rolami, układ jak `pages/admin`), link w `ROOT/index.jsp`, w `mercury-gui-registry` i w `adminBar.jsp`; pakiet instalacyjny i obraz; sprawdzić nginx LB.
 3. Lokalni użytkownicy (lista, dodanie, edycja, hasło, wygaśnięcie) i profil własny.
 4. Mapowania użytkowników i grup na role (lokalne i z LDAP) oraz przegląd użytkowników i grup LDAP (tylko odczyt, bez ujawniania danych połączenia).
 5. Konfiguracja tokenów OAuth (`MRC_LDAP_OAUTH_CONFIG`, `MRC_LDAP_OAUTH_SERVICE`, przegląd `MRC_LDAP_OAUTH_TOKENS`), sekrety zamaskowane, odświeżenie po zapisie.
@@ -48,3 +48,21 @@ Test na `mercury-cluster` (node2 i node3 z valve, node1 był OFFLINE), przez LB 
 - `mercury` (gałąź `hgdb-96`): usługa `OAuthConfigExtRest` (`POST /rest/service/OAuthConfigExtRest/refresh`, `mrc-sysadmin`, tylko węzeł obsługujący żądanie), wspólne `AdminAccess` i `AdminEnvelope` (refaktor `LoggerLevelsExtRest` i `LoggerLevelsOperations` bez zmiany sygnatur), klucze OpenAPI en i pl (de, es, fr, ko do translatora). Testy: `OAuthConfigExtRestTest` (3), `LoggerLevelsExtRestTest` (5), `LoggerLevelsOperationsTest` (5), razem 13/13.
 - Statyczne `openapi*.json` nie obejmują usług `*ExtRest` (dokumentowane dynamicznie), więc po buildzie przywracać je z gita (zmieniają się tylko `version` i szum generatora).
 - Do zrobienia w etapie 5: GUI odświeża konfigurację na każdym węźle (po liście węzłów z `NodeMonitorRest/load` i `?n=`).
+
+## Stan etapu 2 (2026-11-22)
+
+**`mercury` (gałąź `hgdb-96`)**
+- Nowy moduł `mercury-gui-auth` (WAR, 245 KB; zależności `provided`, w tym przesłonięty POI, bo nadrzędny pom dokłada go do wszystkich modułów i WAR miał 23 MB). Spring MVC + JSP (Bootstrap 3 i jQuery skopiowane z rejestru), kontekst Spring w WAR (`mercury-gui-auth-WebContextSpring.xml`, bez zmian w konfiguracji serwera), logowanie FORM (`/auth/inv_logon.jsp`, jedna strona błędu `inv_error.jsp`), `jsp-property-group` UTF-8 (bez niego dołączona stopka psuła polskie znaki).
+- Adresy: `/ui/home` (karty sekcji wg ról), docelowo `/ui/profile`, `/ui/users`, `/ui/role-mappings`, `/ui/ldap`, `/ui/oauth`. Role (`AuthSection`, propozycja do potwierdzenia): profil = `mrc-user`, użytkownicy = `mrc-useradmin`, mapowania = `mrc-groupadmin`, LDAP (odczyt) = `mrc-useradmin` albo `mrc-groupadmin`, OAuth = `mrc-sysadmin`; `mrc-sysadmin` widzi wszystko. Sekcje są na razie oznaczone „wkrótce”.
+- Teksty: `AuthAdminMsg` (domyślny angielski, `_pl`), źródła UTF-8 w `src/main/textmessages` i wynik `native2ascii` (linie w `native2ascii.sh`). Inne języki: translator.
+- Podpięcie: moduł w głównym `pom.xml`, zależność WAR i kopiowanie do serwera dev w `mercury-server`, skrypt `restart-with-update-mercury-db.sh` (jenkins).
+- Linki: `mercury-ws-app/pages/admin/include/adminBar.jsp` (dla `mrc-sysadmin`; klucz `app.index.systemAuth` w en i pl, tekst angielski do czasu tłumaczenia), menu opcji `mercury-gui-registry`, `ROOT/index.jsp` (tylko gdy kontekst zainstalowany).
+- Test: `AuthSectionTest` (8).
+
+**`mercury-cmd` (gałąź `hgdb-96`)**: pakiet instalacyjny kopiuje `mercury-gui-auth.war` do `installableApps` i etap `verify` przerywa budowanie, gdy go brak; skrypt `restart-with-update-mercury-db.sh`.
+
+**`mercury-docker` (gałąź `hgdb-96`)**: `initTomcatCluster` tworzy deskryptor `mercury-gui-auth.xml` z `ClusterFormAuthenticator` (strona startowa `/ui/home`). Obraz kopiuje wszystkie `installableApps/*.war`, nginx przekazuje wszystkie ścieżki, więc dalszych zmian nie trzeba.
+
+**Test na `mercury-cluster` (node2 i node3, wdrożenie ręczne, nietrwałe):** WAR i deskryptor wgrane do działających podów. Logowanie przez `mercury-ws-app` wpuszcza do nowej aplikacji na obu węzłach; logowanie przez nową aplikację wpuszcza do pozostałych; wylogowanie w nowej aplikacji kończy logowanie we wszystkich i na obu węzłach; admin widzi 5 sekcji, użytkownik tylko z `mrc-user` jedną (i 403 na `admin/loggers`); polskie teksty i znaki poprawne, strona 404 w wybranym języku. `adminBar.jsp` sprawdzony na żywo (link dla administratora). Po zmianie `web.xml` bez zmiany JSP trzeba wyczyścić katalog `work/.../mercury-gui-auth` (Tomcat nie rekompiluje niezmienionych JSP).
+
+**Nie sprawdzone:** `ROOT/index.jsp` na działającym serwerze (zmiana prosta, wzorzec jak dla `mercury-ws-app`), instalacja z pakietu i obrazu (wymaga wydania), kompozycje Docker.

@@ -107,6 +107,8 @@
     <file url="file://$PROJECT_DIR$/../mercury/mercury-entities-ids/src/main/java" charset="UTF-8" />
     <file url="file://$PROJECT_DIR$/../mercury/mercury-entities-ids/src/main/resources" charset="UTF-8" />
     <file url="file://$PROJECT_DIR$/../mercury/mercury-entities-ids/src/main/resources-filtered" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/../mercury/mercury-gui-auth/src/main/java" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/../mercury/mercury-gui-auth/src/main/resources" charset="UTF-8" />
     <file url="file://$PROJECT_DIR$/../mercury/mercury-gui-core/src/main/java" charset="UTF-8" />
     <file url="file://$PROJECT_DIR$/../mercury/mercury-gui-core/src/main/resources" charset="UTF-8" />
     <file url="file://$PROJECT_DIR$/../mercury/mercury-gui-registry/src/main/java" charset="UTF-8" />
