@@ -180,6 +180,42 @@ Status: [TASK.md](../../tasks/hgdb/133-Swagger-implementacja/TASK.md#status-zada
   uwzględnia `caseAsType`. `save` kończy się `NullPointerException` na pustych tablicach w sprawach zależnych (obserwacje 46–49
   w [obserwacjach](../obserwacje.md)).
 
+## Tabele tworzone przez Hibernate (bez ręcznego DDL)
+
+Encje serwera, które nie mają skryptu DDL w repozytoriach, tworzy Hibernate przy starcie, jeśli `hibernate.hbm2ddl.auto` ma wartość
+`update` albo `create`. W konfiguracjach serwera (`database-<dostawca>.properties`) wartości są różne: `postgresql` i `none` (lokalny
+Tomcat, profil `scichy`), `oracle` i `mysql` to `update`, `hsql` i `mssql` to `create`. Przy `none` tabele trzeba utworzyć ręcznie.
+
+**`IGO_DA_LICENSE_KEYS`** (baza `mercury-db`, encja `org.mercury.license.LicenseKeyEntry` w `mercury-core-server`, zadanie 96): historia
+kluczy licencji serwera. Każda aktualizacja klucza dodaje wiersz i robi go aktywnym, poprzednie wiersze zostają jako historia. Gdy
+tabeli brakuje, węzeł zapisuje w logu `relacja "igo_da_license_keys" nie istnieje` i korzysta z klucza z pliku
+(`mercury.license.file`). DDL dla PostgreSQL, wyprowadzony z adnotacji encji (daty to milisekundy od 1970-01-01 UTC):
+
+```sql
+CREATE TABLE public.igo_da_license_keys (
+    id              varchar(36)   NOT NULL,
+    key_text        varchar(4000) NOT NULL,
+    serial_no       varchar(64),
+    product_name    varchar(256),
+    license_type    varchar(32),
+    organization    varchar(256),
+    expiration_date bigint,
+    created_date    bigint        NOT NULL,
+    created_by      varchar(128),
+    activated_by    varchar(128),
+    active          boolean       NOT NULL,
+    activated_date  bigint,
+    CONSTRAINT igo_da_license_keys_pkey PRIMARY KEY (id)
+);
+
+CREATE INDEX igo_da_license_keys_act_indx ON public.igo_da_license_keys (active);
+```
+
+Tabelę kluczy licencji aplikacji uwierzytelniania (`MRC_LDAP_LICENSE_KEYS`, baza realmu `mercury-ldap`) tworzy sama aplikacja
+`mercury-gui-auth` przy pierwszym zapisie (`JdbcAuthLicenseKeyStore`), więc tam DDL nie jest potrzebny. Domyślna konfiguracja obrazu
+Docker (`mercury-3.0/docker-init-config/classes/mercury-ws-app/database-postgresql.properties`) ma `hbm2ddl.auto=update`, dlatego na
+klastrze tabela `IGO_DA_LICENSE_KEYS` powstaje sama.
+
 ## Budowanie
 
 ```bash
