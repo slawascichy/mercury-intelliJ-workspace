@@ -88,9 +88,17 @@ claude --resume aa3430ea-1399-481a-aba9-9d5786b44249
 export HGDB_REGISTRY=nexus.scisoftware.local:5000/
 docker login nexus.scisoftware.local:5000 -u claude
 
+## LDAP jest dostępny przez NodePort na dowolnym węźle klastra:
+
+- LDAP: `k8s-worker1.bojano.local`:`32117` (389)
+- LDAPS: `k8s-worker1.bojano.local`:`30523` (636)
+
+Ustawienia dla Apache Directory Studio:
+- Base DN: `dc=scisoftware,dc=pl`
+- Admin (zarządzanie): bind DN `cn=manager,dc=scisoftware,dc=pl`. Powinien widzieć atrybuty userPassword.
+- Konto techniczne: bind DN `cn=FrontendAccount,ou=Technical,dc=scisoftware,dc=pl`. Powinno widzieć wpisy i atrybuty, ale bez userPassword.
 
 ## Dodałem nowe zadanie:
-
 
 ## Strumień:
 hgdb:
