@@ -38,6 +38,7 @@ z komponentami MDX (`ProjectStatus`, `SonarcloudProject`, `YouTube`).
 | `004_API` | Kontekst żądania SOAP/REST, nagłówek sprawy (`CaseHeader`), ładowanie metadanych (`TypeCase`, `TypeCode`, `TypeKind`), sprawa jako typ ANY, obiekty uniwersalne (`MrcObject`), `PagedResult`, test połączenia (Echo), zapis sprawy, wyszukiwanie (zapytania Lucene, `CaseSearch`, `CaseSearchExt`, `CaseIndexerFieldsManager`, przykłady agregacji), komentarze, szybkie zadania | `mercury-ws-server-api`, `mercury-ws-dto-api`, `mercury-ws-app` |
 | `005_Configuration` | Parametry konfiguracyjne Mercury DB | `mercury-server`, `mercury-install-package` |
 | `006_IBM_BAW_Integration` | Integracja z IBM BAW, klient Mercury BPM | `mercury-client` (`mercury-bpm`) |
+| `010_GUI_Application_overview` | Przegląd aplikacji GUI serwera (strona główna, strony administracyjne, panel uwierzytelniania, rejestr), administracja użytkownikami, rolami i OAuth (`mercury-gui-auth`, SSO, klucze licencji), sekretarze danych (panel, obcinanie archiwów); en i pl (zadanie 96) | `mercury-gui-auth`, `mercury-gui-core`, `mercury-ws-app` |
 
 ### Wsparcie techniczne (`tech/`)
 

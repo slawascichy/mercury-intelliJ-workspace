@@ -12,6 +12,7 @@ flowchart TB
     subgraph Serwer["mercury (Tomcat)"]
         APP[mercury-ws-app<br/>SOAP / REST / RMI]
         GUI[mercury-gui-registry<br/>GUI rejestru]
+        AUTH[mercury-gui-auth<br/>GUI uwierzytelniania]
         WS[mercury-ws-server]
         SRV[mercury-srv / mercury-srv-slave<br/>logika i biznes]
         LUC[mercury-lucene-indexes]
@@ -34,6 +35,8 @@ flowchart TB
     CMD -->|SOAP| APP
     APP --> WS --> SRV
     GUI --> SRV
+    AUTH --> REALM[(baza realmu i LDAP)]
+    APP -.->|SSO, wspólny szablon| AUTH
     SRV --> LUC --> IDX
     SRV --> DAO --> DB
     SRV --> CMIS --> ECM
@@ -53,6 +56,7 @@ flowchart TB
   Strony z formularzem logowania (GUI) używają sesji HTTP, więc przy LB z round-robin węzły replikują je przez Tomcat Cluster
   (`DeltaManager`, członkostwo statyczne), z `ClusterFormAuthenticator` w `mercury-gui-core` (zadanie 227). `ip_hash` na LB
   odrzucony: użytkownicy techniczni łączą się z jednego adresu i obciążaliby jeden węzeł.
+- **GUI i uwierzytelnianie (zadanie 96):** aplikacje WWW (`mercury-ws-app`, `mercury-gui-registry`, `mercury-gui-auth`) dzielą jedno logowanie (valve `SingleSignOn`, w klastrze `ClusterSingleSignOn`) i wspólny szablon prezentacji z `mercury-gui-core`; strony logowania kierują do formularza `mercury-gui-auth`, gdy ta aplikacja jest zarejestrowana i odpowiada (`SharedLogin`). `mercury-gui-auth` zarządza danymi realmu (użytkownicy lokalni, mapowania ról, klienci OAuth) przez JDBC i czyta LDAP tylko do odczytu; zmiana konfiguracji OAuth jest rozsyłana na węzły przez `mercury-ws-app`. Klucz licencji serwera jest w bazie `mercury-db`, a klucz panelu w bazie realmu; zdarzenie zmiany klucza idzie przez ActiveMQ (Virtual Topic).
 - **mercury-client** i **mercury-cmd** to rozwiązania zbudowane na klientach: integracje
   z IBM BPM i narzędzia administracyjne.
 - **mercury-docker** i **docusaurus-hgdb** nie zawierają kodu Java. Pierwsze definiuje obrazy

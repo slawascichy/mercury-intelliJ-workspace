@@ -47,6 +47,13 @@ ustawiają w każdym węźle `TOMCAT_CLUSTER_MEMBERS` (nazwy hostów wszystkich 
 `landingPage` aplikacji). Błąd konfiguracji albo brak klasy przerywa start węzła: bez klasy Tomcat uruchomiłby aplikację bez
 uwierzytelniania. Pusty `TOMCAT_CLUSTER_MEMBERS` (jeden węzeł, chart Helm) wyłącza replikację. Opis dla użytkowników: strona
 `Cluster_sessions` serwisu hgdb.org (EN, PL).
+**SSO (zadanie 96).** Aplikacje z logowaniem FORM (`mercury-ws-app`, `mercury-gui-registry`, `mercury-gui-auth`) dzielą logowanie: `server.xml.docker-init` ma znacznik `TOMCAT_SSO_VALVE`, a `bin/mercury-server.sh` (`initTomcatSsoValve`) wstawia valve `ClusterSingleSignOn` (gdy ustawiono `TOMCAT_CLUSTER_MEMBERS`; stan SSO jest replikowany, więc logowanie i wylogowanie działa między węzłami) albo zwykły `SingleSignOn` (jeden węzeł). `ClusterSingleSignOnListener` nie trafia do `server.xml` (brak domyślnego konstruktora, Tomcat by nie wystartował). Deskryptor `conf/Catalina/localhost/mercury-gui-auth.xml` powstaje razem z pozostałymi (strona startowa `/ui/home`).
+
+**Kolejność startu i nadzór (zadania 96 i 211e).** W kompozycjach dwu- i trzywęzłowej węzły SLAVE zależą od `mercury-node1` z `condition: service_healthy` (healthcheck `curl -f`), a w chartach trójwęzłowym init `wait-for-master` czeka na HTTP 200, więc pierwszy klucz licencji i inne zapisy początkowe wykonuje MASTER. Charty mają `startupProbe`, `livenessProbe` i `readinessProbe` dla wszystkich komponentów (węzeł Mercury: `NodeMonitorRest/load`), a kompozycje `restart: unless-stopped`; `process.sh` kończy kontener, gdy JVM padnie (obserwacja 202). Węzły `mercury` w obu chartach mają adnotację `checksum/config` (zmiana ConfigMapy restartuje pody przy `helm upgrade`).
+
+**CMIS Basic i klient OAuth.** Skrypt `postgresql/docker-entrypoint-initdb.d/02-init-ldap-tables.sql` zakłada dwóch klientów OAuth: `GIUSoapUIClient` i `GIUPortalClient`. Domyślny `mercury.properties` (`mercury.cmis.security.oauthClientId` i `...Secret`) wskazuje `GIUPortalClient`, więc puste `CMIS_OAUTH_CLIENT_ID` i `CMIS_OAUTH_CLIENT_SECRET` (`cmisOauthClientId` i `cmisOauthClientSecret` w chartach) oznaczają klienta domyślnego. Domyślny sekret trzeba zmienić w produkcji (panel `mercury-gui-auth`, `/ui/oauth`; zmiana sekretu aktualizuje pozycje konfiguracji i unieważnia tokeny).
+
+**LDAP (obraz `scisoftware/openldap`, repozytorium `docker-openldap`).** Konta z `ou=Technical` (np. `FrontendAccount`, konto realmu) mają odczyt drzewa, ale nie haseł (`userPassword`, `sambaNTPassword`: `none` w regule `olcAccess`); konta z `ou=Admins` zarządzają katalogiem zamiast `cn=Manager`. Reguły działają od inicjalizacji bazy; w istniejącej instalacji wymagają `slapmodify` przy zatrzymanym `slapd` (baza `cn=config` nie przyjmuje zmian online).
 
 ```mermaid
 flowchart LR
@@ -105,6 +112,6 @@ i `jdbc/MercuryDBCommon` (wymaga tego `AbstractDAO.commitTransaction`).
 ## Licencja
 
 Przy pierwszym uruchomieniu serwer generuje 30-dniowy klucz próbny. Klucz produkcyjny
-wydaje IBPM S.A. na prośbę wysłaną na `mercury-key-registration@ibpm.pro`.
+wydaje IBPM S.A. na prośbę wysłaną na `mercury-key-registration@ibpm.pro`. Od zadania 96 klucz serwera jest w bazie (`IGO_DA_LICENSE_KEYS`, tworzona przez Hibernate przy `hbm2ddl.auto=update`; pierwszy klucz zapisuje tylko MASTER) z plikiem `mercury.license.file` jako rezerwą i kopią `.bak`; aktualizacja z formularza `/admin/license` w `mercury-ws-app`. Panel `mercury-gui-auth` ma własny klucz w `MRC_LDAP_LICENSE_KEYS` (tworzona przez aplikację).
 
 Źródło: `mercury-docker/README.md`, `mercury-docker/postgresql/README.md` i README poszczególnych katalogów.
