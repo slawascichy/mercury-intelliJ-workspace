@@ -1,20 +1,9 @@
 ####################
 # GUI
 ####################
-0. Zarządzanie poziomami logowania
-1. Zarządzanie konfiguracją OAUTH (rola mrc_sysadmin + mrc_useradmin)
-2. Zarządzanie Użytkownikami (rola mrc_sysadmin + mrc_useradmin) + dodawanie lokalnych użytkowników, możliwe, że nie ma usług REST?
-	096-GUI-do-zarządzania-danymi-uwierzytelniania-i-autoryzacji
-	https://github.com/slawascichy/hgdb/issues/96
-3. Zarządzanie pamięciami podręcznymi
-	118-Poprawienie-mechanizmów-obsługi-pamięci-podręcznych
-	https://github.com/slawascichy/hgdb/issues/118
-4. Klient Grafana
-5. Monitoring zapytań indeksu Lucene
-    113-Stworzenie-mechanizmu-do-przeglądu-wykonywanych-zapytań-Lucene
-	https://github.com/slawascichy/hgdb/issues/113
-6. Kreator zapytań indeksu lucene
-7. Desiner definicji typów spraw i dokumentów + instalator w róznych środowsikach: DEV, TST, PRE, PROD
+1. Klient Grafana
+2. Kreator zapytań indeksu lucene
+3. Desiner definicji typów spraw i dokumentów + instalator w róznych środowsikach: DEV, TST, PRE, PROD
 
 ####################
 # Pomysły na aplikacje
@@ -57,12 +46,12 @@ Kliknij Load Repositories. Powinno pojawić się repozytorium documents. Zaznacz
 ```cmd
 netsh int ipv4 show excludedportrange protocol=tcp
 ```
+
 * Najskuteczniejszym lekarstwem na "widmowe" rezerwacje portów na Windowsie jest zresetowanie IP oraz szybki restart komputera. Wykonaj w konsoli Administratora:
 ```cmd
 netsh int ip reset
 netsh winsock reset
 ```
-
 
 * Obsługa Git
 ```bash
@@ -71,10 +60,12 @@ git tag -a ${TAG_VERSION} -m "Wersja ${TAG_VERSION}"
 git push origin
 git push origin ${TAG_VERSION}
 ```
+
 ```bash
 export BRANCH_VERSION=hgdb-96
 git push origin ${BRANCH_VERSION}
 ```
+
 ```bash
 git checkout master && git pull && git branch -d ${BRANCH_VERSION}
 git checkout main && git pull && git branch -d ${BRANCH_VERSION}
@@ -84,9 +75,37 @@ git checkout main && git pull && git branch -d ${BRANCH_VERSION}
 ```bash
 claude --resume aa3430ea-1399-481a-aba9-9d5786b44249
 ```
+
 ## Praca z docker na devops-box-01
+
+```bash
 export HGDB_REGISTRY=nexus.scisoftware.local:5000/
 docker login nexus.scisoftware.local:5000 -u claude
+```
+
+## Porządki z bazą danych na kubernetes:
+
+```bash
+P=postgres-db-7bcd7778f7-j8fk8
+N=mercury-cluster
+```
+
+- *0. Sprawdź nazwy baz (zakładam użytkownika postgres; jeśli odmówi, zobacz env poda)*
+```bash
+kubectl exec -n $N $P -- psql -U postgres -c '\l'
+```
+
+- *1. Przed usunięciem obejrzyj wiersze*
+```bash
+kubectl exec -n $N $P -- psql -U postgres -d mercury-db   -c "select * from igo_da_license_keys"
+kubectl exec -n $N $P -- psql -U postgres -d mercury-ldap -c "select * from mrc_ldap_license_keys"
+```
+
+- *2. Usuń wiersze testowe*
+```bash
+kubectl exec -n $N $P -- psql -U postgres -d mercury-db   -c "delete from igo_da_license_keys where id='61a7d938-e3f1-42a9-bf4f-e457af38adde'"
+kubectl exec -n $N $P -- psql -U postgres -d mercury-ldap -c "delete from mrc_ldap_license_keys where id in ('6bb44a31-c1b3-48d3-9102-ffbb1afe4c3b','8129f2e0-0478-4c20-b6ea-d9f883c7c681')"
+```
 
 ## LDAP jest dostępny przez NodePort na dowolnym węźle klastra:
 
