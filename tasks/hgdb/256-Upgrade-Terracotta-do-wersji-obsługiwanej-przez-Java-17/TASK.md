@@ -36,7 +36,7 @@ który wspiera Javę 17, żeby cała kompozycja (serwer Mercury, POI, ActiveMQ, 
 > 3. Czy licencja nakłada ograniczenia na liczbę węzłów, rozmiar pamięci offheap albo wymaga klucza licencyjnego serwera?
 > 4. Jeśli licencja jest przeszkodą: opcje to pozostanie na kicie 3.6.1 na Javie 8 (jedyny komponent na starym JDK, z odrębną polityką aktualizacji
 >    bezpieczeństwa), albo ocena innej klasy rozwiązania (np. cache w pamięci węzła bez Terracotty tam, gdzie klaster nie jest konieczny).
-> Do czasu rozstrzygnięcia zadanie ma status `not now` (nie zaczynamy prac).
+> **Decyzja autora (2026-11-24): zielone światło.** Zadanie 256 jest podzadaniem 191 i realizujemy je w jednym wydaniu z resztą (kit 3.10.8, Java 17 po stronie serwera). Ocena licencji TPL pozostaje po stronie autora.
 
 > **Opcja: własna budowa serwera z źródeł (pomysł autora, 2026-11-24).**
 > Repozytorium `Terracotta-OSS/terracotta-core` (https://github.com/Terracotta-OSS/terracotta-core) zawiera rdzeń serwera Terracotta. Jeśli kit
@@ -72,6 +72,31 @@ Wnioski:
 - **Zmiana modelu konfiguracji:** zamiast `tc-config.xml` (`node1-config.xml` … w kicie 3.6.1) jest dynamiczna konfiguracja: plik `cluster.cfg` (np. `offheap-resources=main:512MB`, `failover-priority=availability`, porty 9410 i 9430) oraz **osobny krok aktywacji** klastra narzędziem `tools/bin/config-tool.sh activate -connect-to <host>:9410 -cluster-name <nazwa>` (serwer bez aktywacji stoi w stanie `DIAGNOSTIC`). Skrypt `start-tc-server.sh` przyjmuje `-f conf/cluster.cfg`. Obraz `ibpm/ehcache` musi więc startować serwer i wykonywać aktywację (w kicie jest katalog `docker/` z wzorcowymi Dockerfile serwera, config-toola i votera).
 - Stan serwera po aktywacji pamięta konfigurację w katalogu danych, więc przy zmianie wersji trzeba uwzględnić migrację danych (cache regionów da się odtworzyć, ale to do sprawdzenia).
 
+### Zgodność klient–serwer Ehcache (test lokalny, 2026-11-24)
+
+Test: serwer Terracotta z kitu i klient Ehcache (XML z `tc:cluster`, `put` i `get` na pamięci `clustered-dedicated`) w jednym kontenerze Temurin 8.
+
+| Serwer | Klient | Wynik |
+|---|---|---|
+| 3.6.1 | 3.6.1 | działa (`get` zwraca wartość) |
+| 3.10.8 | 3.10.8 | działa |
+| 3.6.1 | 3.10.8 | **błąd**: `ConnectionClosedException` przy encji `org.terracotta.lease.LeaseAcquirer` |
+| 3.10.8 | 3.6.1 | **błąd** po stronie serwera (`ThrowableHandlerImpl.handleDefaultException`) |
+
+Wniosek: klient i serwer muszą mieć tę samą wersję, więc **klienta Ehcache nie da się podnieść osobno przed serwerem**. Upgrade klienta
+(`mercury`, `poi-toolkit`, `mercury-cmd`, `sccommon-cache`) i serwera Terracotta robimy w jednym wydaniu (to zadanie 256).
+Dotyczy to też klientów, którzy łączą się z tym samym klastrem (IBM BPM, `mercury-client`, zamrożony, Ehcache 3.6.1): po upgrade'ie serwera
+nie połączą się z nim, jeśli korzystają z klastra Terracotta (do sprawdzenia, czy korzystają).
+
+### `sccommon-cache` a Ehcache 3.10.8
+
+Biblioteka autora (`sccommon/sccommon-cache`, w workspace) używa m.in. klas z pakietów `org.ehcache.core` (`EhcacheManager`, `Ehcache`,
+`spi.service.StatisticsService`), `org.ehcache.impl.internal.statistics.DefaultStatisticsService` i `org.ehcache.xml.model.ResourceUnit`.
+Kompilacja 30 plików źródłowych względem jarów Ehcache 3.10.8 (`javac --release 8`, klasy z lokalnego `lib` + klient z kitu) **przechodzi bez błędów**,
+czyli biblioteka jest zgodna źródłowo. Zgodność w czasie działania (zachowanie `EhCacheProvider`, statystyki, odczyt regionów z XML) nie była testowana;
+trzeba ją sprawdzić testami biblioteki i testem `mercury` z lokalną Terracottą 3.10.8. Wymaga to nowego wydania `sccommon-cache` zbudowanego pod 3.10.8
+(`ehcache.version` w `sccommon-cache/pom.xml`, dziś 3.6.1; wydanie 2.0.0.4 jest zbudowane pod 3.6.1).
+
 ### Licencje w kitach (do przeglądu przez autora)
 
 - Kit 3.10.8: katalog `legal/` zawiera `APACHE_PUBLIC_LICENSE.txt`, `TERRACOTTA-PUBLIC-LICENSE.txt` (Terracotta Public License 2.0, oparta na MPL), `THIRD-PARTY-LICENSES.txt`, `Legal_Notice.txt` (Software AG, prawa autorskie 2011–2020).
@@ -94,6 +119,25 @@ Tag obrazu: `ibpm/ehcache:mercury-hgdb-3.0-<wersja_kitu>` (decyzja autora 2026-1
 5. **`mercury-docker`:** obraz `ehcache` na Temurin 17 z nowym kitem (`upload-packages.sh`, `set-versions.sh`), chart i kompozycje, test klastra trzywęzłowego.
 6. **Sprzątanie:** usunąć obejście `MemoryTokenStore` (obserwacja 210), jeśli CXF działa z nowym Ehcache; dokumentacja (wymaganie JDK 17 serwera Terracotta, instalacja, Kubernetes), aktualizacja `docs/architektura.md` i opisów modułów.
 
+
+
+## Postęp (2026-11-24)
+
+Decyzje autora: podzadanie 191, kit **3.10.8** (Terracotta 5.9.5; serwer na Temurin 17), tag obrazu `ibpm/ehcache:mercury-hgdb-3.0-3.10.8`; 3.12.0 odkładamy (lista marzeń).
+
+Zrobione (`mercury-docker`, niezacommitowane):
+- **Obraz `ehcache`:** Temurin 17, kit 3.10.8 z Maven Central (plik w `ehcache/install`, wysłany do Nexusa `mercury-docker-packages`), nowy skrypt `bin/startServer-3.10.8.sh`; usunięte stare `conf/{1,2,3}/node*-config.xml` i `startServer-3.6.1.sh`. Obraz wysłany: `ibpm/ehcache:mercury-hgdb-3.0-3.10.8`.
+- **Skrypt startowy** obsługuje cztery sytuacje (opis w `ehcache/README.md`): (0) restart kontenera z zachowanym repozytorium konfiguracji, (1) jeden węzeł (`-auto-activate`), (2) pierwszy start całego klastra (wspólny `cluster.cfg`, `node1` aktywuje klaster po starcie pozostałych), (3) nowy kontener, gdy klaster już działa (`detach` wyłączonego węzła, start jako nowy serwer, `attach` do aktywnego). Pamięć offheap i dzierżawy jak dotąd (`primary-server-resource` 1024 MB, `secondary-server-resource` 96 MB, lease 20 s, reconnect 120 s, `availability`).
+- **Testy lokalne w Dockerze** (trzy kontenery `ehcache-node1..3` na jednej sieci, obraz z Nexusa): czysty start (aktywny jeden, dwa pasywne), świeży restart pasywnego węzła, awaria aktywnego (przejęcie przez inny i powrót świeżego), `docker restart` z zachowanym systemem plików (wymagało poprawki: bez ścieżki 0 węzeł startował jako osobny klaster po `detach`); w każdym przypadku diagnostyka: „cluster configuration is healthy”, 3 węzły aktywne. Klient Ehcache 3.10.8 z listą trzech serwerów (`terracotta://ehcache-node1:9410,ehcache-node2:9410,ehcache-node3:9410/...`, zasób `primary-server-resource`): `put` i `get` działają.
+- **Charty i kompozycje:** `ehcacheTag: mercury-hgdb-3.0-3.10.8` (osobny od `mainTag`), strategia `Recreate` dla Deploymentów `ehcache`, tag w plikach `docker-compose.yml` i README.
+- **POM-y:** `ehcache.version` 3.10.8 w `mercury`, `mercury-lib`, `mercury-cmd`, `poi-toolkit`, `hgdb-client-open` (w `sccommon-cache` już ustawione przez autora).
+
+Do zrobienia:
+1. Pobranie zależności Ehcache 3.10.8 (`ehcache`, `ehcache-clustered` i przechodnie, m.in. `org.terracotta`) do lokalnego repozytorium (autor), razem z ActiveMQ 5.19.12.
+2. Wydanie `sccommon-cache` zbudowanego pod 3.10.8 i podbicie `sccommon.version` w `mercury` i `poi-toolkit`; kompilacja i testy; sprawdzenie plików konfiguracji `ehcacheDefault.xml`/`ehcacheCommon.xml` (schematy 3.5) z klientem 3.10.8; wymiana jarów Ehcache w lokalnym `apache-tomcat/mercury/lib` i w pakiecie.
+3. Wdrożenie na `mercury-cluster` (serwery i klienci jednocześnie, bo wersje muszą się zgadzać), test SOAP z WS-Security, eksport i import Excela, `live4.sh`.
+4. Usunięcie obejścia `MemoryTokenStore` w `webService.xml` (obserwacja 210), jeśli CXF działa z Ehcache 3.10.8; dokumentacja (wymaganie JDK 17 serwera Terracotta, artykuły docusaurus, `docs/architektura.md`).
+5. Lokalny Terracotta autora: zmiana na kit 3.10.8 (`cluster.cfg` plus `config-tool activate`); klienci BPM (`bpm-security-provider` ma Ehcache 3.6.1 w jednym z profili) do sprawdzenia.
 ## Kryteria ukończenia
 
 - Serwer Terracotta działa na Javie 17 w obrazie Docker i w lokalnym środowisku deweloperskim.

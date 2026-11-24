@@ -1,10 +1,12 @@
-# Serwer Terracotta dla pamięci podręcznych Mercury DB (Ehcache clustered 3.6.1).
+# Serwer Terracotta dla pamięci podręcznych Mercury DB (Ehcache clustered 3.10.8), lokalnie (dev).
+# Najprościej uruchamiać skryptem ./startEhcacheServer.sh (start, stop, status, logs, bench).
 #   docker compose up -d --build
 #   docker compose --profile bench run --rm bench     # mikrotest opóźnienia (z tego hosta)
+# Port klientów (domyślnie 9510) zmienia zmienna TC_PORT; klienci z hosta łączą się pod terracotta://localhost:${TC_PORT:-9510}/...
 services:
   terracotta:
     build: .
-    image: mercury/terracotta:3.6.1
+    image: mercury/terracotta:3.10.8
     container_name: mercury-terracotta
     restart: unless-stopped
     ports:
@@ -12,23 +14,29 @@ services:
       - "${TC_GROUP_PORT:-9530}:9530"
     environment:
       JAVA_OPTS: "${TC_JAVA_OPTS:--Xms256m -Xmx512m -XX:MaxDirectMemorySize=2g}"
+      # port, pod którym serwer przedstawia się klientom (musi być równy opublikowanemu portowi hosta)
+      TC_PUBLIC_PORT: "${TC_PORT:-9510}"
+      TC_PUBLIC_HOSTNAME: "${TC_PUBLIC_HOSTNAME-localhost}"
     volumes:
       - terracotta-logs:/data/logs
-#    healthcheck:
-#      test: ["CMD-SHELL", "exec 3<>/dev/tcp/127.0.0.1/9510"]
-#      interval: 10s
-#      timeout: 5s
-#      retries: 6
-#      start_period: 20s
+    healthcheck:
+      # serwer jest gotowy dopiero w stanie ACTIVE (port 9510 nasłuchuje już w stanie DIAGNOSTIC, przed aktywacją)
+      test: ["CMD-SHELL", "/opt/terracotta/tools/bin/config-tool.sh diagnostic -connect-to localhost:9510 2>/dev/null | grep -q 'Node state: ACTIVE'"]
+      interval: 10s
+      timeout: 30s
+      retries: 12
+      start_period: 25s
 
   bench:
-    image: mercury/terracotta:3.6.1
+    image: mercury/terracotta:3.10.8
     profiles: ["bench"]
-#    depends_on:
-#      terracotta:
-#        condition: service_healthy
+    # wspólna sieć z serwerem (localhost to serwer), bo serwer przedstawia się klientom jako localhost
+    network_mode: "service:terracotta"
+    depends_on:
+      terracotta:
+        condition: service_healthy
     environment:
-      TC_URL: "terracotta://terracotta:9510/default-server"
+      TC_URL: "terracotta://localhost:9510/default-server"
     command: ["bench"]
 
 volumes:
