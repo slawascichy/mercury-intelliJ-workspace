@@ -81,6 +81,10 @@ klienta; usunięcie pamięci z serwera (`destroyCache`) albo restart serwera nap
 Kit Terracotta 3.10.x podlega własnej licencji (TPL, zadanie 256). Zanim kit trafi do dystrybucji poza środowiskiem
 deweloperskim, autor przegląda warunki licencji (opis w `tasks/hgdb/256-.../TASK.md`).
 
+Pełne teksty licencji są w katalogu `legal/` kitu (w obrazie: `/opt/terracotta/legal`, bez zmian). Kit jest niezmodyfikowany. Kod źródłowy
+komponentów Terracotta (TPL 2.0, sekcja 3.2) jest dostępny w https://github.com/Terracotta-OSS/terracotta-core (serwer, Terracotta 5.9.5
+dla kitu 3.10.8) i https://github.com/ehcache/ehcache3 (Ehcache), w znacznikach odpowiadających wersji kitu.
+
 ## Wdrożenie na Proxmoksie
 
 Serwer Terracotta jest wrażliwy na opóźnienie sieci do węzłów aplikacji, więc maszynę (lub kontener LXC) należy
