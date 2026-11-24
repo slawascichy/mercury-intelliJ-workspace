@@ -1,0 +1,27 @@
+# Apache ActiveMQ dla pracy lokalnej Mercury DB (OpenWire na 51616, konsola na http://localhost:8161, admin/admin).
+# Najprościej uruchamiać skryptem ./startActiveMq.sh (start, stop, status, logs).
+#   docker compose up -d --build
+# Porty hosta zmieniają zmienne AMQ_PORT (domyślnie 51616) i AMQ_UI_PORT (domyślnie 8161).
+services:
+  activemq:
+    build: .
+    image: mercury/activemq:5.19.12
+    container_name: mercury-activemq
+    restart: unless-stopped
+    ports:
+      - "${AMQ_PORT:-51616}:51616"
+      # konsola tylko z tego komputera (jak dotychczas lokalny broker)
+      - "127.0.0.1:${AMQ_UI_PORT:-8161}:8161"
+    environment:
+      ACTIVEMQ_OPTS_MEMORY: "${AMQ_JAVA_MEMORY:--Xms256m -Xmx1g}"
+    volumes:
+      - activemq-data:/opt/activemq/data
+    healthcheck:
+      test: ["CMD", "bash", "-c", "exec 3<>/dev/tcp/127.0.0.1/51616"]
+      interval: 5s
+      timeout: 5s
+      retries: 24
+      start_period: 10s
+
+volumes:
+  activemq-data:
