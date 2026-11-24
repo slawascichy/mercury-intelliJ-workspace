@@ -253,6 +253,34 @@
         </property>
     </bean>
     <!--
+        Mercury (dev): konsola działa w kontenerze, a żądanie z hosta przychodzi z adresu bramy sieci Docker (nie z loopbacka).
+        Dopuszczamy zakresy prywatne; port konsoli jest publikowany na hoście tylko na 127.0.0.1 (docker-compose.yml).
+    -->
+    <bean id="inetAccessIncludePrivate10" class="org.springframework.beans.factory.config.MethodInvokingFactoryBean"
+          depends-on="inetAccessIncludeLoopbackV6">
+        <property name="targetObject" ref="inetAccessHandler"/>
+        <property name="targetMethod" value="include"/>
+        <property name="arguments">
+            <list><value>10.0.0.0/8</value></list>
+        </property>
+    </bean>
+    <bean id="inetAccessIncludePrivate172" class="org.springframework.beans.factory.config.MethodInvokingFactoryBean"
+          depends-on="inetAccessIncludePrivate10">
+        <property name="targetObject" ref="inetAccessHandler"/>
+        <property name="targetMethod" value="include"/>
+        <property name="arguments">
+            <list><value>172.16.0.0/12</value></list>
+        </property>
+    </bean>
+    <bean id="inetAccessIncludePrivate192" class="org.springframework.beans.factory.config.MethodInvokingFactoryBean"
+          depends-on="inetAccessIncludePrivate172">
+        <property name="targetObject" ref="inetAccessHandler"/>
+        <property name="targetMethod" value="include"/>
+        <property name="arguments">
+            <list><value>192.168.0.0/16</value></list>
+        </property>
+    </bean>
+    <!--
         Example: allow standard private network ranges. Copy a block and
         chain depends-on to enforce ordering on container startup.
 
