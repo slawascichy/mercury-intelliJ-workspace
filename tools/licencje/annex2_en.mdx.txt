@@ -1,0 +1,196 @@
+**Annex No. 2 – Iron Sci Software**
+
+**OEM (Original Equipment Manufacturer) License,**
+
+**for use only for the Program**
+
+Iron Sci Software OEM License,
+for use only for the Program
+
+The term “**License**” refers to this chapter of Annex No. 2 to the OWLK.
+
+This license “Iron Sci Software OEM License, for use only for the Program” applies to license agreements (hereinafter referred to as **“Main Agreements”**) for the use or distribution of software named **Mercury 3.0 DB (HgDB)**, hereinafter referred to as the **“Program”**, concluded between **Sci Software Sławomir Cichy** with its registered office in Bojano, ul. Bolesława Chrobrego 4, 84-207 Bojano, NIP: 9570429696, REGON: 222009584, hereinafter referred to as the **“Licensor”**, and natural persons, legal persons or organizational units that are not legal persons, hereinafter referred to as the **“Licensee”**.
+
+The License concerns the use and distribution of the software “Iron POI Server”, hereinafter referred to as the **“Server”**.
+
+The terms of the License serve as a License Agreement with the universal number **OEM/2020/03/01**. The License Agreement is concluded automatically upon the conclusion of the Main Agreement between the Licensor and the Licensee.
+
+**§ 1.**
+
+**Definitions of additional terms and requirements**
+
+1. Under the concluded Main Agreement, the Licensor and the Licensee, hereinafter referred to jointly as the “**Parties**” or individually as a “**Party**”.
+
+2. The License is granted for the use or distribution of the Server software taking into account the state of the source codes on the day of conclusion of the license agreement, marked with a code, hereinafter referred to as the “**Version**” of the software.
+
+3. The term **“Distribution”** of the Program shall be understood as the granting by the Licensee of a sublicense for the Server under license agreements concluded by the Licensee with other natural persons, legal persons or organizational units that are not legal persons, hereinafter referred to as the **“Secondary Licensee”**.
+
+4. Main Agreements may be concluded for the use or for the Distribution of the Program. These are two different types of licenses. The provisions of the license granted for the use and for the Distribution of the Program are mutually exclusive and require separate Main Agreements concluded between the Parties.
+
+    1) in the case of a license granted for the use of the Program, the license provisions contained in § 3 (excluding § 4) shall apply.
+
+    2) in the case of a license granted for the Distribution of the Program, the provisions of § 4 (excluding § 3) shall apply.
+
+5. Main Agreements should contain formulas clearly identifying their type.
+
+6. Main Agreements granting a license for the Distribution of the Program must, under penalty of nullity, contain one of the formulas:
+
+    - a. “Licencja na Dystrybucję Programu” (License for the Distribution of the Program)
+
+    - b. “Licencja dystrybucyjna” (Distribution license)
+
+    - c. “Distribution License”
+
+7. Main Agreements granting a license to use the Program must, under penalty of nullity, contain one of the formulas:
+
+    - a. “Licencja na korzystanie z Programu” (License to use the Program)
+
+    - b. “License to Use”
+
+8. The Main Agreement must, under penalty of nullity, contain data clearly identifying the Licensee and (if required by the type of license granted) the Secondary Licensee.
+
+**§ 2.**
+
+**Introductory provisions**
+
+1. The Licensor declares that it holds the economic copyrights, licenses and the right to redistribute the license to the extent necessary to effectively make the dispositions referred to in § 3 and § 4.
+
+2. The Server includes the following libraries, provided to the Licensee in binary form, with the following functional names:
+
+    1) poi-toolkit
+
+3. The names of the libraries provided to the Licensee contain the functional name and the software version in the form of a suffix added to the functional name.
+
+4. The Server also includes a set of sample configuration files and startup scripts arranged in a directory structure defined by the Licensor, delivered as the installation package of the Server. The configuration files and scripts referred to are necessary to run the Program in the Linux and Microsoft Windows operating environments.
+
+5. The libraries, configuration files and runtime scripts included in the Program differ in particular in their functional scope.
+
+6. The License contains provisions concerning all libraries, configuration files and scripts listed in paragraphs 2, 4 and 5 of this section.
+
+**§ 3.**
+
+**License terms for using the Server**
+
+1. The License is free of charge, which means that the Licensor does not claim any fees for granting the License.
+
+2. The Licensor grants the Licensee a non-exclusive license, unlimited in space (worldwide), to use the Server together with the Program, in the form of result codes, in the following fields of exploitation:
+
+    1) entry, display, use, transmission and storage;
+
+    2) permanent or temporary reproduction, in whole or in part, solely for the Licensee's own use and solely for the purpose of entering, displaying, using, transmitting or storing;
+
+3. The License entitles the Licensee to use the Server solely together with the Program, for its own use within the Licensee's own business activities.
+
+4. The Server or its copy may not be distributed by the Licensee, including in particular under loan, rental or lease agreements.
+
+5. The Server may not be made available by the Licensee to third parties for use as part of software as a service services.
+
+6. The Licensee may not grant sublicenses to use the Server.
+
+7. The actions referred to in Art. 74 sec. 4 item 2) of the Act of 4 February 1994 on copyright and related rights require the consent of the Licensor.
+
+**§ 4.**
+
+**Provisions regarding distribution of the Server**
+
+1. The License is free of charge, which means that the Licensor does not claim any fees for granting the License.
+
+2. The Licensor grants the Licensee a non-exclusive license, unlimited in space (worldwide), to distribute (grant a sublicense for use) the Server to the Secondary Licensee as part of the license granted for the Program, in the form of result codes, in the following fields of exploitation:
+
+    1) transmission and storage;
+
+    2) permanent or temporary reproduction, in whole or in part, solely for the use of the Secondary Licensee and solely for the purpose of entering, displaying, using, transmitting or storing;
+
+3. The License entitles the Secondary Licensee to use the Server solely together with the Program, for its own use within the Secondary Licensee's own business activities.
+
+4. The Server or its copy may not be distributed by the Secondary Licensee, including in particular under loan, rental or lease agreements.
+
+5. The Server or its copy may be distributed by the Licensee solely and exclusively together with the Program to the Secondary Licensee, under license, loan, rental or lease agreements concerning the Program concluded between the Licensee and the Secondary Licensee.
+
+6. The Server may not be used by the Licensee.
+
+7. The Server may not be made available by the Licensee to third parties for use as part of software as a service services.
+
+8. The Server may not be made available by the Secondary Licensee to third parties for use as part of software as a service services.
+
+9. The actions referred to in Art. 74 sec. 4 item 2) of the Act of 4 February 1994 on copyright and related rights require the consent of the Licensor.
+
+**§ 5.**
+
+**Third party software**
+
+1. The Server was created using third-party software that the Licensor has the right to distribute and third-party software licensed under Open Source licenses.
+
+2. The provisions of § 3 and § 4 do not apply to the software referred to in paragraph 1, but the conditions specified in Annex No. 2 to the OWLK.
+
+3. Annexes No. 1 and No. 2 to the OWLK specify specific files and their versions based on Open Source licenses, indicating the type of Open Source license, completing the formalities required by these licenses, and in particular by citing the text of the appropriate license.
+
+**§ 7.**
+
+**Duration**
+
+1. The licenses referred to in § 3 and § 4 are granted for a period of 5 years, and after their expiry for an indefinite period, with the possibility of termination by each Party one year in advance, at the end of the calendar year. The above does not apply to additional options, which according to the price list may require periodic fees - the time of use of these options by the Licensee, Secondary Licensee is specified, indicated in the price list and is not subject to automatic extension.
+
+2. However, the Licensor may terminate as referred to in paragraph 1 only for important reasons.
+
+3. The license referred to in § 3 and § 4 may also be terminated by the Licensor at any time with immediate effect in the event of a breach of the OWLK, the Main Agreement or the law by the Licensee, the Secondary Licensee. Before terminating, the Licensor is obliged to issue a written request to the Licensee or Secondary Licensee to remove the state that is inconsistent with the law, the OWLK or the Main Agreement within 30 days from the date of delivery of the request. The ineffective expiry of this period entitles the Licensor to terminate the licenses and permits.
+
+**§ 8.**
+
+**Transfer of rights**
+
+1. The Licensee, Secondary Licensee may not transfer to a third party its rights under licenses, permits and any other rights obtained under the License (hereinafter collectively in this paragraph as **“Rights”**). Exceptions to this rule are introduced as specified in the next sentence. The Licensee, Secondary Licensee may transfer to a third party its Rights only in their entirety in the following situations:
+
+    1) the transfer of the Rights takes place as part of the sale of the enterprise of the Licensee, Secondary Licensee or an organized part of the enterprise of the Licensee, Secondary Licensee that includes these Rights;
+
+    2) the transfer of Rights takes place as part of the liquidation process of the Licensee, Secondary Licensee;
+
+    3) the transfer of Rights takes place as part of the process of merger, division or transformation of companies in which the Licensee, Secondary Licensee participates.
+
+2. The condition for the effective transfer of Rights in situations referred to in the previous sentence is prior notification of this to the Licensor in writing under penalty of nullity, indicating the purchaser, its address, the register in which it is registered and the entry number, the tax identification number and the date of transfer and the number of the granted license. The condition for the effective transfer of Rights is also the Licensee's causing the purchaser to take over its obligations towards the Licensor.
+
+**§ 9.**
+
+**Limitation of Licensor's liability**
+
+THIS SERVER IS PROVIDED BY THE LICENSOR “AS IS” AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
+
+IN NO EVENT SHALL THE LICENSOR BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; USE, DATA; OR INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT OR STRICT LIABILITY (INCLUDING NEGLIGENCE), ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGES.
+
+1. The Licensor shall not be liable for the following damages to the Licensee, Secondary Licensee:
+
+    - a. loss or corruption of data;
+
+    - b. lost profits, business contacts, revenues, reputation (goodwill), lost anticipated savings;
+
+    - c. damages resulting from the infringement of personal rights;
+
+    - d. damage that could not be foreseen when concluding the Main Agreement;
+
+    - e. damages resulting from claims made against the Licensee by third parties,
+
+    - f. damage resulting from the Licensee's breach of provisions relating to the Licensee's obligations of a public law nature.
+
+**§ 10.**
+
+**Export and import restrictions**
+
+1. The Program under the scope of the license grant may contain cryptographic technology. Use of the Program by users in different countries, as well as transfer of the Program to users in the same country or in different countries, may be prohibited by or subject to special export or import laws, regulations, or governmental policies in the country of the Licensee, Secondary Licensee, including the export and import laws and regulations of the United States.
+
+2. The Licensee, Secondary Licensee assumes full responsibility for complying with all applicable laws and regulations regarding the export, import and use of the Program, including but not limited to United States restrictions on export or re-export.
+
+**§ 11.**
+
+**Additional provisions**
+
+1. At the Licensor's written request, the Licensee undertakes, within 7 days of receiving it, to provide the Licensor in writing with all information concerning the use of the Server and a written statement confirming that the Server is used in accordance with the provisions of the License. Within the same period, the Licensee shall provide the Licensor with documents confirming the truthfulness of this information and statement.
+
+2. The Licensor undertakes that the creators of the Server will not exercise their moral rights.
+
+3. Any amendments or updates to the Server will be subject to the terms of this License.
+
+4. The Licensee, Secondary Licensee consents to the Server's use of cookies and tracking technologies to collect anonymous usage data and statistical data regarding the use of the Server.
+
+5. The Licensor is not a party to license agreements granted as a sublicense by the Licensee to the Secondary Licensee. Any disputes related to the granted sublicense between the Licensee and the Secondary Licensee shall be resolved by the courts competent for the Licensee, unless the license agreement concluded between the Licensee and the Secondary Licensee provides otherwise.
+
+6. Any change or supplement to the License requires written form under penalty of nullity.

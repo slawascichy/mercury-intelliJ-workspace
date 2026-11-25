@@ -138,9 +138,53 @@ Do zrobienia:
 3. Wdrożenie na `mercury-cluster` (serwery i klienci jednocześnie, bo wersje muszą się zgadzać), test SOAP z WS-Security, eksport i import Excela, `live4.sh`.
 4. Usunięcie obejścia `MemoryTokenStore` w `webService.xml` (obserwacja 210), jeśli CXF działa z Ehcache 3.10.8; dokumentacja (wymaganie JDK 17 serwera Terracotta, artykuły docusaurus, `docs/architektura.md`).
 5. Lokalny Terracotta autora: zmiana na kit 3.10.8 (`cluster.cfg` plus `config-tool activate`); klienci BPM (`bpm-security-provider` ma Ehcache 3.6.1 w jednym z profili) do sprawdzenia.
+## Wynik (2026-11-25)
+
+Punkty „Do zrobienia” z 2026-11-24 zostały wykonane (poza pomiarem obciążeniowym, patrz niżej). Zmiany zatwierdzone przez autora.
+
+**Wdrożenie na `mercury-cluster`** (helm rewizja 20): Terracotta 3.10.8 (trzy węzły na Temurin 17, obraz `ibpm/ehcache:mercury-hgdb-3.0-3.10.8`) razem z klientami
+Ehcache 3.10.8 w `mercury` 3.0.4.45 i `poi-toolkit` 4.1.0.11, ActiveMQ 5.19.12 (`ibpm/activemq:mercury-hgdb-3.0-5.19.12`), `sccommon-cache` 2.0.0.5.
+Testy: `live4.sh` 58 OK, 0 błędów; eksport Excela `COMPLETED`; import 300 wierszy `COMPLETED`; wyszukiwanie na trzech węzłach zgodne z bazą;
+**SOAP z WS-Security działa bez obejścia `MemoryTokenStore`** (HTTP 200, zły token daje `SecurityError`; obserwacja 210, obejście usunięte z `webService.xml`).
+
+**Co poszło nie tak przy wdrożeniu i jak naprawiono** (kolejność wystąpienia):
+
+1. **Pakiet instalacyjny brał stare jary.** `lib` pakietu pochodzi z lokalnego `mercury/mercury-server/apache-tomcat/mercury/lib`, w którym zostały Ehcache 3.6.1
+   i ActiveMQ 5.16.2 (ant nie nadpisuje plików o innej nazwie). Skutek: klient Terracotty 5.5.1 kontra serwer 5.9.5 (`client version is not compatible`), aplikacje
+   Mercury nie startowały. Poprawka: wymiana jarów w `lib` (kopie zapasowe `lib.bak-*`) i w katalogu wydania.
+2. **Brak API JMS 2.0.** ActiveMQ 5.19 wymaga `jakarta.jms-api` 2.0.3, a w `lib` było `geronimo-jms_1.1_spec` (`NoClassDefFoundError: javax/jms/JMSContext`).
+3. **Ant `dist` nie czyści katalogu wydania:** obok sccommon 2.0.0.5 zostały jary 2.0.0.4. Decyzja autora: bez zmiany w budowie, katalog wydania i `lib` kontroluje autor ręcznie.
+4. **POI Server bez JAXB.** Ehcache 3.10.8 czyta `ehcache.xml` przez JAXB, a Java 17 nie ma implementacji w JDK. Tworzenie pamięci podręcznej `ExcelFileReader` przerywało się po cichu,
+   a eksport Excela kończył się `FAILED` (`NullPointerException` w `WriteRemote.isActive`). Poprawka: `jaxb-runtime` 2.3.7 w `poi-toolkit` 4.1.0.11 (ta sama wersja co w Mercury).
+5. **Reguła weryfikacji pakietu (zadanie 214) blokowała `log4j-api` 2.18.0**, zależność Apache POI 5.x. Wzorzec `log4j-*.jar` zawężony do `log4j-1*.jar` i `log4j-core-*.jar`
+   (`build-installation.xml` w `mercury-cmd`). Skutek uboczny: komunikat `StatusLogger: Log4j2 could not find a logging implementation` przy pierwszym użyciu POI (można wyciszyć `log4j-to-slf4j`).
+6. **Konsola ActiveMQ 5.19:** filtr adresów w `jetty.xml` wpuszcza tylko loopback, więc przez Docker daje błąd HTTP 403 przed logowaniem. W kompozycji lokalnej dodane zakresy prywatne;
+   w chartach opcjonalny mount `jetty.xml` z ConfigMapy (`activemq.jettyConfigMap`, domyślnie pusty), opis w `activemq/README.md` i `charts/README.md`.
+7. **Pobieranie zależności:** `mvn17` online nie łączy się z `sci-maven` (`PKIX path building failed`; truststore JDK 17 nie ufa certyfikatowi). Artefakty Ehcache, ActiveMQ i Lucene 9
+   są pobierane ręcznie (autor, `mvn` na JDK 8, albo bezpośrednio z Maven Central do `D:\workspace\.m2`).
+
+**Lokalne środowisko deweloperskie w workspace:** `docker/terracotta` (kit 3.10.8, skrypt `startEhcacheServer.sh`, porty 9510 i 9530, healthcheck po stanie ACTIVE) i `docker/activemq`
+(ActiveMQ 5.19.12, OpenWire 51616, konsola 8161, skrypt `startActiveMq.sh`). Zastępują lokalne kity `ehcache-clustered-3.6.1-kit` i `apache-activemq-5.16.4`; stare katalogi usuwa autor.
+
+**Licencja kitu Terracotta: zamknięte (decyzja autora 2026-11-25).** Kit 3.10.8 jest na Terracotta Public License 2.0 (rodzina MPL); sprawdzone u źródła: `terracotta-core` w tagu `v5.9.5` ma
+w `LICENSE` TPL 2.0, w `master` Apache 2.0, `ehcache3` w tagu `v3.10.8` Apache 2.0. Warunki dla niezmodyfikowanego kitu spełnione: kod nie jest zmieniany, katalog `legal/` zostaje w obu obrazach
+(sprawdzone), odsyłacze do źródeł w README (`docker/terracotta`, `mercury-docker/ehcache`) i w stopce GUI (`footer.jsp`, klucz `mgui.footer.cache`; tłumaczenia de/es/fr/ko do uzupełnienia przez `localization-project`).
+Odpowiedzialność prawna po stronie autora jako SciSoftware. Artykuł „Licencje osób trzecich” w docusaurus: osobny punkt (zadanie 191).
+
+**Klienci BPM:** `bpm-security-provider` ma powiązanie tylko z zamrożonym `mercury-client`, więc w tym zadaniu nie wymaga żadnych sprawdzeń.
+
+**Czego nie zrobiono:** pomiaru obciążeniowego klastra (sesje, regiony Ehcache, obciążenie) względem 3.6.1. Funkcjonalnie klaster działa (testy wyżej), ale liczb porównawczych nie ma.
+Etap B (kit 3.12.0) pozostaje „listą marzeń”.
+
 ## Kryteria ukończenia
 
 - Serwer Terracotta działa na Javie 17 w obrazie Docker i w lokalnym środowisku deweloperskim.
 - Klient Ehcache i `sccommon-cache` zgodne z kitem; testy `mercury`, `poi-toolkit`, `mercury-cmd` zielone.
 - Klaster trzywęzłowy: sesje, cache regionów i test obciążeniowy bez regresji względem 3.6.1.
 - Dokumentacja i obserwacje zaktualizowane.
+
+**Status kryteriów (2026-11-25):**
+- Serwer Terracotta na Javie 17 w obrazie Docker i w lokalnym środowisku deweloperskim: ✅ (obraz `ehcache` 3.10.8 na Temurin 17, `docker/terracotta`).
+- Klient Ehcache i `sccommon-cache` zgodne z kitem; testy `mercury`, `poi-toolkit`, `mercury-cmd` zielone: ✅ (z wyjątkami znanymi z 191: testy wymagające lokalnego indeksu 7.x i infrastruktury).
+- Klaster trzywęzłowy: sesje, cache regionów i test obciążeniowy bez regresji względem 3.6.1: ◐ funkcjonalnie ✅ (`live4.sh`, SOAP, eksport i import), pomiar obciążeniowy względem 3.6.1 niewykonany.
+- Dokumentacja i obserwacje zaktualizowane: w toku (zadanie 191, etap 4: artykuły docusaurus, `docs/architektura.md`, `docs/moduly/*.md`).

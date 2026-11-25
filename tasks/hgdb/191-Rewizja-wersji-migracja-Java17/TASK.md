@@ -40,7 +40,7 @@ etap 1 (decyzja D5 w zadaniu 133). Tutaj zostaje wyrównanie Jacksona w pozosta�
 | 3 | Stos `javax`: CXF 3.5.x, Spring Security 5.8.x, AspectJ 1.9.x, cglib, Hibernate 5.6.x w `mercury-cmd`, ActiveMQ (po sprawdzeniu release notes), Ehcache 3.10.x (opcjonalnie) | Testy SOAP/Aegis/WSDL, RMI i HTTP invoker z klientami na Javie 8 |
 | 3b | **POI Server na Javie 17** (`poi-toolkit`, decyzja autora 2026-11-23: to produkt autora i część kompozycji): gałąź `hgdb-191`, budowa `mvn17` z `--release 8`, testy, eksport i import Excela przez POI Server na JDK 17 (Apache POI 4.1.x, XMLBeans), obraz `mercury-docker/poi-server` na Temurin 17, test `reportExport` na klastrze. Terracotta (`ehcache`) i ActiveMQ zostają na Temurin 8 (komponenty zewnętrzne) | Eksport i import Excela działają na JDK 17, obraz zbudowany |
 | 4 | Spięcie: `mercury-cmd` i pakiet instalacyjny na 17, obrazy Docker, test na klastrze, dokumentacja (stos w `architektura.md`, moduły, obserwacje, artykuły z wymaganiem JDK 17) | Klaster na JDK 17, DoD etapów 1 i 2 |
-| 5 | **Lucene 9** (po zielonym etapie 4): port `mercury-lucene-indexes`, przebudowa indeksów, pomiar względem `tasks/hgdb/119-*/baseline-2026-10-25.csv` oraz testy `LuceneNestedQueryOccurTest`, `LuceneTruncationTest`, `CostOptimizerTest` | Wyniki zgodne z baseline, wydajność bez regresji |
+| 5 | **Lucene 9** (po zielonym etapie 4): port `mercury-lucene-indexes`, przebudowa indeksów, pomiar względem `tasks/hgdb/119-*/baseline-2026-10-25.csv` oraz testy `LuceneNestedQueryOccurTest`, `LuceneTruncationTest`, `CostOptimizerTest` | Port i testy zielone, indeksy przebudowane, wyniki zgodne z bazą na klastrze ✅; pomiar wydajności względem baseline przeniesiony do zadania 257 |
 ### Stan realizacji (2026-11-23, gałąź `hgdb-191`, niezatwierdzone)
 
 - **Etapy 0 i 1 ✅** (`mercury-lib`, `mercury`): budowa i testy na JDK 17 (`mvn17`) dają takie same wyniki jak na JDK 8 (`mvn8`). Zmiany: profil `jdk9plus` (API Java EE `provided`: `jaxb-api` 2.3.1, `javax.annotation-api` 1.3.2, `jaxws-api` 2.3.1, `javax.jws-api` 1.1, `javax.activation-api` 1.2.0; `jaxb-runtime` 2.3.7 do testów; `maven.compiler.release=8`; `jacoco.skip=true`, bo JaCoCo 0.7.4 nie obsługuje klas Javy 17), `maven-compiler-plugin` 3.8.1 w lib, jary JAXB w `ścieżce klas` generatorów DTO, `classpathScope=compile` w generatorze API 2.0, usunięty `-XX:MaxPermSize`, generatory DTO i kompilacja typów w runtime przez `javax.tools.ToolProvider` (klasa `JavaCompilerHelper`, `--release` zamiast `-source/-target` na JDK 9+), usunięta zależność `com.sun:tools`.
@@ -56,6 +56,58 @@ etap 1 (decyzja D5 w zadaniu 133). Tutaj zostaje wyrównanie Jacksona w pozosta�
 - **Regresja po CXF 3.5.10 wykryta testami klienta (2026-11-24, obserwacja 210):** żądania SOAP z WS-Security padały na `EHCacheTokenStore` (`ClassNotFoundException: org.ehcache.core.util.ClassLoading`, bo CXF 3.5 wymaga Ehcache >= 3.8, a serwer ma 3.6.1). Poprawka: `MemoryTokenStore` na busie CXF w `webService.xml` (do weryfikacji po restarcie serwera i na klastrze; testy klastra nie obejmowały SOAP z WS-Security). `hgdb-client-open`: testy na JDK 17 przeciwko lokalnemu serwerowi (profil `jdk9plus` wyłącza JaCoCo 0.7.4 i `-XX:MaxPermSize`): `WsClientCXFTest` 42 testy (HTTP invoker `remoting`, klient z bajtkodem 1.8 kontra serwer na 17) zielone; 3 błędy identyczne na oryginalnych POM-ach (`testSoapSecurityConnection` = obserwacja 210; `MultiClientTest` x2: `NoSuchMethodError` w `slf4j` `Log4jLoggerAdapter`, konflikt wersji slf4j w teście). Usunięte bez zmiany wyników testów: AspectJ (test), `commons-httpclient` 3.1 (zamiast tego jawny `commons-codec` 1.15 dla `Base64`), a także `json-lib`, `commons-collections` (2004), `commons-beanutils`, `jackson-databind` i `moxy` 2.5.0-RC1, które klient wystawiał konsumentom w zakresie compile.
 - **Ujednolicenie Apache POI (2026-11-24, obserwacja 212):** jedna wersja 5.2.3 zamiast mieszanki 5.2.1 z `poi-ooxml-schemas` 4.1.2; `poi-ooxml-full` 5.2.3 zamiast `poi-ooxml-schemas`, `poi-ooxml-lite` wykluczony. Zmienione POM-y w `poi-toolkit`, `mercury-lib`, `mercury`, `mercury-cmd` i `hgdb-client-open`. Sprawdzone: `poi-toolkit` 20 testów (JDK 17), pełne testy `mercury` bez nowych porażek, `mercury-cmd`/`hgdb-client-open` kompilują się. Do wydania: `poi-toolkit` 4.1.0.8 i kolejno `mercury-lib`, `mercury`, `hgdb-client-open`, `mercury-cmd`; potem obraz POI i test eksportu/importu na klastrze. Dodatkowo `CaseSearchQueryBuilder` (obserwacja 211, `AND ()` w HQL) poprawiony z testami jednostkowymi.
 - **Wdrożenie 3.0.4.43 na `mercury-cluster` i testy (2026-11-24, helm rewizja 17):** obrazy `mercury` 3.0.4.43 (CXF 3.5.10, Hibernate 5.6.14, POI 5.2.3 z `poi-ooxml-full`, `poi-toolkit` 4.1.0.8, bez `asm`/`cglib`/`aspectj`/`spring-security`/`jaxb-impl`) i `poi-server` 4.1.0.8 (Temurin 17.0.21.1). Wyniki: `live4.sh` 58 sprawdzeń OK, 0 błędów; SOAP z WS-Security i HTTP invoker z klienta na Javie 8 OK (obserwacja 210 zweryfikowana na klastrze); eksport `Bench211` na POI 5.2.3: xlsx 89 228 spraw 9,3 s (89 229 wierszy w pliku, szczyt pamięci poda POI 1139 MiB), csv 8,3 s (89 229 linii), z filtrem Lucene 1,1 s; import csv 300 wierszy 2 s (89 228 do 89 528 spraw). Brak `NoClassDefFoundError`/`ClassNotFoundException`/`OutOfMemoryError` w logach Mercury; pody bez restartów. Do posprzątania przez autora: dodatkowe sprawy `Bench211` z testów importu (1000 z 14:45 UTC i 300 z 17:20 UTC) oraz pliki `*poi17_*`, `*poi523_*`, `dbg_small*`, `poi17_import1000.csv` w woluminach POI. Do końca etapu 4: dokumentacja (wymaganie JDK 17 w artykułach, tabela stosu w `docs/architektura.md`, opisy modułów), `cxf-bom`/POI w `mercury-cmd` zweryfikowane budową, decyzje o wydaniu i PR.
+
+### Stan realizacji (2026-11-25, koniec dnia, gałąź `hgdb-191`, zmiany zatwierdzone przez autora)
+
+**Etapy:** 0, 1 ✅; 2 ✅ (serwer na Javie 17); 3 ✅ (stos `javax`); 3b ✅ (POI Server na Javie 17); 4: część techniczna ✅ (pakiet, obrazy, klaster, testy), **dokumentacja w toku**
+(artykuły docusaurus, `docs/architektura.md`, `docs/moduly/*.md`, obserwacje, artykuł „Licencje osób trzecich”); 5 (**Lucene 9**) ✅ port i weryfikacja na klastrze.
+Pomiar wydajności względem `119-*/baseline-2026-10-25.csv` (dawniej warunek końcowy etapu 5) przeniesiony do **zadania 257** (razem z migratorem `mercury-lu2hgdb`).
+Podzadanie **256** (Terracotta 3.10.8 na Javie 17, zielone światło autora 2026-11-24) wykonane w ramach tego wydania.
+
+**Wydania lokalne (2026-11-24 i 25):** `sccommon` 2.0.0.5, `poi-toolkit` 4.1.0.11, `mercury-lib` 3.0.4.28, `mercury` 3.0.4.45, `hgdb-client-open` 3.4.28.45, `mercury-cmd` 3.1.4.21.
+**Numeracja `hgdb-client-open` (decyzja autora):** `<linia>.<linia>.<mercury-lib>.<mercury>`: trzecia pozycja to ostatnia liczba wersji `mercury-lib`, czwarta ostatnia liczba wersji serwera
+(3.4.28.45 = lib 3.0.4.28 i serwer 3.0.4.45); opis w `hgdb-client-open/README.txt`.
+**Obrazy w wewnętrznym Nexusie:** `ibpm/mercury:mercury-hgdb-3.0.4.45`, `ibpm/poi-server:mercury-hgdb-3.0`, `ibpm/activemq:mercury-hgdb-3.0-5.19.12`, `ibpm/ehcache:mercury-hgdb-3.0-3.10.8`
+(wersja produktu w tagu activemq i ehcache; skrypt `build-and-push-images.sh` czyta ją z Dockerfile). Wszystkie na Temurin 17 (Tomcat 9.0.123).
+
+**Stos po zadaniu:** Java 17 (serwer, POI Server, ActiveMQ, Terracotta), CXF 3.5.10, Hibernate 5.6.14, Apache POI 5.2.3 (`poi-ooxml-full`), ActiveMQ 5.19.12 (klient i broker, JMS 2.0 przez
+`jakarta.jms-api` 2.0.3), Ehcache 3.10.8 (klient i Terracotta 5.9.5), JAXB runtime 2.3.7, **Lucene 9.12.3**. Usunięte martwe zależności: AspectJ 1.7.3, cglib 2.2.2, `asm` 3.3.1,
+`spring-security-core` 5.4.10 w `ws-app`.
+
+**Lucene 9 (etap 5), co zrobiono:**
+- Wersja **9.12.3** (ostatnia 9.x; Lucene 10 wymaga Javy 21). `lucene-analyzers-common` zmienione na `lucene-analysis-common`; `lucene-sandbox` 9 dociąga `lucene-facet`. `mercury` i `mercury-cmd`.
+- Zmiany w kodzie `mercury-lucene-indexes` i `-api`: kolektory (`scoreMode`, `Scorable`, `TotalHits`), nowa klasa `LazyQueueTopDocsCollector` (pole `pq` jest w Lucene 9 `final`), `LuceneJoinUtil`
+  (`GenericTermsCollector.createCollectorSV/MV`, pola join jako `SortedDocValues`), `MultiFields` na `MultiTerms`/`FieldInfos`, `RAMDirectory` na `ByteBuffersDirectory`, `TopDocs.merge` bez parametru
+  `setShardIndex`, `IndexWriter.getDocStats()`, `CharTokenizer` bez `normalize` (zamiana na małe litery w `LowerCaseFilter` analizatora), usunięty martwy pakiet `search/cases/score`.
+- **Dokładna liczba trafień:** Lucene 9 liczy trafienia dokładnie tylko do progu 1000 i po zapełnieniu kolejki; Mercury potrzebuje liczby dokładnej do wykrywania obcięcia wyniku
+  (`QueryTruncation`). Dodane `ExactTotalHitsSearch` (`TopScoreDocCollectorManager` z progiem `Integer.MAX_VALUE`) w zagnieżdżonych wyszukiwaniach dzieci; własne kolektory liczą trafienia same.
+  `LuceneQuery` nie używa `totalHits`, więc bez zmiany.
+- **Znacznik SCN** w danych commitu indeksu (`CaseIndexScnWatermark`, klucz `mercury.index.scn`): API bez zmian (`setLiveCommitData`, `SegmentInfos.readLatestCommit`), 14 testów zielonych; odczyt
+  starego indeksu daje wyjątek zamieniany na brak znacznika.
+- **Indeksy 7.x są nieodwracalnie niezgodne** (`IndexFormatTooOldException`: Lucene 9 otwiera tylko indeksy utworzone w 8.0 i nowszych), więc przy upgrade potrzebna jest przebudowa indeksu z bazy.
+  Kopie zapasowe indeksu 7.x nie dają się odtworzyć. Stary mechanizm zgodności nie powstał (zasada: upgrade wymienia cały serwer).
+- Testy: moduł `-api` 14 testów, `LuceneNestedQueryOccurTest`, `LuceneTruncationTest`, `CostOptimizerTest` i pozostałe 160 testów modułu `mercury-lucene-indexes` zielone (10 pominiętych);
+  3 pakiety testów czytających lokalny indeks 7.x (`FieldStatsTest`, `LuceneQueryExtractorTest`, `NumMultiFieldQueryParserTest`) dają `IndexFormatTooOldException` do czasu przebudowy lokalnego indeksu.
+- **Klaster:** stare indeksy przeniesione na bok (`*.lucene7`), indeks zbudowany na węźle 1 poleceniem `generate-lucene Case`: 89 838 dokumentów, 890 stron po 100, 10 wątków, **555 s**
+  (średnio ok. 4 ms na dokument, ok. 160 dokumentów/s), 14 MB, 57 plików, 0 błędów. Węzły 2 i 3 dostały **kopię indeksu węzła 1** (pomocniczy pod z PVC wszystkich węzłów, sumy MD5 zgodne)
+  zamiast budować własny. `searchByQuery` na trzech węzłach zwraca 89 828 trafień (= liczba spraw `Bench211` w bazie).
+
+**Testy na klastrze (mercury 3.0.4.45):** `live4.sh` 58 OK, 0 błędów; eksport Excela `COMPLETED`; import `COMPLETED`; SOAP z WS-Security HTTP 200 bez obejścia `MemoryTokenStore` (obserwacja 210);
+powtórna wysyłka pliku bez `override` zwraca `statusCode` 409 (obserwacja 213). Brak błędów `NoSuchMethodError`/`NoClassDefFoundError`/`IndexFormat` w logach.
+
+**Zasada procedury wydania wynikająca z zadania:** pakiet instalacyjny składa `lib` z lokalnego `mercury/mercury-server/apache-tomcat/mercury/lib` (ant nie nadpisuje plików o innej nazwie ani nie
+czyści katalogu wydania), więc po zmianie wersji bibliotek trzeba ręcznie wymienić jary w `lib` i sprawdzić zawartość wydania przed wysłaniem do Nexusa (decyzja autora: kontrola ręczna, bez zmiany budowy).
+Do wymiany przy tym zadaniu: Ehcache, ActiveMQ, `commons-pool2`, `jakarta.jms-api` (zamiast `geronimo-jms_1.1_spec`), jary Lucene, sccommon.
+
+**Znane niedomagania i otwarte sprawy:**
+- `SimpleClientTest` w `hgdb-client-open` nie startuje (`NoClassDefFoundError: org/apache/log4j/config/PropertyPrinter` w `TestPropertiesLoader`/`Configurations`); SOAP sprawdzony bezpośrednio przez `curl`. Przyczyny nie zbadano.
+- `mvn17` online nie łączy się z `sci-maven` (`PKIX path building failed`): artefakty pobierane ręcznie.
+- Brak pomiaru wydajności Lucene 9 względem 7.5 (zadanie 257). Brak pomiaru obciążeniowego Terracotty 3.10.8 względem 3.6.1 (zadanie 256).
+- `StandardAnalyzer` w Lucene 9 nie ma domyślnej listy słów pomijanych (zmiana od Lucene 8): wyniki zapytań po słowach takich jak „to” mogą się różnić od wersji 7 (do sprawdzenia w 257).
+- `mercury-cmd`: komunikat `StatusLogger: Log4j2 could not find a logging implementation` przy pierwszym użyciu POI (`log4j-api` bez implementacji; można wyciszyć `log4j-to-slf4j`).
+
+**Zostaje do zamknięcia zadania:** dokumentacja (etap 4; artykuły „Licencje” w docusaurus gotowe 2026-11-25: OWLK, Załącznik 1 z bieżącym wykazem składników, Załącznik 2), PR i merge `hgdb-191` we wszystkich repozytoriach oraz usunięcie gałęzi (autor), potem prawdziwe wydanie 3.0.5.x do `nexus.scisoftware.pl`
+(produkt bez danych). Zadanie 257 (pomiar Lucene, migrator `mercury-lu2hgdb`, zanonimizowany zestaw danych) jest osobne i startuje po zamknięciu 191.
 
 ## Kontekst i Wymagania
 
