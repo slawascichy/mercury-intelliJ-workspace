@@ -5,8 +5,8 @@
 - poi-toolkit: 4.1.0.10 zrobione, zip w mercyry-docker
 - mercury-lib: wydanie 3.0.4.28 zrobione
 - mercury: wydanie lokalne 3.0.4.45 zrobione
-- hgdb-client-open: wydanie lokalne 3.1.4.28 zrobione
-- mercury-cmd: wydanie lokalne 3.1.4.20 zrobione
+- hgdb-client-open: wydanie lokalne 3.4.28.45 zrobione
+- mercury-cmd: wydanie lokalne 3.1.4.21 zrobione
 - zmiany dla powyższych modułów zatwierdzone
 Spróbuj przebudowac obrazy z nowymi build'ami i je wypchnij do nexus
 
