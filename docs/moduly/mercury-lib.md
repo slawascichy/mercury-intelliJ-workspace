@@ -4,7 +4,7 @@
 |---|---|
 | Lokalizacja | `D:\workspace\git\mercury-lib` |
 | GAV | `io.hgdb.mercury:mercury-lib:3.0.4-SNAPSHOT` (pom) |
-| Java | 1.8 |
+| Java | 1.8 (kompilacja z `release` 8, żeby klienci na Javie 8 mogli używać biblioteki) |
 | Opis z POM | Zbiór głównych komponentów systemu bazy danych Mercury DB. |
 
 Biblioteki współdzielone przez serwer (`mercury`) i klientów (`hgdb-client-open`,

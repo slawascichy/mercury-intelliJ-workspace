@@ -16,13 +16,13 @@ w przestrzeni `ibpm/`. Obrazy robocze trafiają do Nexusa (`nexus.scisoftware.lo
 
 | Katalog | Obraz | Baza | Opis |
 |---|---|---|---|
-| `mercury-3.0` | `ibpm/mercury:mercury-hgdb-3.0.4.25` | CentOS 8 | Serwer Mercury DB (Tomcat z aplikacjami serwera). |
-| `mercury-lb` | `ibpm/mercury-lb:mercury-hgdb-3.0` | CentOS 8 | Nginx jako reverse proxy i load balancer węzłów klastra. Zawiera centrum certyfikatów. |
+| `mercury-3.0` | `ibpm/mercury:mercury-hgdb-3.0.4.45` | AlmaLinux 9 | Serwer Mercury DB (Tomcat z aplikacjami serwera). Własny Eclipse Temurin 17 w `/opt/mercury-3.0/java`. |
+| `mercury-lb` | `ibpm/mercury-lb:mercury-hgdb-3.0` | AlmaLinux 9 | Nginx jako reverse proxy i load balancer węzłów klastra. Zawiera centrum certyfikatów. |
 | `postgresql` | `ibpm/postgres:mercury-hgdb-3.0` | `postgres:17.11` | Baza danych serwera i ActiveMQ. Od wydania 3.0.4.20 PostgreSQL 17 (wcześniej 14.24), wersję ustawia `ARG POSTGRES_VERSION`. Poprzednią wersję zachowuje tag `mercury-hgdb-3.0-pg14`. |
-| `activemq` | `ibpm/activemq:mercury-hgdb-3.0` | – | Broker JMS do komunikacji między węzłami. |
-| `ehcache` | `ibpm/ehcache:mercury-hgdb-3.0` | Oracle JDK 8 | Serwer Ehcache Clustered. Konfigurację wybierają zmienne `HGDB_NODE` (`node1`–`node3`) i `HGDB_NODES` (1–3). |
+| `activemq` | `ibpm/activemq:mercury-hgdb-3.0-5.19.12` | Eclipse Temurin 17 (UBI 9) | Broker JMS do komunikacji między węzłami (ActiveMQ 5.19.12). Opcjonalny `jetty.xml` przez ConfigMap `activemq.jettyConfigMap` w chartach. |
+| `ehcache` | `ibpm/ehcache:mercury-hgdb-3.0-3.10.8` | Eclipse Temurin 17 (UBI 9) | Serwer Ehcache Clustered (kit 3.10.8, Terracotta 5.9.5). Konfigurację wybierają zmienne `HGDB_NODE` (`node1`–`node3`) i `HGDB_NODES` (1–3). |
 | `openldap` | `ibpm/openldap:mercury-hgdb-3.0` | – | Katalog użytkowników. |
-| `poi-server` | `ibpm/poi-server:mercury-hgdb-3.0` | Oracle JDK 8 | Iron – POI Excel Server: import i eksport danych w formacie xlsx. Węzeł wybiera zmienna `HGDB_NODE`. |
+| `poi-server` | `ibpm/poi-server:mercury-hgdb-3.0` | Eclipse Temurin 17 (UBI 9) | Iron – POI Excel Server: import i eksport danych w formacie xlsx. Węzeł wybiera zmienna `HGDB_NODE`. |
 
 ## Kompozycje
 

@@ -84,7 +84,7 @@ Pułapki:
 - `mercury-client` jest zamrożony (stan od 2026-11-11: wersja `4.0.4.17.1`, rodzic wszystkich modułów
   `4.0.4.17-SNAPSHOT`). `mercury-client-cmd` buduje się osobno (`./install.sh` w jego katalogu).
   Opis budowania jest w `mercury-client/README.md`.
-- `mercury-cmd` zależy od wydanych wersji (`3.0.3.2.12`, klient `3.1.2.0.2`), a nie od
+- `mercury-cmd` zależy od wydanych wersji (stan 2026-11-25: `mercury-lib` 3.0.4.28, serwer 3.0.4.45, klient 3.4.28.45), a nie od
   bieżących snapshotów.
 - Testy klientów i narzędzi wymagają działającego serwera Mercury DB
   (`src/test/resources-filtered/properties/<user>/test.properties`).

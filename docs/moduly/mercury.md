@@ -4,7 +4,7 @@
 |---|---|
 | Lokalizacja | `D:\workspace\git\mercury` |
 | GAV | `io.hgdb:mercury:3.0.4.8` (pom) |
-| Java | 1.8 |
+| Java | 17 |
 | Opis z POM | System uniwersalnego źródła danych. |
 
 Implementacja serwera Mercury DB: dostęp do danych, indeksowanie Lucene, logika biznesowa,
@@ -69,7 +69,7 @@ Opis zmian i kolejność wdrożenia: [wydanie 3.0.4.2](../wydanie-3.0.4.2.md).
 |---|---|---|---|
 | `hgdb-tools` | jar | 3 / 3 | Narzędzia, m.in. obsługa licencji (`org.hgdb.tools.license`). |
 | `hgdb-server-monitor` | jar | 1 / 0 | Monitoring pracy serwera. |
-| `mercury-server` | jar | 0 / 0 | Testowy serwer Tomcat 8.0.32 z ActiveMQ, konfiguracją i bibliotekami. Baza wersji produkcyjnej. GAV: `io.hgdb:mercury-server`. |
+| `mercury-server` | jar | 0 / 0 | Testowy serwer Tomcat 9.0.123 z ActiveMQ, konfiguracją i bibliotekami. Baza wersji produkcyjnej. GAV: `io.hgdb:mercury-server`. |
 
 ## Zależności (uproszczone)
 

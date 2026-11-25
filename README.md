@@ -86,7 +86,7 @@ Maven (📦). Pełne opisy są w plikach `docs/moduly/`.
 | Logika | `mercury-srv` (logika, biznes, JMS), `mercury-srv-slave` (węzły klastra SLAVE) |
 | Usługi | `mercury-ws-server` (SOAP, RMI), `mercury-ws-server-api20` i `mercury-ws-server-api20-generator` (zgodność z API 2.0), `mercury-ws-app-rest-generator` (REST z SOAP), `hgdb-rmi-server-api` |
 | Aplikacje i GUI | `mercury-ws-app` (główny WAR), `mercury-gui-registry` (WAR), `license-registry` (WAR), `ROOT` (WAR), `mercury-gui-core` (Realm RDBMS/LDAP, OAuth 2.0) |
-| Narzędzia | `hgdb-tools` (licencje), `hgdb-server-monitor`, `mercury-server` (testowy Tomcat 8.0.32 z ActiveMQ) |
+| Narzędzia | `hgdb-tools` (licencje), `hgdb-server-monitor`, `mercury-server` (testowy Tomcat 9.0.123 z ActiveMQ) |
 | Poza reaktorem ⚠️ | `maven` (`pl.slawas:install-jar`, instalacja jarów w lokalnym repozytorium) |
 
 ### hgdb-client-open – publiczny klient Java

@@ -126,12 +126,12 @@ Wersja ma pięć pozycji (opis z `mercury-lib/README.md`):
 
 | Obszar | mercury (serwer) | mercury-lib | hgdb-client-open | mercury-client |
 |---|---|---|---|---|
-| Java | 1.8 | 1.8 | 1.8 | 1.8 wg POM (README: 1.6 / 1.7) |
+| Java | 17 | 1.8 (`release` 8) | 1.8 | 1.8 wg POM (README: 1.6 / 1.7) |
 | Spring | 5.3.21 | 2.5.6 | 5.3.21 | 4.1.9.RELEASE |
-| Apache CXF | 3.0.12 | 3.0.12 | 3.0.12 | 2.7.15 |
+| Apache CXF | 3.5.10 | 3.5.10 | 3.5.10 | 2.7.15 |
 | Hibernate | 5.6.14.Final | – (JPA 2.1) | – | – |
-| Lucene | 7.5.0 | – | – | – |
-| Ehcache | 3.6.1 | 3.6.1 | 3.6.1 | 2.10.1 |
+| Lucene | 9.12.3 | – | – | – |
+| Ehcache | 3.10.8 | 3.10.8 | 3.10.8 | 2.10.1 |
 | Logowanie | slf4j 1.7.36 + Logback 1.2.13 | slf4j 1.7.36 + Logback 1.2.13 | slf4j 1.7.36 + Logback 1.2.13 | slf4j 1.7.36 + Logback 1.2.13 |
-| Serwer aplikacji | Tomcat 8.0.32 (`mercury-server`) | – | – | IBM WebSphere 8.5.5 |
-| Inne | ActiveMQ 5.16, OpenCMIS 1.1.0, POI 5.2.1, Jackson 2.18.11, commons-io 2.14.0 | POI 5.2.1, Jackson 2.18.11, commons-io 2.14.0 | Jackson 2.18.11, commons-io 2.14.0 | IBM BPM 8.6.3, Axis 1.4 |
+| Serwer aplikacji | Tomcat 9.0.123 (`mercury-server`) | – | – | IBM WebSphere 8.5.5 |
+| Inne | ActiveMQ 5.19.12, OpenCMIS 1.1.0, POI 5.2.3, Jackson 2.18.11, commons-io 2.14.0 | POI 5.2.3, Jackson 2.18.11, commons-io 2.14.0 | Jackson 2.18.11, commons-io 2.14.0 | IBM BPM 8.6.3, Axis 1.4 |

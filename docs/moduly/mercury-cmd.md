@@ -4,7 +4,7 @@
 |---|---|
 | Lokalizacja | `D:\workspace\git\mercury-cmd` |
 | GAV | `io.hgdb.mercury:mercury-cmd:3.1.4-SNAPSHOT` (pom) |
-| Java | 1.8 |
+| Java | 17 |
 | Opis z POM | System uniwersalnego źródła danych. |
 
 Narzędzia administracyjne serwera Mercury DB: polecenia CLI, transfer danych między
@@ -12,7 +12,7 @@ instancjami, testy wydajności i pakiet instalacyjny serwera. Moduły mają GAV
 `io.hgdb.mercury:<moduł>:3.1.4-SNAPSHOT`.
 
 Projekt korzysta z wydanych wersji pozostałych repozytoriów, a nie z bieżących snapshotów:
-`mercury.lib.version=3.0.4.24` (`mercury-lib`), `mercury.srv.version=3.0.4.25` (serwer i wersja pakietu), `hgdb-client.version=3.1.4.20` (stan 2026-11-13; 2026-10-28 było 3.0.4.18, 3.0.4.10 i 3.1.4.19; wcześniej jedna właściwość `mercury.static.version=3.0.3.2.12` dla serwera i `mercury-lib`).
+`mercury.lib.version=3.0.4.28` (`mercury-lib`), `mercury.srv.version=3.0.4.45` (serwer i wersja pakietu), `hgdb-client.version=3.4.28.45` (stan 2026-11-25, zadanie 191; 2026-11-13 było 3.0.4.24, 3.0.4.25 i 3.1.4.20; 2026-10-28 było 3.0.4.18, 3.0.4.10 i 3.1.4.19; wcześniej jedna właściwość `mercury.static.version=3.0.3.2.12` dla serwera i `mercury-lib`).
 
 ## Moduły
 
@@ -51,7 +51,7 @@ Skrypty wywołujące narzędzie (`mercury-server.sh` w `mercury-docker`) używaj
 | `src/main/config` | Konfiguracja CLI i transferu, logowanie (`logback.xml`), komunikaty i etykiety w sześciu językach (pl, en, de, es, fr, ko) |
 | `src/main/scripts` | Skrypty SQL: inicjalizacja baz Mercury, ActiveMQ i LDAP, role i użytkownicy, schematy LDAP (DB2, MySQL, Oracle, PostgreSQL), migracje do 2.0 i z 2.0 do 3.0 |
 | `src/main/installableApps` | `setwebconf.sh` |
-| `bin/` | Apache Tomcat 8.5.14 i instalatory JDK 8 (u112 Windows, u131 Linux) |
+| `bin/` | Apache Tomcat 8.5.14 i 9.0.123 oraz instalatory JDK 8 (u112 Windows, u131 Linux) |
 | `releases/` | Zbudowane pakiety, np. `mercury-install-package-3.0.3.2.11.POSTGRESQL.20221006.zip` |
 | `system-config-sample/linux` | Przykładowa konfiguracja systemu |
 | `libExt/` (źródło w module) | `fscontext`, `providerutil` (JNDI w systemie plików) |
@@ -74,8 +74,9 @@ flowchart LR
 
 ## Stos technologiczny
 
-Spring 5.3.20, Hibernate 5.4.24.Final, Lucene 7.5.0, Apache CXF 3.0.10, Ehcache 3.6.1,
-ActiveMQ 5.16.2, POI 5.2.1, OpenCMIS 1.1.0, Jackson 2.13.2, slf4j 1.7.36 + Logback 1.2.13.
+Java 17 (profil z `java.version`), Spring 5.3.21, Hibernate 5.6.14.Final, Lucene 9.12.3, Apache CXF 3.5.10,
+Ehcache 3.10.8, POI 5.2.3, OpenCMIS 1.1.0, Jackson 2.18.11, slf4j 1.7.36 + Logback 1.2.13.
+Wersja ActiveMQ w pakiecie wynika z `apache-tomcat/mercury/lib` serwera (5.19.12).
 
 ## Budowanie
 
